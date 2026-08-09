@@ -129,6 +129,73 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/gesture_data_path"/>
         </provider>
+    
+    <!-- keyboard-cipher -->
+<!--
+  Riceve il testo selezionato in un'altra app (barra di selezione standard) e
+  il testo condiviso via share sheet.
+
+  Attributi di sicurezza, tutti necessari per un'Activity che mostra plaintext:
+
+  exported=true      obbligatorio per ricevere intent da altre app. Significa
+                     che chiunque puo' mandarci del testo: accettabile, perche'
+                     l'Activity si limita a decifrare e mostrare, e non
+                     restituisce mai nulla al chiamante (vedi DecryptActivity).
+
+  noHistory=true     l'Activity non resta nello stack: uscendo, il plaintext
+                     non e' raggiungibile tornando indietro.
+
+  excludeFromRecents il sistema salva su disco uno screenshot di ogni Activity
+  =true              per la schermata Recenti. Senza questo, il testo decifrato
+                     finisce in un file. FLAG_SECURE nel codice copre lo stesso
+                     rischio; qui sono ridondanti di proposito.
+
+  taskAffinity=""    tiene l'Activity fuori dal task principale dell'app, cosi'
+                     non compare accanto alle schermate della tastiera.
+
+  launchMode         una sola istanza viva: evita piu' finestre che tengono
+  =singleTask        plaintext in memoria contemporaneamente.
+-->
+<activity
+    android:name=".cipher.DecryptActivity"
+    android:label="@string/cipher_decrypt_action"
+    android:exported="true"
+    android:noHistory="true"
+    android:excludeFromRecents="true"
+    android:taskAffinity=""
+    android:launchMode="singleTask"
+    android:theme="@style/Theme.Cipher.Dialog">
+
+    <!-- Via 2: barra di selezione del testo. Compare solo nelle app che usano
+         la barra standard di Android; quelle con menu di long-press
+         proprietario (WhatsApp) non la mostrano. -->
+    <intent-filter>
+        <action android:name="android.intent.action.PROCESS_TEXT" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:mimeType="text/plain" />
+    </intent-filter>
+
+    <!-- Via 3: share sheet. Fallback universale. -->
+    <intent-filter>
+        <action android:name="android.intent.action.SEND" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:mimeType="text/plain" />
+    </intent-filter>
+</activity>
+
+<!--
+  Gestione contatti, fingerprint e conflitti di chiave.
+
+  NON esportata e NON nel launcher: ci si arriva dalle impostazioni della
+  tastiera, come una qualsiasi schermata di HeliBoard. Un'icona nel launcher
+  sarebbe un secondo marcatore visibile del sistema, e non serve a niente che
+  una voce nelle impostazioni non faccia gia'.
+-->
+<activity
+    android:name=".cipher.ContactsActivity"
+    android:exported="false"
+    android:excludeFromRecents="true" />
+
     </application>
 
     <queries>

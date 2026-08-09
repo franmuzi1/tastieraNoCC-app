@@ -86,6 +86,10 @@ android {
     }
     ndkVersion = "28.0.13004108"
 
+    // Il .so del core crypto non passa da ndkBuild: e' prodotto da cargo-ndk a
+    // partire da un crate Rust che vive in un repo separato, e atterra in
+    // jniLibs come libreria precompilata. La catena ndkBuild qui sopra resta
+    // quella del dizionario nativo di HeliBoard, intatta.
     packaging {
         jniLibs {
             // shrinks APK by 3 MB, zipped size unchanged
@@ -154,4 +158,45 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.16.1")
     testImplementation("androidx.test:runner:1.7.0")
     testImplementation("androidx.test:core:1.7.0")
+}
+
+// ============================================================================
+// keyboard-cipher — core crypto in Rust
+// ============================================================================
+
+// Percorso del checkout di keyboard-cipher-core. Default: repo affiancato.
+// Sovrascrivibile con -PcipherCorePath=/altro/percorso o in gradle.properties.
+val cipherCorePath: String =
+    (project.findProperty("cipherCorePath") as String?) ?: "../../tastieraNoCC"
+
+// Le quattro ABI che Android usa oggi. Ognuna aggiunge circa 300 KB all'APK.
+val cipherAbis = listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+
+val buildCipherCore by tasks.registering(Exec::class) {
+    group = "build"
+    description = "Compila keyboard-cipher-jni per le ABI Android con cargo-ndk"
+
+    workingDir = file("$cipherCorePath/jni")
+    val outDir = file("src/main/jniLibs")
+
+    commandLine(
+        buildList {
+            add("cargo")
+            add("ndk")
+            cipherAbis.forEach { add("-t"); add(it) }
+            add("-o"); add(outDir.absolutePath)
+            add("build")
+            add("--release")
+        }
+    )
+
+    // Se il core non e' affiancato, non si fallisce il build dell'intera app:
+    // si lascia che sia il caricamento della libreria a fallire, dove il
+    // messaggio e' comprensibile. Un build rotto per un percorso sbagliato
+    // sarebbe molto piu' difficile da diagnosticare.
+    onlyIf { file("$cipherCorePath/jni/Cargo.toml").exists() }
+}
+
+tasks.matching { it.name == "preBuild" }.configureEach {
+    dependsOn(buildCipherCore)
 }
