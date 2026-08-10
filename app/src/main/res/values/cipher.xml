@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Risorse di keyboard-cipher.
+    Tenute in un file separato per non mescolarsi con quelle di HeliBoard:
+    rende ovvio cosa e' del fork quando si fa un merge da upstream.
+-->
+<resources>
+    <!--
+        Etichetta della voce che compare nella barra di selezione del testo
+        (ACTION_PROCESS_TEXT) e nello share sheet. La vede l'utente dentro
+        un'altra app, quindi deve essere corta e comprensibile da sola.
+    -->
+    <string name="cipher_decrypt_action">Decifra</string>
+
+    <!--
+        Tema dell'Activity che mostra il testo decifrato.
+
+        Parent del framework e non della libreria di supporto: questa Activity
+        deve poter comparire sopra qualunque app senza trascinarsi dietro
+        dipendenze, e piu' e' semplice meno superficie ha.
+    -->
+    <style name="Theme.Cipher.Dialog" parent="@android:style/Theme.Material.Light.Dialog">
+        <item name="android:windowCloseOnTouchOutside">false</item>
+    </style>
+</resources>

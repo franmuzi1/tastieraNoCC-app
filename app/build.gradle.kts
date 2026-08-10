@@ -172,31 +172,40 @@ val cipherCorePath: String =
 // Le quattro ABI che Android usa oggi. Ognuna aggiunge circa 300 KB all'APK.
 val cipherAbis = listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
 
+// Tutto risolto QUI, a tempo di configurazione, e non dentro il task: la
+// configuration cache serializza i task, e un riferimento allo script Gradle
+// catturato in una lambda non e' serializzabile. Da qui in giu' si passano
+// solo File e String.
+val cipherCoreDir = file(cipherCorePath).resolve("jni")
+val cipherLibsDir = file("src/main/jniLibs")
+val cipherCoreAvailable = cipherCoreDir.resolve("Cargo.toml").exists()
+
 val buildCipherCore by tasks.registering(Exec::class) {
     group = "build"
     description = "Compila keyboard-cipher-jni per le ABI Android con cargo-ndk"
 
-    workingDir = file("$cipherCorePath/jni")
-    val outDir = file("src/main/jniLibs")
-
+    workingDir = cipherCoreDir
     commandLine(
         buildList {
             add("cargo")
             add("ndk")
             cipherAbis.forEach { add("-t"); add(it) }
-            add("-o"); add(outDir.absolutePath)
+            add("-o"); add(cipherLibsDir.absolutePath)
             add("build")
             add("--release")
         }
     )
 
-    // Se il core non e' affiancato, non si fallisce il build dell'intera app:
-    // si lascia che sia il caricamento della libreria a fallire, dove il
-    // messaggio e' comprensibile. Un build rotto per un percorso sbagliato
-    // sarebbe molto piu' difficile da diagnosticare.
-    onlyIf { file("$cipherCorePath/jni/Cargo.toml").exists() }
+    // Se il core non e' affiancato il task e' disattivato e il build prosegue:
+    // a fallire sara' il caricamento della libreria, dove il messaggio e'
+    // comprensibile. Un build rotto per un percorso sbagliato sarebbe molto
+    // piu' difficile da diagnosticare.
+    //
+    // `enabled` e non `onlyIf`: il secondo vuole una lambda, che verrebbe
+    // catturata dalla configuration cache.
+    enabled = cipherCoreAvailable
 }
 
-tasks.matching { it.name == "preBuild" }.configureEach {
+tasks.named("preBuild") {
     dependsOn(buildCipherCore)
 }

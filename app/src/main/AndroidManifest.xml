@@ -157,7 +157,7 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
   =singleTask        plaintext in memoria contemporaneamente.
 -->
 <activity
-    android:name=".cipher.DecryptActivity"
+    android:name="helium314.keyboard.cipher.DecryptActivity"
     android:label="@string/cipher_decrypt_action"
     android:exported="true"
     android:noHistory="true"
@@ -192,7 +192,7 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
   una voce nelle impostazioni non faccia gia'.
 -->
 <activity
-    android:name=".cipher.ContactsActivity"
+    android:name="helium314.keyboard.cipher.ContactsActivity"
     android:exported="false"
     android:excludeFromRecents="true" />
 

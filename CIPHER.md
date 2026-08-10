@@ -8,13 +8,41 @@ Il core crypto sta in un repo separato (`keyboard-cipher-core` + il ponte
 `keyboard-cipher-jni`) e non è incluso qui: questo repo contiene solo il lato
 Android.
 
-## Stato: NON COMPILATO
+## Stato: compila, con la funzionalità ancora scheletro
 
-Niente di quanto segue è mai stato costruito. L'ambiente in cui è stata fatta
-l'integrazione non aveva SDK, NDK, Gradle né JDK — solo la JRE. Le parti Rust
-sono compilate e testate nel loro repo; **tutto ciò che è Kotlin, Gradle e
-manifest qui dentro è da considerarsi non verificato** finché non passa un
-`./gradlew assembleDebug`.
+`./gradlew assembleDebug` passa. Verificato **sull'APK**, non sull'esito di
+Gradle (vedi sotto perché la distinzione conta):
+
+| Cosa | Esito |
+|---|---|
+| `lib/{arm64-v8a,armeabi-v7a,x86,x86_64}/libkeyboard_cipher_jni.so` | presenti, 339–573 KB |
+| `Lhelium314/keyboard/cipher/DecryptActivity;` nel dex | presente |
+| `Lhelium314/keyboard/cipher/ContactsActivity;` nel dex | presente |
+| `CipherCore` nel dex | **assente, ed è corretto** — vedi sotto |
+
+`CipherCore` non è nel dex perché **nessuno lo chiama ancora**: l'unica
+occorrenza del nome in tutto il sorgente è il TODO dentro
+`DecryptActivity.onCreate`. R8 rimuove le classi irraggiungibili, e questa lo
+è. Comparirà nel dex insieme al primo chiamante vero; `proguard-rules.pro` ha
+già `-keepclassmembers class * { native <methods>; }` e `-dontobfuscate`,
+quindi i nomi dei metodi nativi sopravvivono alla minificazione — che è
+l'unica cosa che conta, dato che JNI risolve **per nome**
+(`Java_helium314_keyboard_cipher_CipherCore_native...`).
+
+### Trappola: un build verde non dimostra che la funzionalità ci sia
+
+Il primo build è passato con exit 0 e un APK da 27 MB **privo delle due
+Activity**. Il manifest le dichiarava con nome relativo (`.cipher.DecryptActivity`),
+che si risolve contro il namespace del modulo — `helium314.keyboard.latin` —
+dando `helium314.keyboard.latin.cipher.DecryptActivity`, che non esiste.
+Nessuno se ne lamenta: il manifest accetta il nome, R8 non trova riferimenti
+alle classi vere e le toglie dal dex. Da qui due regole:
+
+- **nomi assoluti** nel manifest per tutto ciò che sta fuori da `.latin`
+  (HeliBoard fa già così per le proprie Activity, per lo stesso motivo);
+- il criterio di verifica è **il contenuto del dex e di `lib/`**, mai
+  `BUILD SUCCESSFUL`. Il debug qui ha `isMinifyEnabled = true` (upstream lo
+  vuole, per stare sotto i 25 MB di GitHub), quindi R8 gira anche in debug.
 
 ## Cosa è già cablato
 
@@ -38,10 +66,7 @@ diagnosticare.
 **1. I tasti in toolbar.** `ToolbarKey` è un enum in
 `app/src/main/java/helium314/keyboard/latin/utils/ToolbarUtils.kt:121`.
 Servono due voci — cifra e decifra — con le rispettive icone e stringhe, e la
-gestione nel listener delle azioni. Non le ho aggiunte: senza poter compilare,
-una voce di enum priva della mappatura dell'icona rompe il build in un modo che
-non avrei potuto verificare, e un TODO preciso vale più di codice
-plausibilmente rotto.
+gestione nel listener delle azioni.
 
 **2. Il ciclo di vita.** Nessuno chiama ancora `CipherCore.nativeInit`. Serve:
 generare il segreto al primo avvio con `nativeGenerateSecret`, cifrarlo con una
