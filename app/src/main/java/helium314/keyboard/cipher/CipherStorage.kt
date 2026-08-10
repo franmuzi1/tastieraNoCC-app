@@ -24,10 +24,23 @@ import java.io.FileOutputStream
  * che sarebbero due file in piu' da tenere allineati e un merge conflict in
  * attesa.
  *
- * Nota: l'app e' `defaultToDeviceProtectedStorage`, quindi questa directory
- * vive in device protected storage ed e' leggibile gia' prima del primo
- * sblocco. E' il motivo per cui la chiave maestra ha
- * `setUnlockedDeviceRequired`.
+ * ## Dove finiscono davvero, misurato
+ *
+ * Il manifest ha `defaultToDeviceProtectedStorage="true"`, da cui sarebbe
+ * naturale dedurre che questi file stiano in device protected storage. **Non
+ * e' cosi'.** Verificato su emulatore API 34: finiscono in
+ * `/data/user/0/<pkg>/no_backup/cipher/`, cioe' in *credential encrypted*
+ * storage; la directory device-protected dell'app esiste separatamente e
+ * contiene solo cio' che HeliBoard ci mette tramite `DeviceProtectedUtils`.
+ *
+ * La differenza conta ed e' a nostro favore: CE e' cifrato con una chiave
+ * derivata dalla credenziale dell'utente, quindi a riposo e prima del primo
+ * sblocco i file non sono nemmeno leggibili. La protezione della chiave
+ * maestra (`setUnlockedDeviceRequired`) si somma a questa, non la sostituisce.
+ *
+ * Conseguenza pratica gia' gestita: prima del primo sblocco questa directory
+ * non e' accessibile, ed e' un'altra ragione per cui [CipherIdentity] esce con
+ * `Locked` invece di provarci.
  */
 internal object CipherStorage {
 

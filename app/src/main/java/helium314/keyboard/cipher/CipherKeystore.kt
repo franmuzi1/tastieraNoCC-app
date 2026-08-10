@@ -124,18 +124,47 @@ internal object CipherKeystore {
      * ricade sul TEE normale. Il fallback e' silenzioso di proposito: non e'
      * una condizione d'errore, e' la maggioranza dei dispositivi.
      */
+    /**
+     * Tre tentativi in ordine di robustezza decrescente. Ognuno cade sul
+     * successivo, e il motivo di ciascuna caduta e' diverso.
+     *
+     * 1. **StrongBox + dispositivo sbloccato.** Non c'e' modo di sapere in
+     *    anticipo se il dispositivo ha un elemento sicuro separato: si prova.
+     *    Fallisce con `HARDWARE_TYPE_UNAVAILABLE` sulla maggioranza dei
+     *    dispositivi, emulatori compresi.
+     *
+     * 2. **TEE + dispositivo sbloccato.** Il caso normale.
+     *
+     * 3. **TEE e basta.** Necessario, e la ragione va capita prima di
+     *    toglierlo: su un dispositivo **senza blocco schermo**
+     *    `setUnlockedDeviceRequired(true)` non fallisce all'uso, fallisce alla
+     *    GENERAZIONE, con
+     *    *"Failed to handle super encryption: User ECDH key missing"*. Quella
+     *    chiave per-utente esiste solo se l'utente ha una credenziale. Senza
+     *    questo terzo tentativo la cifratura sarebbe semplicemente non
+     *    disponibile per chiunque non tenga un PIN sul telefono — che non e'
+     *    una minoranza trascurabile.
+     *
+     *    Non si perde nulla di reale: `setUnlockedDeviceRequired` protegge i
+     *    dati *mentre il dispositivo e' bloccato*, e un dispositivo senza
+     *    blocco schermo non e' mai bloccato. La protezione sarebbe stata
+     *    vacua comunque.
+     *
+     * Osservato su emulatore API 34 senza blocco schermo: i primi due
+     * tentativi falliscono, il terzo riesce. Prima che il codice girasse
+     * davvero, questo percorso non esisteva e la funzione era morta su quei
+     * dispositivi.
+     */
     private fun generate(): SecretKey? {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            strongBoxKey()?.let { return it }
+            runCatching { build(spec(unlockedRequired = true).setIsStrongBoxBacked(true)) }
+                .getOrNull()?.let { return it }
         }
-        return runCatching { build(spec()) }.getOrNull()
+        runCatching { build(spec(unlockedRequired = true)) }.getOrNull()?.let { return it }
+        return runCatching { build(spec(unlockedRequired = false)) }.getOrNull()
     }
 
-    @RequiresApi(Build.VERSION_CODES.P)
-    private fun strongBoxKey(): SecretKey? =
-        runCatching { build(spec().setIsStrongBoxBacked(true)) }.getOrNull()
-
-    private fun spec(): KeyGenParameterSpec.Builder {
+    private fun spec(unlockedRequired: Boolean): KeyGenParameterSpec.Builder {
         val builder = KeyGenParameterSpec.Builder(
             ALIAS,
             KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
@@ -144,7 +173,7 @@ internal object CipherKeystore {
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
             .setKeySize(256)
             .setRandomizedEncryptionRequired(true)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        if (unlockedRequired && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             builder.setUnlockedDeviceRequired(true)
         }
         return builder

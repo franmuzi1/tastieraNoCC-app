@@ -130,9 +130,34 @@ qualunque app col fuoco può leggerlo. `EXTRA_IS_SENSITIVE` (Android 13+)
 nasconde solo l'anteprima. Da lì in poi il testo è fuori dal perimetro
 dell'app, e il messaggio di conferma lo dice invece di far finta di no.
 
-**8. Prova su dispositivo.** Niente è mai stato eseguito: il `.so` non è mai
-stato caricato. Tutto il confine JNI e tutto Keystore sono verificati solo
-staticamente.
+**8. Prova su dispositivo — PRIMO GIRO FATTO.** Emulatore x86_64, API 34,
+senza blocco schermo. Verificato: il `.so` si carica, l'identità viene generata
+e scritta (`identity.bin`, 61 byte = 1 versione + 12 IV + 32 segreto + 16 tag),
+e dopo un `force-stop` viene **ricaricata e non rigenerata** (stesso hash).
+
+Ha trovato subito un bug che nessuna analisi statica avrebbe preso: vedi sotto.
+
+*Ancora da provare su dispositivo:* il ciclo cifra/decifra completo con due
+identità, i tasti in toolbar dentro l'IME vero, il conflitto di etichetta, e il
+comportamento con un blocco schermo impostato (dove il percorso Keystore è
+diverso da quello osservato).
+
+## Cosa ha insegnato la prima esecuzione
+
+**`setUnlockedDeviceRequired(true)` fallisce alla *generazione* della chiave se
+il dispositivo non ha un blocco schermo**, con
+`Failed to handle super encryption: User ECDH key missing`. Non all'uso: alla
+generazione. Senza un terzo tentativo di fallback la cifratura sarebbe stata
+semplicemente non disponibile per chiunque non tenga un PIN sul telefono.
+
+Non si perde nulla di reale nel fallback: quel flag protegge i dati *mentre il
+dispositivo è bloccato*, e un dispositivo senza blocco schermo non è mai
+bloccato.
+
+**I file non stanno in device-protected storage**, malgrado
+`defaultToDeviceProtectedStorage="true"` nel manifest. Stanno in
+`/data/user/0/<pkg>/no_backup/cipher/`, cioè credential-encrypted — il che è
+meglio, ma il commento nel codice diceva il contrario ed è stato corretto.
 
 ## Procedura per una sessione automatica
 

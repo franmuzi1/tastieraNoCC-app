@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard.settings.screens
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -16,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import helium314.keyboard.cipher.ContactsActivity
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.utils.JniUtils
 import helium314.keyboard.latin.utils.SubtypeLocaleUtils.displayName
@@ -74,6 +76,22 @@ fun MainSettingsScreen(
                     name = stringResource(R.string.settings_screen_toolbar),
                     onClick = onClickToolbar,
                     icon = R.drawable.ic_settings_toolbar
+                ) { NextScreenIcon() }
+                // keyboard-cipher. Apre un'Activity invece di navigare a una
+                // schermata Compose: ContactsActivity ha bisogno di FLAG_SECURE
+                // sulla propria finestra — mostra fingerprint, che non devono
+                // finire nello screenshot dei Recenti — e una destinazione
+                // dentro il grafo di navigazione delle impostazioni
+                // condividerebbe la finestra con tutto il resto.
+                val cipherContext = LocalContext.current
+                Preference(
+                    name = stringResource(R.string.cipher_contacts),
+                    onClick = {
+                        cipherContext.startActivity(
+                            Intent(cipherContext, ContactsActivity::class.java)
+                        )
+                    },
+                    icon = R.drawable.ic_cipher_encrypt
                 ) { NextScreenIcon() }
                 if (JniUtils.sHaveGestureLib)
                     Preference(
