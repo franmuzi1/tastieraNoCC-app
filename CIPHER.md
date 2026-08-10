@@ -109,15 +109,18 @@ Nelle due schermate delicate l'azione distruttiva sta sul pulsante **negativo**,
 contro convenzione e apposta: il posto dove cade il pollice dev'essere quello
 che non cambia niente.
 
-*Residui:*
-- **il QR non c'è.** È l'unica cosa che chiude il MITM al primo contatto, che il
-  TOFU da solo non chiude. Mostrarlo non costa permessi; scansionarlo richiede
-  `CAMERA`, e allora va chiesto a runtime all'apertura dello scanner, mai
-  all'installazione;
-- **manca la voce nelle impostazioni.** Oggi a `ContactsActivity` si arriva solo
-  dal pulsante dentro `DecryptActivity`, cioè solo mentre si guarda un
-  messaggio. Serve l'ingresso dalle impostazioni della tastiera, che è quello
-  previsto e l'unico che si trova quando non si sta leggendo niente.
+**~~QR.~~ FATTO, in mostra.** `CipherQr` più il pulsante *Mostra il codice QR*
+nella sezione della propria identità. Nessun permesso nuovo: la generazione non
+ne richiede.
+
+*Residuo:* **non c'è lo scanner.** Leggere un QR richiede `CAMERA`, e non averne
+è la proprietà principale del fork. Il flusso che funziona senza: l'altra
+persona inquadra con un lettore QR qualunque, ottiene il testo `kc/…`, e lo
+condivide alla nostra Activity dallo share sheet. Se un giorno si aggiunge lo
+scanner, `CAMERA` va chiesto **a runtime**, all'apertura dello scanner, mai
+come permesso di installazione.
+
+**~~Voce nelle impostazioni.~~ FATTA e verificata:** Impostazioni → *Contatti*.
 
 **~~7. Cronologia clipboard.~~ FATTO.** `CipherClipboard.markSensitive` /
 `isSensitive`, più una riga di guardia in `ClipboardHistoryManager`. Tiene un
@@ -280,6 +283,24 @@ fingerprint e data di primo avvistamento. Toccando un peer: *Dai un nome* e
 Assegnata l'etichetta "Marco", la lista si aggiorna e `keyring.bin` passa da 77
 a **82 byte** — esattamente i 5 caratteri del nome. La persistenza si misura,
 non si presume.
+
+### QR — verificato fuori dal dispositivo
+
+`FLAG_SECURE` impedisce di catturare il QR a schermo, quindi la verifica è
+stata fatta sulla JVM con **gli stessi parametri del codice** (livello M,
+margine 2, ISO-8859-1): codifica e ridecodifica, confrontando col testo di
+partenza.
+
+| Caso | Esito |
+|---|---|
+| card vera, 195 caratteri | riletta identica |
+| card **massima**, 445 caratteri (`CARD_MAX_BODY` = 276 byte) | riletta identica |
+
+Il secondo caso non è teoria: il riempimento della card è **casuale**, quindi
+la lunghezza cambia a ogni generazione. Se il caso lungo non entrasse nel QR,
+la funzione fallirebbe a caso su alcune card e non su altre — il tipo di guasto
+che si scopre dall'altra parte del tavolo, mentre due persone stanno cercando
+di verificarsi a vicenda.
 
 ### Conflitto di etichetta — ESEGUITO
 

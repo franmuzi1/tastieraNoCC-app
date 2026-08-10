@@ -10,6 +10,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -57,6 +58,10 @@ class ContactsActivity : Activity() {
         root.addView(sectionTitle(getString(R.string.cipher_my_identity)))
         root.addView(caption(getString(R.string.cipher_my_identity_hint)))
         root.addView(fingerprintView(CipherCore.nativeMyFingerprint().orEmpty()))
+        root.addView(Button(this).apply {
+            setText(R.string.cipher_show_qr)
+            setOnClickListener { showQr() }
+        })
 
         root.addView(sectionTitle(getString(R.string.cipher_contacts)))
 
@@ -211,6 +216,48 @@ class ContactsActivity : Activity() {
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    /**
+     * Il QR della propria identity card, per lo scambio di persona.
+     *
+     * E' l'unica via che chiude il MITM al primo contatto, che il TOFU da solo
+     * non chiude: da qui in poi il pin protegge, ma quel primo scambio resta
+     * scoperto se avviene solo attraverso il canale che si sta cercando di non
+     * far leggere a nessuno.
+     *
+     * Sotto il codice resta la stringa: si legge ad alta voce se l'altro non
+     * ha un lettore, ed e' anche l'unica cosa che si puo' fare se la
+     * generazione fallisce.
+     */
+    private fun showQr() {
+        val card = CipherCore.nativeIdentityCard()
+        if (card == null) {
+            toast(R.string.cipher_unavailable)
+            return
+        }
+        val side = (resources.displayMetrics.widthPixels * 0.8f).toInt()
+        val bitmap = CipherQr.encode(card, side)
+
+        val content = column().apply {
+            if (bitmap != null) {
+                addView(ImageView(this@ContactsActivity).apply {
+                    setImageBitmap(bitmap)
+                    // Nessun filtro nello scalare: interpolare i moduli
+                    // sfoca i bordi, ed e' proprio quello che fa fallire la
+                    // lettura.
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    adjustViewBounds = true
+                    layoutParams = LinearLayout.LayoutParams(side, side)
+                })
+            }
+            addView(caption(getString(R.string.cipher_qr_hint)))
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.cipher_show_qr)
+            .setView(ScrollView(this).apply { addView(content) })
+            .setPositiveButton(android.R.string.ok, null)
             .show()
     }
 

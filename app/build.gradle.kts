@@ -151,6 +151,19 @@ dependencies {
     implementation("sh.calvin.reorderable:reorderable:3.1.0") // for easier re-ordering
     implementation("com.github.skydoves:colorpicker-compose:1.1.3") // for user-defined colors
 
+    // keyboard-cipher: generazione del QR per lo scambio di persona.
+    //
+    // Solo il core di ZXing, che e' Java puro: niente codice nativo, niente
+    // permessi, niente rete. Serve il SOLO encoder — la scansione
+    // richiederebbe CAMERA, e quel permesso non si prende per una comodita'.
+    //
+    // Perche' una dipendenza invece di scriverlo in casa: un encoder QR e'
+    // Reed-Solomon su GF(256) piu' la valutazione delle maschere, e un errore
+    // sottile produce un codice che alcuni lettori accettano e altri no. E'
+    // esattamente il tipo di bug che si scopre dall'altra parte del tavolo,
+    // quando due persone stanno cercando di verificarsi a vicenda.
+    implementation("com.google.zxing:core:3.5.3")
+
     // test
     testImplementation(kotlin("test"))
     testImplementation("junit:junit:4.13.2")

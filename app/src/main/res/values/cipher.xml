@@ -84,6 +84,15 @@
     <string name="cipher_copy" tools:ignore="MissingTranslation">Copia</string>
     <string name="cipher_copied" tools:ignore="MissingTranslation">Copiato. Non entra nella cronologia della tastiera, ma resta negli appunti di sistema.</string>
 
+    <!--
+        QR per lo scambio di persona. E\' l\'unica via che chiude il MITM al
+        primo contatto: il TOFU protegge da li\' in poi, ma quel primo scambio
+        resta scoperto se avviene solo dentro il canale che si sta cercando di
+        non far leggere a nessuno.
+    -->
+    <string name="cipher_show_qr" tools:ignore="MissingTranslation">Mostra il codice QR</string>
+    <string name="cipher_qr_hint" tools:ignore="MissingTranslation">Fallo inquadrare di persona a chi vuoi contattare. E\' l\'unico modo di essere sicuri che nessuno si sia messo in mezzo al primo scambio.</string>
+
     <!-- ContactsActivity. -->
     <string name="cipher_my_identity" tools:ignore="MissingTranslation">La tua identita\'</string>
     <string name="cipher_my_identity_hint" tools:ignore="MissingTranslation">Questo codice ti identifica. Leggilo a voce a chi vuoi contattare: se combacia, nessuno si e\' interposto.</string>
