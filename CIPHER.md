@@ -407,6 +407,32 @@ Non si vede da nessun avviso e l'APK funziona benissimo, quindi va ricordato:
 Come accorgersene: sommare le dimensioni compresse delle voci e confrontarle
 con la dimensione del file. Se il file e' molto piu' grande, e' spazio morto.
 
+## L'altezza della tastiera non e' cambiata — misurata
+
+Sospetto ragionevole, perche' i due lucchetti fissati stanno nella striscia dei
+suggerimenti e sembra che debbano occupare spazio. Non lo occupano: stanno in
+`pinned_keys`, che e' alto `match_parent` dentro una striscia la cui altezza la
+decide il layout della tastiera.
+
+Misurato sullo stesso build, cambiando solo `pinned_toolbar_keys`, leggendo il
+bordo dallo screenshot invece che a occhio:
+
+| Configurazione | Bordo striscia | Bordo tasti | Altezza totale |
+|---|---|---|---|
+| due lucchetti fissati (default nostro) | y=1431 | y=1541 | 909 px |
+| nessun tasto fissato | y=1431 | y=1541 | 909 px |
+
+Identiche al pixel. Il fork non tocca `dimens.xml`, i layout, ne' il codice che
+calcola l'altezza — il diff contro upstream lo conferma. Chi vede la tastiera
+piu' alta dell'originale sta confrontando **due installazioni diverse**: il
+fork ha `applicationIdSuffix .debug`, quindi convive con HeliBoard invece di
+sostituirlo, e parte con le impostazioni di fabbrica mentre l'altra ha quelle
+gia' regolate dall'utente. La leva e' Impostazioni → Aspetto → altezza della
+tastiera.
+
+Cio' che cambia davvero e' la **larghezza** disponibile ai suggerimenti: due
+posti in meno, dichiarati e voluti.
+
 ## Come far girare l'emulatore qui
 
 Roba scoperta a fatica, per non ripeterla:
@@ -420,6 +446,14 @@ cd /tmp && setsid nohup $ANDROID_HOME/emulator/emulator -avd cipher34 \
     -no-snapshot -memory 2048 > /tmp/emu.log 2>&1 < /dev/null & disown
 ```
 
+- **L'ambiente si svuota fra una sessione e l'altra.** Trovato due volte:
+  `javac` assente (c'e' solo un JRE in `/usr/lib/jvm`, e Gradle fallisce con
+  *"does not provide the required capabilities: [JAVA_COMPILER]"*) e
+  `cargo-ndk` sparito da `~/.cargo/bin`. Rimedi, senza root: un JDK da
+  Adoptium scompattato in `~/jdks` e `JAVA_HOME` puntato li'; e se i `.so` in
+  `jniLibs` sono gia' buoni, `-x buildCipherCore` salta cargo del tutto.
+  Prima di concludere che qualcosa e' rotto nel progetto, verificare che gli
+  attrezzi ci siano ancora.
 - **Va lanciato staccato** (`setsid` + `disown`). Lanciato come processo figlio
   della sessione viene terminato, e il crash **azzera i dati dell'AVD**: APK,
   PIN e identità vanno rifatti.
