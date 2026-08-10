@@ -281,9 +281,35 @@ Assegnata l'etichetta "Marco", la lista si aggiorna e `keyring.bin` passa da 77
 a **82 byte** — esattamente i 5 caratteri del nome. La persistenza si misura,
 non si presume.
 
-### Ricetta per provare il conflitto di etichetta
+### Conflitto di etichetta — ESEGUITO
 
-Non ancora eseguita. Serve **un'identità con due peer distinti**, e il solo modo
+Il percorso di sicurezza più importante, provato sul dispositivo con tre
+identità fabbricate in sequenza (A e B come peer, C come osservatore):
+
+| Passo | Esito |
+|---|---|
+| card A sotto C → *Nuovo contatto*, fingerprint `bhai 4o4s …` | peer fissato |
+| etichetta "Marco" su A | assegnata |
+| card B sotto C → fingerprint `85nt 51zz …` | secondo peer fissato |
+| etichetta "Marco" su B | **conflitto**: *"Questo nome è già di un'altra chiave"* |
+| *Non cambiare nulla* | hash di `keyring.bin` **identico**, "Marco" resta su A |
+| ritento e scelgo *È la sua chiave nuova* | l'etichetta si sposta su B, e il segno di verifica sparisce |
+
+Le due cose che dovevano succedere sono successe: il default non modifica
+niente, e la sostituzione azzera `verified` — una chiave nuova non è stata
+confrontata fuori banda, per definizione.
+
+Le due card avevano lunghezze diverse (195 e 171 caratteri): è il riempimento
+casuale che impedisce di isolare le presentazioni con una regex sulla lunghezza.
+
+*Limite della verifica:* il **corpo** del dialogo — i due fingerprint affiancati
+e le due letture possibili — non è esposto dall'accessibilità, e `screencap` è
+bloccato da `FLAG_SECURE`. Titolo e pulsanti sono osservati; il testo in mezzo
+no.
+
+### Ricetta (usata sopra)
+
+Serve **un'identità con due peer distinti**, e il solo modo
 di fabbricare identità nuove senza toccare il prodotto è `pm clear` (i file
 sotto `no_backup` spariscono, la chiave in Keystore no, quindi al riavvio ne
 nasce una nuova).
