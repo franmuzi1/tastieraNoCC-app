@@ -39,6 +39,12 @@
     <string name="cipher_no_recipient" tools:ignore="MissingTranslation">Scegli prima un destinatario per questa app</string>
     <string name="cipher_text_too_long" tools:ignore="MissingTranslation">Testo troppo lungo per essere cifrato</string>
     <!--
+        Il campo non si e' lasciato sostituire: parte del chiaro e' rimasta
+        accanto al blob. Va detto, e va detto in modo che si capisca cosa fare
+        prima di premere invio.
+    -->
+    <string name="cipher_replace_failed" tools:ignore="MissingTranslation">Questa app non ha lasciato sostituire il testo: controlla il campo, potrebbe esserci ancora del testo in chiaro</string>
+    <!--
         Dice "invia", non "fatto": la card e\' nel campo ma non e\' ancora
         partita, e senza l\'invio il primo contatto non si chiude.
     -->
@@ -113,6 +119,20 @@
         una.
     -->
     <string name="cipher_backup_non_aperto" tools:ignore="MissingTranslation">Non e\' stato possibile aprire il file</string>
+
+    <!--
+        Presentazione gia' nota: NON dire "nuovo contatto" e NON mostrare il
+        segno di verifica. Quel segno significa "confrontato di persona" ed e\'
+        l\'unico segnale anti-MITM del sistema.
+    -->
+    <string name="cipher_card_known" tools:ignore="MissingTranslation">Contatto gia\' noto</string>
+    <string name="cipher_card_known_hint" tools:ignore="MissingTranslation">Questa chiave era gia\' memorizzata. Se non l\'hai ancora fatto, confronta il codice di persona.</string>
+    <!--
+        Il gesto esplicito che una presentazione non fa al posto dell\'utente:
+        non e\' autenticata, quindi non puo\' decidere per chi si cifra.
+    -->
+    <string name="cipher_use_as_recipient" tools:ignore="MissingTranslation">Scrivi a questo contatto</string>
+    <string name="cipher_recipient_set" tools:ignore="MissingTranslation">Ora in questa app cifri per questo contatto</string>
 
     <!-- ContactsActivity. -->
     <string name="cipher_my_identity" tools:ignore="MissingTranslation">La tua identita\'</string>

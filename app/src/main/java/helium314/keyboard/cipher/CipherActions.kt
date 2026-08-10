@@ -2,6 +2,7 @@ package helium314.keyboard.cipher
 
 import android.content.Intent
 import android.inputmethodservice.InputMethodService
+import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.widget.Toast
 import helium314.keyboard.latin.R
@@ -37,8 +38,8 @@ object CipherActions {
     fun encrypt(ime: InputMethodService) {
         if (!ready(ime)) return
         val ic = ime.currentInputConnection ?: return
-        val text = readField(ime, ic) ?: return
-        if (text.isEmpty()) {
+        val field = readField(ime, ic) ?: return
+        if (field.text.isEmpty()) {
             toast(ime, R.string.cipher_nothing_to_encrypt)
             return
         }
@@ -47,7 +48,7 @@ object CipherActions {
         // non azzerabile: la garanzia del core si ferma al confine con
         // InputConnection, che parla CharSequence. L'array lo azzeriamo
         // comunque — e' la copia che vive piu' a lungo.
-        val plaintext = text.toByteArray()
+        val plaintext = field.text.toByteArray()
         val blob = try {
             CipherCore.nativeEncryptForApp(
                 ime.currentInputEditorInfo?.packageName.orEmpty(),
@@ -62,18 +63,14 @@ object CipherActions {
             toast(ime, R.string.cipher_no_recipient)
             return
         }
-        replaceField(ic, text.length, blob)
+        if (!replaceField(ic, field, blob)) {
+            // Il campo non e' stato sostituito: nel dubbio l'utente deve
+            // saperlo, perche' il fallimento silenzioso qui e' il peggiore
+            // possibile — si crede di aver cifrato e si preme invio sul chiaro.
+            toast(ime, R.string.cipher_replace_failed)
+        }
     }
 
-    /**
-     * Manda il contenuto del campo a [DecryptActivity].
-     *
-     * Il chiaro NON torna nel campo, ed e' il punto centrale: il campo
-     * appartiene all'app di chat, quindi scriverci il testo decifrato lo
-     * consegnerebbe esattamente all'applicazione da cui questo progetto esiste
-     * per tenerlo lontano. Il chiaro si vede solo nella nostra finestra, che e'
-     * `FLAG_SECURE`, e finisce li'.
-     */
     /**
      * Scrive nel campo la propria identity card.
      *
@@ -99,7 +96,7 @@ object CipherActions {
      * un contatto nuovo", raccolto a costo zero da uno scanning di massa.
      *
      * *Nota di scopribilita':* un tocco lungo e' nascosto. Il punto d'ingresso
-     * visibile e' la UI contatti, che non c'e' ancora; questo e' il gesto
+     * visibile e' la UI contatti (Impostazioni -> Contatti); questo e' il gesto
      * veloce, non l'unico previsto.
      */
     fun insertIdentityCard(ime: InputMethodService) {
@@ -119,6 +116,15 @@ object CipherActions {
         toast(ime, R.string.cipher_card_inserted)
     }
 
+    /**
+     * Manda il contenuto del campo a [DecryptActivity].
+     *
+     * Il chiaro NON torna nel campo, ed e' il punto centrale: il campo
+     * appartiene all'app di chat, quindi scriverci il testo decifrato lo
+     * consegnerebbe esattamente all'applicazione da cui questo progetto esiste
+     * per tenerlo lontano. Il chiaro si vede solo nella nostra finestra, che e'
+     * `FLAG_SECURE`, e finisce li'.
+     */
     fun decrypt(ime: InputMethodService) = decrypt(ime, clipboardOnly = false)
 
     /**
@@ -148,7 +154,12 @@ object CipherActions {
             // chiamante siamo noi: il destinatario finirebbe registrato sotto
             // "helium314.keyboard" e la regola "decifrare stabilisce il
             // destinatario" non scatterebbe mai per l'app giusta.
-            putExtra(DecryptActivity.EXTRA_EDITOR_PACKAGE, ime.currentInputEditorInfo?.packageName)
+            // Un gettone, non il package: gli extra sono scrivibili da
+            // chiunque, un valore casuale generato in questo processo no.
+            putExtra(
+                CipherHandoff.extraName(),
+                CipherHandoff.issue(ime.currentInputEditorInfo?.packageName.orEmpty()),
+            )
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         runCatching { ime.startActivity(intent) }
@@ -174,7 +185,7 @@ object CipherActions {
                 // appunti in quel caso decifrerebbe una cosa diversa da quella
                 // che l'utente stava guardando.
                 val field = readField(ime, ic) ?: return null
-                if (field.isNotEmpty()) return field
+                if (field.text.isNotEmpty()) return field.text
             }
         }
         // La descrizione prima del contenuto: e' l'unica chiamata che non fa
@@ -213,35 +224,148 @@ object CipherActions {
         }
 
     /**
+     * Il campo letto, con quanto ne sta prima e quanto dopo il cursore.
+     *
+     * I due conteggi servono alla sostituzione: senza, non resta che indovinare
+     * quanto cancellare per ciascun lato, e indovinare troppo poco lascia il
+     * chiaro nel campo accanto al blob.
+     */
+    private class Field(val text: String, val before: Int, val after: Int)
+
+    /**
      * Il campo intero, non solo cio' che sta prima del cursore: si cifra il
      * messaggio, non la parte scritta finora.
+     *
+     * Due vie, e l'ordine non e' indifferente.
+     *
+     * `getExtractedText` chiede il contenuto **completo** in una sola chiamata,
+     * ed e' l'unica che non dipende da come l'app tratta la regione di
+     * composizione. Le tre chiamate dell'altra via — prima, selezione, dopo —
+     * vanno ricucite da noi, e un'app che ne restituisca una parziale produce
+     * un messaggio mutilato senza che nessuno dei due lati se ne accorga.
+     *
+     * `partialStartOffset >= 0` significa che l'app ha risposto con una
+     * porzione invece che col tutto: quel risultato non e' utilizzabile e si
+     * passa alla seconda via, che almeno e' esplicita su cosa sta chiedendo.
      */
-    private fun readField(ime: InputMethodService, ic: InputConnection): String? {
+    private fun readField(ime: InputMethodService, ic: InputConnection): Field? {
+        // Puo' lanciare se la connessione muore fra il controllo e la chiamata:
+        // in una tastiera un'eccezione non gestita significa un dispositivo su
+        // cui non si puo' piu' scrivere.
+        val extracted = runCatching { ic.getExtractedText(extractRequest(), 0) }.getOrNull()
+        val whole = extracted?.text
+        if (whole != null && extracted.partialStartOffset < 0) {
+            if (whole.length >= MAX_FIELD_CHARS) {
+                toast(ime, R.string.cipher_text_too_long)
+                return null
+            }
+            // selectionStart/End arrivano dall'app: possono essere -1, o
+            // invertiti se la selezione e' stata fatta da destra a sinistra.
+            // Si normalizzano prima di usarli come lunghezze.
+            val start = minOf(extracted.selectionStart, extracted.selectionEnd)
+                .coerceIn(0, whole.length)
+            val end = maxOf(extracted.selectionStart, extracted.selectionEnd)
+                .coerceIn(start, whole.length)
+            return Field(whole.toString(), start, whole.length - end)
+        }
+
         val before = ic.getTextBeforeCursor(MAX_FIELD_CHARS, 0) ?: ""
         val after = ic.getTextAfterCursor(MAX_FIELD_CHARS, 0) ?: ""
+        // `getSelectedText` e' indispensabile, non un raffinamento: le due
+        // chiamate qui sopra restituiscono cio' che sta PRIMA dell'inizio e
+        // DOPO la fine della selezione, non la selezione stessa. Senza questa
+        // riga, cifrare con del testo selezionato produceva un blob privo della
+        // parte selezionata, che poi veniva cancellata dalla sostituzione: il
+        // mittente spediva un messaggio mutilato credendo di aver cifrato
+        // tutto, e nessuno dei due lati poteva accorgersene.
+        val selected = ic.getSelectedText(0) ?: ""
         if (before.length >= MAX_FIELD_CHARS || after.length >= MAX_FIELD_CHARS) {
             toast(ime, R.string.cipher_text_too_long)
             return null
         }
-        return before.toString() + after.toString()
+        return Field(
+            before.toString() + selected.toString() + after.toString(),
+            before.length,
+            after.length,
+        )
     }
 
     /**
-     * Cancella quello che c'era e mette il blob.
+     * Cancella quello che c'era e mette il blob. Ritorna `false` se al termine
+     * il campo non contiene il solo blob.
      *
      * In un solo batch: senza, l'app vede il campo passare per lo stato vuoto,
      * e le app che reagiscono a ogni modifica (indicatore "sta scrivendo",
      * bozze salvate) registrerebbero uno stato intermedio che non e' mai
      * esistito per l'utente.
+     *
+     * `finishComposingText` e non `commitText("")`: il primo dichiara conclusa
+     * la parola in composizione **lasciandola nel campo**, dov'e' gia' stata
+     * contata da `before`; il secondo la cancella, e da quel momento i due
+     * conteggi non descrivono piu' il campo. Era il motivo per cui prima si
+     * cancellava "abbondando" da entrambi i lati, cioe' senza sapere davvero
+     * quanto si stesse togliendo.
+     *
+     * ## Perche' c'e' una verifica
+     *
+     * Cancellare e' una richiesta all'app, non un'operazione che facciamo noi:
+     * `deleteSurroundingText` puo' essere ignorata, o applicata solo in parte,
+     * da qualunque editor con una `InputConnection` propria. Ed e' il modo
+     * peggiore in cui questa funzione possa fallire — il chiaro resta nel
+     * campo accanto al blob, sembra che sia stata cifrata solo l'ultima
+     * parola, e chi preme invio spedisce il messaggio in chiaro.
+     *
+     * Quindi si rilegge, e se il campo non e' il solo blob si riprova
+     * selezionando tutto: `commitText` sostituisce la selezione, che e' una
+     * strada diversa dalla cancellazione per lunghezze e fallisce in casi
+     * diversi. Se non basta nemmeno quella, chi chiama lo dice all'utente.
      */
-    private fun replaceField(ic: InputConnection, previousLength: Int, blob: String) {
+    private fun replaceField(ic: InputConnection, field: Field, blob: String): Boolean {
         ic.beginBatchEdit()
-        // Il cursore puo' stare ovunque, quindi si cancella da entrambi i lati:
-        // `previousLength` copre il caso peggiore per ciascun lato e i
-        // caratteri che non ci sono vengono semplicemente ignorati.
-        ic.deleteSurroundingText(previousLength, previousLength)
+        ic.finishComposingText()
+        ic.deleteSurroundingText(field.before, field.after)
         ic.commitText(blob, 1)
         ic.endBatchEdit()
+
+        if (fieldIs(ic, blob)) return true
+
+        ic.beginBatchEdit()
+        ic.finishComposingText()
+        ic.performContextMenuAction(android.R.id.selectAll)
+        ic.commitText(blob, 1)
+        ic.endBatchEdit()
+
+        return fieldIs(ic, blob)
+    }
+
+    /**
+     * Se il campo contiene esattamente [expected].
+     *
+     * Quando non si riesce a rileggere si risponde `true`: senza lettura non
+     * c'e' niente su cui basare una correzione, e un secondo tentativo alla
+     * cieca raddoppierebbe il blob invece di rimediare.
+     */
+    private fun fieldIs(ic: InputConnection, expected: String): Boolean {
+        val extracted = runCatching { ic.getExtractedText(extractRequest(), 0) }.getOrNull()
+        val whole = extracted?.text
+        if (whole != null && extracted.partialStartOffset < 0) {
+            return whole.toString() == expected
+        }
+        val before = runCatching { ic.getTextBeforeCursor(MAX_FIELD_CHARS, 0) }.getOrNull()
+            ?: return true
+        val after = runCatching { ic.getTextAfterCursor(MAX_FIELD_CHARS, 0) }.getOrNull() ?: ""
+        return before.toString() + after.toString() == expected
+    }
+
+    /**
+     * `hintMaxChars`/`hintMaxLines` a zero: nessun limite suggerito, vogliamo
+     * il campo intero. Sono suggerimenti, non garanzie — per questo chi legge
+     * controlla comunque `partialStartOffset`.
+     */
+    private fun extractRequest() = ExtractedTextRequest().apply {
+        token = 0
+        hintMaxChars = 0
+        hintMaxLines = 0
     }
 
     private fun toast(ime: InputMethodService, resId: Int) {
