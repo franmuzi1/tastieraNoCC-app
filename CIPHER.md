@@ -119,10 +119,16 @@ che non cambia niente.
   messaggio. Serve l'ingresso dalle impostazioni della tastiera, che è quello
   previsto e l'unico che si trova quando non si sta leggendo niente.
 
-**7. Cronologia clipboard.** Se si abilita la copia del testo decifrato, quel
-contenuto va escluso esplicitamente dalla cronologia clipboard della tastiera —
-che è la *stessa app*. Vedi il commento su `copyPlaintext` in `DecryptActivity`,
-che è dead code apposta finché questo non è risolto.
+**~~7. Cronologia clipboard.~~ FATTO.** `CipherClipboard.markSensitive` /
+`isSensitive`, più una riga di guardia in `ClipboardHistoryManager`. Tiene un
+**digest SHA-256**, non il testo: un plaintext in un campo statico dell'IME
+sarebbe stato esattamente la fuga che il meccanismo esiste per evitare.
+`copyPlaintext` non è più dead code e ha il suo pulsante.
+
+*Residuo, per costruzione:* il chiaro resta negli appunti di sistema e
+qualunque app col fuoco può leggerlo. `EXTRA_IS_SENSITIVE` (Android 13+)
+nasconde solo l'anteprima. Da lì in poi il testo è fuori dal perimetro
+dell'app, e il messaggio di conferma lo dice invece di far finta di no.
 
 **8. Prova su dispositivo.** Niente è mai stato eseguito: il `.so` non è mai
 stato caricato. Tutto il confine JNI e tutto Keystore sono verificati solo

@@ -3,6 +3,7 @@ package helium314.keyboard.cipher
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
+import java.security.MessageDigest
 
 /**
  * Via 1: il blob arriva dalla clipboard.
@@ -67,4 +68,54 @@ internal object CipherClipboard {
 
     private fun manager(context: Context): ClipboardManager? =
         context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+
+    // ========================================================================
+    // Esclusione dalla cronologia della tastiera
+    // ========================================================================
+
+    /**
+     * Impronta dell'ultimo contenuto che abbiamo messo noi in clipboard e che
+     * non deve entrare nella cronologia.
+     *
+     * **Un hash e non il testo.** Tenere il plaintext in un campo statico
+     * dell'IME sarebbe esattamente la fuga che questo meccanismo esiste per
+     * evitare: sopravviverebbe alla chiusura della finestra che lo mostrava,
+     * resterebbe in heap fino alla GC, e finirebbe in qualunque dump di
+     * memoria. Un digest basta a riconoscere il contenuto e non permette di
+     * ricostruirlo.
+     */
+    @Volatile
+    private var sensitiveDigest: ByteArray? = null
+
+    /**
+     * Dichiara che il prossimo contenuto della clipboard non va storicizzato.
+     *
+     * **Va chiamata PRIMA di `setPrimaryClip`**: il listener della cronologia
+     * puo' scattare durante quella chiamata, e un marcatore messo dopo
+     * arriverebbe a cose fatte.
+     */
+    fun markSensitive(text: CharSequence) {
+        sensitiveDigest = digest(text)
+    }
+
+    /**
+     * Il cuore della trappola descritta in `DecryptActivity.copyPlaintext`: la
+     * clipboard di sistema viene letta dall'IME predefinito, cioe' da QUESTA
+     * stessa tastiera, che ne tiene una cronologia persistibile su disco. E' il
+     * motivo per cui la via 1 costa zero in privacy, e in copia si ritorce
+     * contro.
+     *
+     * `EXTRA_IS_SENSITIVE` non basta: nasconde l'anteprima di sistema, non
+     * impedisce alla nostra cronologia di raccogliere il testo, e sotto
+     * Android 13 non esiste. Questo controllo invece vale su tutte le versioni.
+     */
+    fun isSensitive(text: CharSequence): Boolean {
+        val expected = sensitiveDigest ?: return false
+        val actual = digest(text) ?: return false
+        return expected.contentEquals(actual)
+    }
+
+    private fun digest(text: CharSequence): ByteArray? = runCatching {
+        MessageDigest.getInstance("SHA-256").digest(text.toString().toByteArray())
+    }.getOrNull()
 }

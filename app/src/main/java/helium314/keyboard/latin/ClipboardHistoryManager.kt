@@ -18,6 +18,7 @@ import androidx.core.view.inputmethod.InputContentInfoCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import helium314.keyboard.keyboard.KeyboardTypeface
+import helium314.keyboard.cipher.CipherClipboard
 import helium314.keyboard.compat.ClipboardManagerCompat
 import helium314.keyboard.event.Event
 import helium314.keyboard.event.HapticEvent
@@ -81,6 +82,12 @@ class ClipboardHistoryManager(
         if (description.hasMimeType("text/*")) {
             val content = clipItem.coerceToText(latinIME)
             if (TextUtils.isEmpty(content)) return
+            // keyboard-cipher: il testo decifrato non entra in cronologia.
+            // La clipboard di sistema la legge l'IME predefinito, cioe' questa
+            // stessa app: senza questa riga, copiare un messaggio decifrato lo
+            // scriverebbe in un archivio persistente della tastiera, che e'
+            // l'opposto di cio' per cui il messaggio era cifrato.
+            if (CipherClipboard.isSensitive(content)) return
             clipboardDao?.addClip(timeStamp, false, content.toString())
         } else if (maySaveFromUri(clipItem.uri, latinIME)) {
             clipboardDao?.addClipUri(timeStamp, false, clipItem.uri, description, latinIME)

@@ -17,6 +17,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import helium314.keyboard.latin.R
 import java.util.Date
 
@@ -165,6 +166,7 @@ class DecryptActivity : Activity() {
         root.addView(header(senderLine(result), result.verified == 1))
         root.addView(caption(getString(R.string.cipher_composed_at, formatTimestamp(result.sentAtUnix))))
         root.addView(body(testo))
+        root.addView(copyButton(testo))
         root.addView(contactsButton())
         root.addView(closeButton())
         setContentView(root)
@@ -304,27 +306,30 @@ class DecryptActivity : Activity() {
     private fun neverReturnPlaintext() = Unit
 
     /**
-     * Copia del chiaro, se l'utente la chiede esplicitamente.
+     * Copia del chiaro, solo se l'utente la chiede esplicitamente.
      *
-     * NON collegata a nessun pulsante, e non va collegata finche' non e'
-     * risolto quello che segue.
+     * Resta l'operazione piu' pericolosa dell'app, ed e' bene sapere perche'
+     * ora e' collegata mentre prima era dead code.
      *
-     * Da Android 13 si puo' marcare il contenuto come sensibile: la clipboard
-     * di sistema smette di mostrarlo in anteprima. Non e' protezione vera — il
-     * testo e' comunque in clipboard in chiaro, leggibile da chi ha il fuoco —
-     * ma evita che compaia nel popup di anteprima davanti a chi guarda.
+     * TRAPPOLA, ora chiusa: la clipboard di sistema viene letta dall'IME
+     * predefinito — cioe' da QUESTA stessa tastiera, che tiene una cronologia
+     * persistibile su disco. E' il motivo per cui la via 1 costa zero in
+     * privacy, e in copia si ritorceva contro: il testo decifrato sarebbe
+     * finito in quell'archivio, che e' l'opposto di cio' per cui il messaggio
+     * era cifrato. `CipherClipboard.markSensitive` lo esclude, su tutte le
+     * versioni di Android.
+     *
+     * `EXTRA_IS_SENSITIVE` (Android 13+) resta, ma copre un'altra cosa: nasconde
+     * l'anteprima nel popup di sistema, cosi' il testo non compare davanti a chi
+     * ti sta guardando. Non e' protezione — il testo e' comunque in clipboard
+     * in chiaro, leggibile da qualunque app abbia il fuoco — ed e' il residuo
+     * che questa funzione non puo' eliminare: da qui in poi il chiaro e' fuori
+     * dal nostro perimetro.
      */
-    // TRAPPOLA: la clipboard di sistema viene letta dall'IME predefinito —
-    // cioe' da QUESTA stessa tastiera, che tiene una cronologia clipboard. E'
-    // il motivo per cui la via 1 costa zero in privacy, e qui si ritorce
-    // contro: il testo decifrato entrerebbe in quella cronologia, che puo'
-    // essere persistita su disco. EXTRA_IS_SENSITIVE nasconde l'anteprima di
-    // sistema ma non impedisce alla nostra cronologia di raccoglierlo, e sotto
-    // Android 13 non esiste nemmeno.
-    // Prima di abilitare questa funzione va escluso esplicitamente questo
-    // contenuto dalla cronologia clipboard del fork.
-    @Suppress("unused")
     private fun copyPlaintext(text: CharSequence) {
+        // PRIMA di setPrimaryClip: il listener della cronologia puo' scattare
+        // durante quella chiamata, e un marcatore messo dopo arriverebbe tardi.
+        CipherClipboard.markSensitive(text)
         val clip = ClipData.newPlainText(null, text)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             clip.description.extras = android.os.PersistableBundle().apply {
@@ -332,5 +337,11 @@ class DecryptActivity : Activity() {
             }
         }
         (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(clip)
+        Toast.makeText(this, R.string.cipher_copied, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun copyButton(text: CharSequence): View = Button(this).apply {
+        setText(R.string.cipher_copy)
+        setOnClickListener { copyPlaintext(text) }
     }
 }
