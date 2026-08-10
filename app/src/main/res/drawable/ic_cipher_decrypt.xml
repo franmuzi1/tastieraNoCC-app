@@ -1,0 +1,13 @@
+<!--
+    Lucchetto aperto. Icona del tasto "decifra".
+    icon from pictogrammers.com (Material Design Icons, "lock-open-variant")
+    SPDX-License-Identifier: Apache-2.0
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="24dp"
+    android:width="24dp"
+    android:viewportHeight="24"
+    android:viewportWidth="24" >
+  <path android:fillColor="#FFF"
+      android:pathData="M18,8H17V6A5,5 0,0 0,12 1A5,5 0,0 0,7 6H9A3,3 0,0 1,12 3A3,3 0,0 1,15 6V8H6A2,2 0,0 0,4 10V20A2,2 0,0 0,6 22H18A2,2 0,0 0,20 20V10A2,2 0,0 0,18 8M12,17A2,2 0,0 1,10 15A2,2 0,0 1,12 13A2,2 0,0 1,14 15A2,2 0,0 1,12 17Z"/>
+</vector>

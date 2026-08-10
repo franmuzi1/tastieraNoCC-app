@@ -188,6 +188,14 @@ object KeyCode {
     // Valid in popups and for toolbar key long press only
     const val KEY_REPEAT =                -11000
 
+    // keyboard-cipher.
+    // Numerati lontano dal blocco di HeliBoard, che cresce in modo contiguo
+    // (-10054 e' l'ultimo occupato): un codice preso li' verrebbe rivendicato
+    // dal primo tasto nuovo di upstream, e la collisione si manifesterebbe
+    // come un tasto che fa la cosa sbagliata, non come un conflitto di merge.
+    const val CIPHER_ENCRYPT =            -30000
+    const val CIPHER_DECRYPT =            -30001
+
     // Intents
     const val SEND_INTENT_ONE =            -20000
     const val SEND_INTENT_TWO =            -20001
@@ -342,6 +350,11 @@ object KeyCode {
 
     @JvmStatic fun isIsBlockedWhenLocked(keyCode: Int) = when (keyCode) {
         SETTINGS, TOGGLE_FLOATING_WINDOW, CLIPBOARD, CLIPBOARD_PASTE -> true
+        // Sulla schermata di blocco il campo servito dall'IME e' quello del
+        // PIN. Cifrarlo o decifrarlo non ha senso, e in piu' la chiave maestra
+        // richiede il dispositivo sbloccato: senza questa riga il tasto ci
+        // sarebbe e fallirebbe sempre, che e' il modo peggiore di non esserci.
+        CIPHER_ENCRYPT, CIPHER_DECRYPT -> true
         else -> false
     }
 }

@@ -18,8 +18,27 @@ package helium314.keyboard.cipher
  */
 object CipherCore {
 
-    init {
+    /**
+     * `false` se il `.so` non si e' caricato. Ogni chiamata a una `native`
+     * sotto va preceduta dal controllo — in pratica basta passare da
+     * [CipherIdentity.ensureReady], che lo fa.
+     *
+     * Il caricamento e' avvolto perche' un `UnsatisfiedLinkError` durante
+     * l'inizializzazione di questo `object` non resterebbe locale: farebbe
+     * fallire l'inizializzazione della classe, e ogni accesso successivo
+     * lancerebbe `NoClassDefFoundError`. In un'app qualunque sarebbe un
+     * dialogo di crash; in una tastiera e' un dispositivo su cui non si puo'
+     * piu' scrivere — comprese le credenziali per ripararlo. Una libreria
+     * assente deve degradare a "funzione non disponibile", mai a questo.
+     *
+     * `Throwable` e non `UnsatisfiedLinkError`: qui l'ampiezza e' il punto.
+     */
+    @JvmField
+    val available: Boolean = try {
         System.loadLibrary("keyboard_cipher_jni")
+        true
+    } catch (@Suppress("TooGenericExceptionCaught") t: Throwable) {
+        false
     }
 
     // Codici di ritorno. Devono restare allineati a `mod code` in

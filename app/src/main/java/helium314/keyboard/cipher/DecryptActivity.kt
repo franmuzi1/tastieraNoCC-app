@@ -39,6 +39,25 @@ class DecryptActivity : Activity() {
             return
         }
 
+        // Genera o ricarica il segreto di identita' e il keyring. Costa un
+        // accesso a Keystore la prima volta, poi e' la lettura di un flag.
+        when (CipherIdentity.ensureReady(this)) {
+            CipherState.Ready -> Unit
+            // TODO: ognuno degli altri stati vuole un messaggio diverso, e sono
+            //   messaggi che contano:
+            //   - Locked      -> "sblocca il dispositivo", non un errore;
+            //   - Unavailable -> "la cifratura non e' disponibile qui";
+            //   - Unreadable  -> schermata dedicata. NON offrire una
+            //     riparazione automatica: l'unica uscita e' resetIdentity, che
+            //     distrugge l'identita' e va confermata sapendolo.
+            //   Finche' non ci sono, si esce in silenzio invece di mostrare il
+            //   messaggio sbagliato.
+            else -> {
+                finish()
+                return
+            }
+        }
+
         // TODO: chiamare CipherCore.handleIncomingText(...) e distinguere:
         //  - NOT_OUR_BLOB   -> messaggio "questo testo non e' cifrato", esci
         //  - MESSAGE        -> mostra il chiaro (vedi showPlaintext)

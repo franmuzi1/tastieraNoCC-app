@@ -26,6 +26,7 @@ import helium314.keyboard.latin.common.moveStepsToCharCount
 import helium314.keyboard.latin.define.ProductionFlags
 import helium314.keyboard.latin.inputlogic.InputLogic
 import helium314.keyboard.latin.settings.Settings
+import helium314.keyboard.cipher.CipherActions
 import helium314.keyboard.latin.utils.BackgroundGatheringCache
 import helium314.keyboard.latin.utils.GestureDataGatheringSettings
 import helium314.keyboard.latin.utils.RecapitalizeMode
@@ -125,6 +126,11 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
                 }
                 return
             }
+            // keyboard-cipher. Le uniche due righe che HeliBoard deve sapere
+            // dell'esistenza della cifratura: tutto il resto sta nel package
+            // `cipher`, cosi' i merge da upstream non toccano quel codice.
+            KeyCode.CIPHER_ENCRYPT -> return CipherActions.encrypt(latinIME)
+            KeyCode.CIPHER_DECRYPT -> return CipherActions.decrypt(latinIME)
             KeyCode.BACKGROUND_GATHERING_TEMP_OFF -> {
                 GestureDataGatheringSettings.tempDisableBackgroundGathering(latinIME.prefs())
                 BackgroundGatheringCache.clear()

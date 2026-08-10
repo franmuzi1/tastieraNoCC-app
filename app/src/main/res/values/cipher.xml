@@ -4,13 +4,42 @@
     Tenute in un file separato per non mescolarsi con quelle di HeliBoard:
     rende ovvio cosa e' del fork quando si fa un merge da upstream.
 -->
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!--
         Etichetta della voce che compare nella barra di selezione del testo
         (ACTION_PROCESS_TEXT) e nello share sheet. La vede l'utente dentro
         un'altra app, quindi deve essere corta e comprensibile da sola.
+
+        tools:ignore="MissingTranslation": le traduzioni di HeliBoard arrivano
+        da Weblate, e le stringhe del fork non ci passano. Senza, lint segnala
+        un errore per ognuna delle 85 lingue del progetto. Da togliere se un
+        giorno le stringhe del fork entrano in un flusso di traduzione.
     -->
-    <string name="cipher_decrypt_action">Decifra</string>
+    <string name="cipher_decrypt_action" tools:ignore="MissingTranslation">Decifra</string>
+
+    <!--
+        Etichette dei due tasti in toolbar.
+
+        I nomi NON sono liberi: `createToolbarKey` costruisce la
+        contentDescription con `key.name.lowercase()`, quindi devono chiamarsi
+        come le voci di ToolbarKey. Se mancassero, la descrizione diventerebbe
+        la stringa "encrypt", che TalkBack leggerebbe cosi' com'e'.
+    -->
+    <string name="encrypt" tools:ignore="MissingTranslation">Cifra</string>
+    <string name="decrypt" tools:ignore="MissingTranslation">Decifra</string>
+
+    <!-- Messaggi dei due gesti. Vedi CipherActions. -->
+    <string name="cipher_nothing_to_encrypt" tools:ignore="MissingTranslation">Niente da cifrare</string>
+    <string name="cipher_nothing_to_decrypt" tools:ignore="MissingTranslation">Niente da decifrare</string>
+    <!--
+        Non "errore": il core non sa con chi stai parlando e non lo indovina.
+        Cifrare per la persona sbagliata sarebbe il fallimento peggiore
+        possibile, quindi qui si chiede.
+    -->
+    <string name="cipher_no_recipient" tools:ignore="MissingTranslation">Scegli prima un destinatario per questa app</string>
+    <string name="cipher_text_too_long" tools:ignore="MissingTranslation">Testo troppo lungo per essere cifrato</string>
+    <string name="cipher_locked" tools:ignore="MissingTranslation">Sblocca il dispositivo per cifrare</string>
+    <string name="cipher_unavailable" tools:ignore="MissingTranslation">Cifratura non disponibile</string>
 
     <!--
         Tema dell'Activity che mostra il testo decifrato.
