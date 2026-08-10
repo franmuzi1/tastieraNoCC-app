@@ -44,6 +44,9 @@ fun CipherScreen(
         // spente e inerti e' il modo piu' rapido per far credere che siano
         // rotte.
         if (enabled) CipherSettings.PREF_COMPOSE_MODE else null,
+        // Solo con la riga attiva: senza, l'invio automatico non ha un momento
+        // in cui scattare.
+        if (enabled && CipherSettings.isComposeMode(prefs)) CipherSettings.PREF_AUTO_SEND else null,
         if (enabled) SettingsWithoutKey.CIPHER_CONTACTS else null,
     )
     SearchSettingsScreen(
@@ -75,6 +78,12 @@ fun createCipherSettings(context: Context) = listOf(
         SwitchPreference(it, CipherSettings.DEFAULT_COMPOSE_MODE) {
             KeyboardSwitcher.getInstance().setThemeNeedsReload()
         }
+    },
+    Setting(
+        context, CipherSettings.PREF_AUTO_SEND,
+        R.string.cipher_auto_send, R.string.cipher_auto_send_summary
+    ) {
+        SwitchPreference(it, CipherSettings.DEFAULT_AUTO_SEND)
     },
     Setting(context, SettingsWithoutKey.CIPHER_CONTACTS, R.string.cipher_contacts) {
         // Un'Activity e non una destinazione Compose: ContactsActivity ha

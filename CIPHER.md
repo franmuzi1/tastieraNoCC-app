@@ -529,6 +529,37 @@ visibile anche a modalita' spenta, perche' e' il modo per riaccenderla —
 `SEND_PLAIN` invece sparisce, che senza la riga non avrebbe niente da
 consegnare.
 
+## Invio automatico
+
+Con la riga di composizione attiva, dopo aver consegnato il messaggio all'app le
+si chiede anche di spedirlo: un tocco invece di due. Impostazioni → Cifratura →
+*Invia subito*, acceso di default **in quella modalita' soltanto**.
+
+Vale solo li', e non e' un dettaglio: con la riga attiva i due tasti sono gia'
+"manda questo messaggio", perche' il testo non e' mai stato nel campo dell'app.
+Senza la riga il lucchetto sostituisce cio' che stai scrivendo, e spedirlo da
+solo sarebbe un'altra cosa — irreversibile e non richiesta.
+
+**Perche' non funziona sempre.** "Invia" e' un pulsante dell'app, e una tastiera
+non puo' premerlo. L'unica leva e' `performEditorAction`, cioe' l'azione che il
+campo dichiara di avere. Nelle chat quel campo e' spesso multiriga e non
+dichiara niente, perche' l'invio sta accanto: in Telegram si accende da
+Impostazioni → Chat → *Invia con Invio*. Quando non si puo' l'utente lo legge,
+invece di restare a chiedersi perche' non e' partito niente.
+
+Si riusa `InputTypeUtils.getImeOptionsActionIdFromEditorInfo`, la stessa
+funzione che decide cosa fa il tasto invio — comprese le eccezioni per app note.
+Due letture diverse dello stesso campo sarebbero due comportamenti diversi per
+lo stesso gesto.
+
+**Non si ricade sul tasto invio simulato.** In un campo multiriga inserirebbe un
+a capo dentro il messaggio appena consegnato invece di spedirlo: romperebbe il
+blob, e in silenzio.
+
+Provato dove l'azione esiste davvero — il campo di ricerca delle impostazioni di
+sistema, che dichiara `IME_ACTION_SEARCH`: testo scritto nella riga, un tocco
+sull'aeroplanino, e il testo e' comparso nel campo **e** la ricerca e' partita.
+
 ## Firma delle release
 
 Gli APK pubblicati finora sono firmati con la **chiave di debug** della macchina

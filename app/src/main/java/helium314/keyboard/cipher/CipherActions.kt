@@ -2,12 +2,14 @@ package helium314.keyboard.cipher
 
 import android.content.Intent
 import android.inputmethodservice.InputMethodService
+import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.widget.Toast
 import helium314.keyboard.keyboard.KeyboardSwitcher
 import helium314.keyboard.latin.LatinIME
 import helium314.keyboard.latin.R
+import helium314.keyboard.latin.utils.InputTypeUtils
 import helium314.keyboard.latin.utils.prefs
 
 /**
@@ -87,6 +89,7 @@ object CipherActions {
             ic.commitText(blob, 1)
             ic.endBatchEdit()
             CipherCompose.clear()
+            deliver(ime, ic)
             return
         }
         if (!replaceField(ic, field, blob)) {
@@ -95,6 +98,45 @@ object CipherActions {
             // possibile — si crede di aver cifrato e si preme invio sul chiaro.
             toast(ime, R.string.cipher_replace_failed)
         }
+    }
+
+    /**
+     * Chiede all'app di spedire quello che le abbiamo appena messo nel campo.
+     * Ritorna `false` se non si e' potuto: chi chiama decide cosa dire.
+     *
+     * ## Perche' non sempre funziona
+     *
+     * "Invia" e' un pulsante dell'**app**, e una tastiera non puo' premerlo.
+     * L'unica leva che esiste e' `performEditorAction`, cioe' l'azione che il
+     * campo dichiara di avere — la stessa che HeliBoard usa per il tasto invio.
+     * Nelle chat quel campo e' spesso multiriga e **non dichiara nessuna
+     * azione**, perche' l'invio sta accanto e l'invio col tasto invio e'
+     * un'opzione dell'utente. In Telegram si accende da Impostazioni → Chat →
+     * *Invia con Invio*.
+     *
+     * Si riusa `getImeOptionsActionIdFromEditorInfo` invece di rileggere
+     * `imeOptions` a mano: e' la stessa funzione che decide cosa fa il tasto
+     * invio, comprese le eccezioni per app note, e due letture diverse dello
+     * stesso campo sarebbero due comportamenti diversi per lo stesso gesto.
+     *
+     * *Non si ricade sul tasto invio simulato.* In un campo multiriga
+     * inserirebbe un a capo dentro il messaggio appena consegnato invece di
+     * spedirlo: rovinerebbe il blob, e in silenzio.
+     */
+    private fun deliver(ime: InputMethodService, ic: InputConnection): Boolean {
+        if (!CipherSettings.isAutoSend(ime)) return false
+        val info = ime.currentInputEditorInfo ?: return false
+        val action = InputTypeUtils.getImeOptionsActionIdFromEditorInfo(info)
+        val sent = when {
+            action == InputTypeUtils.IME_ACTION_CUSTOM_LABEL -> ic.performEditorAction(info.actionId)
+            action != EditorInfo.IME_ACTION_NONE -> ic.performEditorAction(action)
+            else -> false
+        }
+        // `performEditorAction` dice solo che la richiesta e' partita, non che
+        // l'app abbia spedito: non c'e' modo di saperlo, e prometterlo sarebbe
+        // peggio che tacere.
+        if (!sent) toast(ime, R.string.cipher_send_unavailable)
+        return sent
     }
 
     /**
@@ -210,7 +252,7 @@ object CipherActions {
         // Dopo la consegna, come per il blob: svuotare prima significherebbe
         // perdere il testo se la consegna fallisse.
         CipherCompose.clear()
-        toast(ime, R.string.cipher_sent_plain)
+        if (!deliver(ime, ic)) toast(ime, R.string.cipher_sent_plain)
     }
 
     /**

@@ -38,6 +38,26 @@ object CipherSettings {
     const val PREF_COMPOSE_MODE = "cipher_compose_mode"
     const val DEFAULT_COMPOSE_MODE = false
 
+    /**
+     * Dopo aver consegnato il messaggio all'app, chiedile anche di spedirlo.
+     *
+     * Vale **solo** con la riga di composizione attiva, e non e' un dettaglio:
+     * li' i due tasti sono gia' "manda questo messaggio", perche' il testo non
+     * e' mai stato nel campo dell'app. Senza la riga il lucchetto sostituisce
+     * cio' che stai scrivendo, e spedirlo da solo sarebbe un'altra cosa —
+     * irreversibile e non richiesta.
+     *
+     * Acceso di default in quella modalita': l'alternativa e' premere due volte
+     * per fare una cosa sola. Si spegne da Impostazioni → Cifratura.
+     */
+    const val PREF_AUTO_SEND = "cipher_auto_send"
+    const val DEFAULT_AUTO_SEND = true
+
+    fun isAutoSend(prefs: SharedPreferences): Boolean =
+        isComposeMode(prefs) && prefs.getBoolean(PREF_AUTO_SEND, DEFAULT_AUTO_SEND)
+
+    fun isAutoSend(context: Context): Boolean = isAutoSend(context.prefs())
+
     fun isEnabled(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(PREF_ENABLED, DEFAULT_ENABLED)
 
