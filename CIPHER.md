@@ -235,10 +235,31 @@ l'intera verifica di persona: se il fingerprint dipendesse dal dispositivo, due
 persone che confrontano il codice vedrebbero valori diversi e concluderebbero
 che qualcuno si è interposto.
 
+## API 22 — PROVATO
+
+Sotto il minimo, la cifratura deve **dichiararsi non disponibile**, non fallire.
+
+| Cosa | Esito |
+|---|---|
+| schermata | *"Cifratura non disponibile"* |
+| crash | nessuno |
+| `no_backup/cipher/` | **non creata** |
+
+L'ultima riga è quella che conta: il controllo di versione avviene **prima** di
+toccare lo storage e Keystore, quindi su un dispositivo dove la funzione non
+può esistere non si lascia dietro niente.
+
+*Nota d'ambiente:* su API 22 `uiautomator dump /sdcard/…` dice di aver scritto
+il file ma non lo si trova. Usare `/data/local/tmp/`.
+
 ## Cosa NON è ancora stato provato
 
-- **API 21–22**, dove la cifratura deve dichiararsi non disponibile invece di
-  fallire. È l'ultimo margine rimasto.
+- **il percorso IME su API 23** (la via Activity lì è verificata). Tentato, si è
+  impantanato sulla configurazione dei preferences: su Marshmallow non esiste lo
+  storage device-protected, quindi il file sta in `/data/data/…`;
+- **build riproducibile** per F-Droid: mai affrontato;
+- **tenuta del merge con upstream.** Il fork tocca sette file di HeliBoard, e
+  nessuno ha mai provato un merge da upstream dopo queste modifiche.
 
 ## Come far girare l'emulatore qui
 
