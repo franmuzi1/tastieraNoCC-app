@@ -291,10 +291,12 @@ object CipherActions {
      * e una funzione che si aggira dalle impostazioni e' una funzione che
      * verra' spenta e mai piu' riaccesa.
      *
-     * Non spedisce: mette il testo nel campo, come farebbe la digitazione
-     * normale. A premere invio e' sempre l'utente, e dev'essere cosi' — un
-     * tasto della tastiera che spedisce da solo sarebbe l'unico modo di
-     * mandare un messaggio senza averlo riletto.
+     * Consegna il testo al campo e poi, **se l'invio automatico e' acceso**,
+     * chiede all'app di spedirlo — esattamente come fa il lucchetto. Questa
+     * documentazione diceva il contrario ("non spedisce mai"): era vera prima
+     * che l'invio automatico esistesse, ed e' rimasta indietro. Chi vuole
+     * rileggere prima di mandare spegne *Invia subito* in Impostazioni →
+     * Cifratura.
      */
     fun sendPlain(ime: InputMethodService) {
         if (!CipherSettings.isEnabled(ime)) return

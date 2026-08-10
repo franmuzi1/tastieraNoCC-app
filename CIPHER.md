@@ -705,8 +705,9 @@ Serve al caso banale e frequente che altrimenti costringerebbe a spegnere la
 modalita': scrivere a chi non ha questa tastiera. Una funzione che si aggira
 dalle impostazioni e' una funzione che viene spenta e mai piu' riaccesa.
 
-Non spedisce: mette il testo nel campo, come farebbe la digitazione normale.
-A premere invio e' sempre l'utente.
+Consegna il testo al campo e poi, **se l'invio automatico e' acceso**, chiede
+all'app di spedirlo, come il lucchetto. Chi vuole rileggere prima di mandare
+spegne *Invia subito*.
 
 L'icona non e' un lucchetto aperto: accanto a uno chiuso si distingue male a
 colpo d'occhio, e questo e' il tasto che consegna il chiaro.
