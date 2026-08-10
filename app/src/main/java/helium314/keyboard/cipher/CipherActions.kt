@@ -142,6 +142,13 @@ object CipherActions {
             action = Intent.ACTION_SEND
             type = "text/plain"
             putExtra(Intent.EXTRA_TEXT, text)
+            // Il package dell'app in cui si sta scrivendo, che solo l'IME
+            // conosce. Senza, DecryptActivity lo dedurrebbe da `referrer` e
+            // otterrebbe il package DELLA TASTIERA, perche' per questa via il
+            // chiamante siamo noi: il destinatario finirebbe registrato sotto
+            // "helium314.keyboard" e la regola "decifrare stabilisce il
+            // destinatario" non scatterebbe mai per l'app giusta.
+            putExtra(DecryptActivity.EXTRA_EDITOR_PACKAGE, ime.currentInputEditorInfo?.packageName)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         runCatching { ime.startActivity(intent) }

@@ -255,6 +255,21 @@ blob z-base-32. È l'intera catena che gira per davvero:
 Pressione breve su "cifra" senza destinatario fissato emette un toast e **non**
 tocca il campo, che è il comportamento voluto: il destinatario non si indovina.
 
+**Ciclo completo osservato sul dispositivo:**
+
+1. pressione lunga su "cifra" → `kc/` + blob nel campo (identity card);
+2. "decifra" → `DecryptActivity` mostra *"Nuovo contatto"* e il fingerprint
+   `bhai 4o4s ys8g ouie 6u4u x8j5` — 24 caratteri in 6 gruppi da 4, il formato
+   congelato dalla decisione D. `keyring.bin` compare su disco (77 byte);
+3. testo in chiaro + "cifra" → il chiaro sparisce, sostituito da `kc/` + blob;
+4. "decifra" → fingerprint del mittente, *"Scritto il … (secondo il mittente)"*
+   e il testo originale.
+
+`screencap` **fallisce** sulle schermate di `DecryptActivity`: è `FLAG_SECURE`
+che fa il suo lavoro. Il testo resta leggibile via accessibilità, che
+`FLAG_SECURE` non copre — ed è il motivo per cui un accessibility service è
+escluso dal progetto.
+
 ## Cosa ha insegnato la prima esecuzione
 
 **`setUnlockedDeviceRequired(true)` fallisce alla *generazione* della chiave se
@@ -266,6 +281,21 @@ semplicemente non disponibile per chiunque non tenga un PIN sul telefono.
 Non si perde nulla di reale nel fallback: quel flag protegge i dati *mentre il
 dispositivo è bloccato*, e un dispositivo senza blocco schermo non è mai
 bloccato.
+
+**Decifrare dalla toolbar attribuiva il destinatario all'app sbagliata.**
+`DecryptActivity` deduceva il package chiamante da `referrer`; per la via
+toolbar il chiamante è **la tastiera stessa**, quindi il destinatario finiva
+registrato sotto `helium314.keyboard` invece che sotto l'app di chat. Effetto
+osservato: dopo aver decifrato, cifrare nella stessa conversazione rispondeva
+*"scegli prima un destinatario"* e lasciava il testo in chiaro. Cioè la regola
+che CLAUDE.md chiama *"la leva che rende automatico il caso dominante"* non
+scattava mai per la via principale.
+
+Ora l'IME passa il package dell'editor in un extra. L'extra è onorato **solo se
+a chiamare è questa stessa app**: l'Activity è esportata, quindi senza quel
+controllo un'app qualsiasi potrebbe spostare il destinatario corrente di
+un'altra conversazione, e la cifratura successiva andrebbe alla persona
+sbagliata senza che nulla lo segnali.
 
 **Uno schermo bloccato non è un'identità corrotta.** Con una chiave generata
 con `setUnlockedDeviceRequired`, a schermo bloccato Keystore rifiuta con

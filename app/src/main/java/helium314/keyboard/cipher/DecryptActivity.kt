@@ -134,13 +134,37 @@ class DecryptActivity : Activity() {
      * un'altra conversazione, e la prossima cifratura andrebbe alla persona
      * sbagliata senza che nulla lo segnali.
      */
-    private fun callerPackage(): String =
-        callingActivity?.packageName
-            ?: if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-                referrer?.host.orEmpty()
-            } else {
-                ""
-            }
+    private fun callerPackage(): String {
+        val referrerPackage = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
+            referrer?.host.orEmpty()
+        } else {
+            ""
+        }
+        // Se a lanciarci e' stata la nostra stessa tastiera, `referrer` dice il
+        // package DI QUESTA APP e non quello della chat: e' l'IME che ci ha
+        // chiamati. In quel caso l'unico che sa dove stava scrivendo l'utente
+        // e' l'IME, che ce lo passa.
+        //
+        // Il controllo sul chiamante non e' formale: questa Activity e'
+        // esportata, quindi qualunque app puo' mandarci un intent e mettere
+        // quell'extra. Onorarlo senza verificare chi chiama permetterebbe a
+        // un'app qualsiasi di spostare il destinatario corrente di un'altra
+        // conversazione — e la cifratura successiva andrebbe alla persona
+        // sbagliata senza che nulla lo segnali.
+        if (referrerPackage == packageName || callingActivity?.packageName == packageName) {
+            val editor = intent.getStringExtra(EXTRA_EDITOR_PACKAGE)
+            if (!editor.isNullOrEmpty()) return editor
+            // L'IME non sapeva in che app si stava scrivendo: meglio nessuna
+            // attribuzione che una sbagliata.
+            return ""
+        }
+        return callingActivity?.packageName ?: referrerPackage
+    }
+
+    companion object {
+        /** Vedi [callerPackage]. Onorato solo se a chiamare e' questa stessa app. */
+        const val EXTRA_EDITOR_PACKAGE = "helium314.keyboard.cipher.EDITOR_PACKAGE"
+    }
 
     // ========================================================================
     // Schermate
