@@ -390,6 +390,23 @@ Nei soli file Kotlin di upstream le aggiunte sono 103, di cui **56 commenti e
 altrui, e chi le incontrerà fra sei mesi non avrà il contesto per capire perché
 ci sono.
 
+## Gli APK di release vanno costruiti da PULITO
+
+Un `assembleDebug` incrementale produce un APK valido ma **gonfio**: il
+packager lascia spazio morto dove stavano voci piu' grandi delle build
+precedenti. Misurato: 34,0 MB con 5,8 MB di buchi (il maggiore da 2,8 MB),
+contro 28,2 MB e zero buchi dopo `clean`. Stesso contenuto — le voci compresse
+pesano uguale — sei megabyte di download in piu' per niente.
+
+Non si vede da nessun avviso e l'APK funziona benissimo, quindi va ricordato:
+
+```
+./gradlew clean assembleDebug
+```
+
+Come accorgersene: sommare le dimensioni compresse delle voci e confrontarle
+con la dimensione del file. Se il file e' molto piu' grande, e' spazio morto.
+
 ## Come far girare l'emulatore qui
 
 Roba scoperta a fatica, per non ripeterla:
