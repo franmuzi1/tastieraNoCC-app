@@ -37,6 +37,7 @@ fun MainSettingsScreen(
     onClickTextCorrection: () -> Unit,
     onClickPreferences: () -> Unit,
     onClickToolbar: () -> Unit,
+    onClickCipher: () -> Unit,
     onClickGestureTyping: () -> Unit,
     onClickDataGathering: () -> Unit,
     onClickAdvanced: () -> Unit,
@@ -77,20 +78,14 @@ fun MainSettingsScreen(
                     onClick = onClickToolbar,
                     icon = R.drawable.ic_settings_toolbar
                 ) { NextScreenIcon() }
-                // keyboard-cipher. Apre un'Activity invece di navigare a una
-                // schermata Compose: ContactsActivity ha bisogno di FLAG_SECURE
-                // sulla propria finestra — mostra fingerprint, che non devono
-                // finire nello screenshot dei Recenti — e una destinazione
-                // dentro il grafo di navigazione delle impostazioni
-                // condividerebbe la finestra con tutto il resto.
-                val cipherContext = LocalContext.current
+                // keyboard-cipher: una voce sola per tutta la cifratura —
+                // interruttore, modalita' di scrittura e contatti. Prima le
+                // preferenze stavano fra quelle generali e i contatti erano una
+                // voce a se': la funzione che distingue questa tastiera
+                // sembrava un dettaglio di configurazione.
                 Preference(
-                    name = stringResource(R.string.cipher_contacts),
-                    onClick = {
-                        cipherContext.startActivity(
-                            Intent(cipherContext, ContactsActivity::class.java)
-                        )
-                    },
+                    name = stringResource(R.string.cipher_settings_category),
+                    onClick = onClickCipher,
                     icon = R.drawable.ic_cipher_encrypt
                 ) { NextScreenIcon() }
                 if (JniUtils.sHaveGestureLib)
@@ -142,7 +137,7 @@ private fun PreviewScreen() {
     initPreview(LocalContext.current)
     Theme(previewDark) {
         Surface {
-            MainSettingsScreen({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
+            MainSettingsScreen({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})
         }
     }
 }

@@ -244,7 +244,14 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         // keyboard-cipher: il tasto "decifra" si accende in base agli appunti,
         // che cambiano mentre la tastiera e' viva. Senza questo ricalcolo
         // l'indizio resterebbe quello del momento in cui la striscia e' nata.
-        if (toolbarVisible) refreshToolbarButtonStates(toolbar)
+        //
+        // ENTRAMBI i gruppi, sempre. I due lucchetti sono tasti FISSATI, quindi
+        // stanno in `pinnedKeys`, che e' visibile quando la toolbar e' CHIUSA:
+        // ricalcolare solo `toolbar`, e solo da aperta, lasciava l'indizio
+        // congelato proprio nella configurazione predefinita — cioe' l'unica
+        // che gli utenti vedono.
+        refreshToolbarButtonStates(toolbar)
+        refreshToolbarButtonStates(pinnedKeys)
     }
 
     fun setSuggestions(suggestions: SuggestedWords, isRtlLanguage: Boolean) {

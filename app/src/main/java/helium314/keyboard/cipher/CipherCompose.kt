@@ -14,7 +14,6 @@ import androidx.core.view.isVisible
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.common.ColorType
 import helium314.keyboard.latin.settings.Settings
-import helium314.keyboard.latin.utils.prefs
 
 /**
  * Riga di composizione: il chiaro si scrive **dentro la tastiera**, e l'app
@@ -57,13 +56,6 @@ import helium314.keyboard.latin.utils.prefs
  */
 object CipherCompose {
 
-    /**
-     * La preferenza. Sta qui e non in `Settings` di HeliBoard perche' ogni riga
-     * aggiunta ai file di upstream e' un conflitto in attesa al prossimo merge.
-     */
-    const val PREF_COMPOSE_MODE = "cipher_compose_mode"
-    const val DEFAULT_COMPOSE_MODE = false
-
     private var enabled = false
 
     /** Il package a cui appartiene il testo nel buffer. */
@@ -77,7 +69,7 @@ object CipherCompose {
 
     fun reload(context: Context) {
         self = context.packageName
-        val wanted = context.prefs().getBoolean(PREF_COMPOSE_MODE, DEFAULT_COMPOSE_MODE)
+        val wanted = CipherSettings.isComposeMode(context)
         if (wanted == enabled) return
         enabled = wanted
         // Spegnendo la modalita' il buffer non ha piu' un posto dove mostrarsi:

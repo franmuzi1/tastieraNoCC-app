@@ -154,6 +154,40 @@ object CipherActions {
     }
 
     /**
+     * Consegna all'app il testo composto **in chiaro**, senza cifrarlo.
+     *
+     * Esiste solo in modalita' composizione, e serve al caso banale e
+     * frequentissimo che senza questo tasto costringerebbe a spegnere la
+     * modalita': mandare "arrivo", un indirizzo, un link a qualcuno che non ha
+     * questa tastiera. Senza, l'unica via sarebbe passare dalle impostazioni,
+     * e una funzione che si aggira dalle impostazioni e' una funzione che
+     * verra' spenta e mai piu' riaccesa.
+     *
+     * Non spedisce: mette il testo nel campo, come farebbe la digitazione
+     * normale. A premere invio e' sempre l'utente, e dev'essere cosi' — un
+     * tasto della tastiera che spedisce da solo sarebbe l'unico modo di
+     * mandare un messaggio senza averlo riletto.
+     */
+    fun sendPlain(ime: InputMethodService) {
+        if (!CipherSettings.isEnabled(ime)) return
+        if (!CipherCompose.isEnabled()) return
+        val ic = appConnection(ime) ?: return
+        val text = CipherCompose.text()
+        if (text.isEmpty()) {
+            toast(ime, R.string.cipher_nothing_to_send)
+            return
+        }
+        ic.beginBatchEdit()
+        ic.finishComposingText()
+        ic.commitText(text, 1)
+        ic.endBatchEdit()
+        // Dopo la consegna, come per il blob: svuotare prima significherebbe
+        // perdere il testo se la consegna fallisse.
+        CipherCompose.clear()
+        toast(ime, R.string.cipher_sent_plain)
+    }
+
+    /**
      * Manda il contenuto del campo a [DecryptActivity].
      *
      * Il chiaro NON torna nel campo, ed e' il punto centrale: il campo
@@ -245,7 +279,11 @@ object CipherActions {
      * il telefono bloccato manderebbe a cercare un guasto che non c'e'.
      */
     private fun ready(ime: InputMethodService): Boolean =
-        when (CipherIdentity.ensureReady(ime)) {
+        // L'interruttore generale prima di tutto: a cifratura spenta i tasti
+        // non ci sono, ma un codice puo' arrivare lo stesso da una scorciatoia
+        // personalizzata rimasta in un profilo salvato.
+        if (!CipherSettings.isEnabled(ime)) false
+        else when (CipherIdentity.ensureReady(ime)) {
             CipherState.Ready -> true
             CipherState.Locked -> {
                 toast(ime, R.string.cipher_locked)

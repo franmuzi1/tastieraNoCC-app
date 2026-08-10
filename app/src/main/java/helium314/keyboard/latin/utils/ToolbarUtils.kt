@@ -11,6 +11,7 @@ import android.widget.ImageView
 import androidx.core.content.edit
 import androidx.core.view.forEach
 import helium314.keyboard.cipher.CipherClipboard
+import helium314.keyboard.cipher.CipherSettings
 import helium314.keyboard.event.HapticEvent
 import helium314.keyboard.keyboard.internal.KeyboardIconsSet
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
@@ -120,6 +121,7 @@ fun getCodeForToolbarKey(key: ToolbarKey) = Settings.getInstance().getCustomTool
     BACKGROUND_GATHERING -> KeyCode.BACKGROUND_GATHERING
     ENCRYPT -> KeyCode.CIPHER_ENCRYPT
     DECRYPT -> KeyCode.CIPHER_DECRYPT
+    SEND_PLAIN -> KeyCode.CIPHER_SEND_PLAIN
 }
 
 fun getCodeForToolbarKeyLongClick(key: ToolbarKey) = Settings.getInstance().getCustomToolbarLongpressCode(key) ?: when (key) {
@@ -127,6 +129,10 @@ fun getCodeForToolbarKeyLongClick(key: ToolbarKey) = Settings.getInstance().getC
     // bootstrap del primo contatto, e sta qui perche' inserire nel campo e'
     // nativo per un IME mentre leggere la cronologia della chat non lo e'.
     ENCRYPT -> KeyCode.CIPHER_IDENTITY_CARD
+    // Niente di diverso dalla pressione breve: consegnare il chiaro e' gia' la
+    // cosa piu' irreversibile che questo tasto possa fare, e nasconderci sotto
+    // una seconda azione significherebbe farla scattare per sbaglio.
+    SEND_PLAIN -> KeyCode.CIPHER_SEND_PLAIN
     // Pressione lunga: salta il campo di input e vai dritto agli appunti.
     // Serve quando il campo contiene gia' altro — una risposta cominciata —
     // e la pressione breve userebbe quel testo dicendo "non e' cifrato".
@@ -158,7 +164,7 @@ enum class ToolbarKey {
     // keyboard-cipher. In coda di proposito: l'ordine dell'enum e' l'ordine in
     // cui i tasti compaiono nel personalizzatore, e aggiungere in mezzo
     // sposterebbe quelli di HeliBoard senza motivo.
-    ENCRYPT, DECRYPT
+    ENCRYPT, DECRYPT, SEND_PLAIN
 }
 
 enum class ToolbarMode {
@@ -177,7 +183,7 @@ val defaultToolbarPref by lazy {
     // profilo di toolbar salvato se li vede aggiunti da `upgradeToolbarPref`,
     // che pero' aggiunge le voci nuove come spente — e va bene cosi': quelle
     // preferenze sono scelte dell'utente, non nostre da sovrascrivere.
-    val default = listOf(ENCRYPT, DECRYPT, SETTINGS, VOICE, CLIPBOARD, UNDO, REDO, SELECT_WORD, COPY, PASTE, LEFT, RIGHT)
+    val default = listOf(ENCRYPT, DECRYPT, SEND_PLAIN, SETTINGS, VOICE, CLIPBOARD, UNDO, REDO, SELECT_WORD, COPY, PASTE, LEFT, RIGHT)
     val others = entries.filterNot { it in default || it == CLOSE_HISTORY }
     default.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
@@ -190,7 +196,7 @@ val defaultPinnedToolbarPref by lazy {
     // Costa due posti alla striscia dei suggerimenti, ed e' un prezzo pagato
     // volentieri: attivi ma nascosti dietro una freccia significa che chi
     // installa non li trova, e una funzione che non si trova non esiste.
-    val pinned = listOf(ENCRYPT, DECRYPT)
+    val pinned = listOf(ENCRYPT, DECRYPT, SEND_PLAIN)
     val others = entries.filterNot { it in pinned || it == CLOSE_HISTORY }
     pinned.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
@@ -231,9 +237,46 @@ private fun upgradeToolbarPref(prefs: SharedPreferences, pref: String, default: 
     prefs.edit { putString(pref, list.joinToString(Separators.ENTRY)) }
 }
 
-fun getEnabledToolbarKeys(prefs: SharedPreferences) = getEnabledToolbarKeys(prefs, Settings.PREF_TOOLBAR_KEYS, defaultToolbarPref)
+fun getEnabledToolbarKeys(prefs: SharedPreferences) =
+    withCipherKeys(prefs, Settings.PREF_TOOLBAR_KEYS, defaultToolbarPref)
 
-fun getPinnedToolbarKeys(prefs: SharedPreferences) = getEnabledToolbarKeys(prefs, Settings.PREF_PINNED_TOOLBAR_KEYS, defaultPinnedToolbarPref)
+fun getPinnedToolbarKeys(prefs: SharedPreferences) =
+    withCipherKeys(prefs, Settings.PREF_PINNED_TOOLBAR_KEYS, defaultPinnedToolbarPref)
+
+/**
+ * keyboard-cipher: i tasti della cifratura seguono le proprie impostazioni, non
+ * solo quelle della toolbar.
+ *
+ * Si filtra qui, e non spegnendo le preferenze della toolbar, perche' quelle
+ * sono scelte dell'utente: chi disattiva la cifratura e poi la riattiva deve
+ * ritrovare la barra com'era, non ricostruirla.
+ *
+ * `SEND_PLAIN` compare solo in modalita' composizione. Senza quella riga il
+ * testo e' gia' nel campo dell'app, quindi "consegna in chiaro" non avrebbe
+ * niente da consegnare: sarebbe un tasto che non fa mai niente.
+ *
+ * E quando quella modalita' e' accesa il tasto viene **aggiunto** se la
+ * preferenza salvata non lo nomina affatto. Non e' una forzatura: le
+ * preferenze esistenti non vengono sovrascritte dai default, quindi senza
+ * questo chi aggiorna accenderebbe la modalita' e non troverebbe la via
+ * d'uscita per mandare un messaggio in chiaro — cioe' spegnerebbe la modalita'
+ * e non la riaccenderebbe piu'. Un tasto messo a `false` dall'utente resta a
+ * `false`: quella e' una scelta, e il nome nella preferenza la registra.
+ */
+private fun withCipherKeys(prefs: SharedPreferences, pref: String, default: String): List<ToolbarKey> {
+    val keys = getEnabledToolbarKeys(prefs, pref, default)
+    if (!CipherSettings.isEnabled(prefs)) return keys.filterNot { it in cipherKeys }
+    if (!CipherSettings.isComposeMode(prefs)) return keys.filterNot { it == SEND_PLAIN }
+    if (SEND_PLAIN in keys) return keys
+    val saved = prefs.getString(pref, default).orEmpty()
+    if (saved.contains(SEND_PLAIN.name)) return keys
+    val result = keys.toMutableList()
+    val afterEncrypt = result.indexOf(ENCRYPT)
+    if (afterEncrypt >= 0) result.add(afterEncrypt + 1, SEND_PLAIN) else result.add(SEND_PLAIN)
+    return result
+}
+
+private val cipherKeys = setOf(ENCRYPT, DECRYPT, SEND_PLAIN)
 
 fun getEnabledClipboardToolbarKeys(prefs: SharedPreferences) = getEnabledToolbarKeys(prefs, Settings.PREF_CLIPBOARD_TOOLBAR_KEYS, defaultClipboardToolbarPref)
 

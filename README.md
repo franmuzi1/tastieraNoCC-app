@@ -130,10 +130,26 @@ pacchetto diverso e non lo sostituisce.
 I due lucchetti sono già lì, a destra della striscia dei suggerimenti: non
 serve configurare niente.
 
-Se hai già usato questa tastiera prima della versione 0.1.2 non compaiono — le
-preferenze salvate non vengono sovrascritte, sono tue. Si attivano da
-impostazioni della tastiera → Toolbar, oppure cancellando i dati dell'app (che
-però **distrugge l'identità**: fai prima un backup).
+Tutto il resto sta in **impostazioni della tastiera → Cifratura**: interruttore
+generale, modalità di scrittura e contatti.
+
+Se hai già usato questa tastiera prima della versione 0.1.2 i lucchetti non
+compaiono — le preferenze salvate non vengono sovrascritte, sono tue. Si
+attivano da impostazioni della tastiera → Toolbar, oppure cancellando i dati
+dell'app (che però **distrugge l'identità**: fai prima un backup).
+
+### Dove si scrive il messaggio
+
+Due modi, si sceglie in Cifratura → *Scrivi dentro la tastiera*.
+
+- **spento** (predefinito): scrivi nel campo dell'app come con qualunque
+  tastiera, e il lucchetto sostituisce quel testo con il messaggio cifrato;
+- **acceso**: scrivi in una riga della tastiera e l'app riceve **solo** il
+  messaggio cifrato, quando premi il lucchetto. Il campo dell'app resta vuoto
+  fino a quel momento, quindi non può salvare bozze del chiaro né annunciare
+  che stai scrivendo. In questa modalità compare un terzo tasto,
+  l'aeroplanino: consegna il testo **in chiaro**, per quando il destinatario
+  non ha questa tastiera.
 
 Serve **Android 6.0** o superiore per la cifratura. Sotto, la tastiera funziona
 normalmente e i tasti dicono che la cifratura non è disponibile.

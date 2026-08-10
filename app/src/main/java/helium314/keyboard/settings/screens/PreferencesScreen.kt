@@ -12,7 +12,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import helium314.keyboard.keyboard.KeyboardLayoutSet
 import helium314.keyboard.keyboard.KeyboardSwitcher
 import helium314.keyboard.latin.AudioAndHapticFeedbackManager
-import helium314.keyboard.cipher.CipherCompose
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.database.ClipboardDao
 import helium314.keyboard.latin.settings.Defaults
@@ -44,11 +43,6 @@ fun PreferencesScreen(
         Log.v("irrelevant", "stupid way to trigger recomposition on preference change")
     val clipboardHistoryEnabled = prefs.getBoolean(Settings.PREF_ENABLE_CLIPBOARD_HISTORY, Defaults.PREF_ENABLE_CLIPBOARD_HISTORY)
     val items = listOf(
-        // keyboard-cipher: in testa, perche' e' cio' che distingue questa
-        // tastiera. In coda sarebbe finita sotto una schermata di roba che
-        // esisteva gia'.
-        R.string.cipher_settings_category,
-        CipherCompose.PREF_COMPOSE_MODE,
         R.string.settings_category_input,
         Settings.PREF_SHOW_HINTS,
         if (prefs.getBoolean(Settings.PREF_SHOW_HINTS, Defaults.PREF_SHOW_HINTS))
@@ -97,17 +91,6 @@ fun PreferencesScreen(
 }
 
 fun createPreferencesSettings(context: Context) = listOf(
-    Setting(
-        context, CipherCompose.PREF_COMPOSE_MODE,
-        R.string.cipher_compose_mode, R.string.cipher_compose_mode_summary
-    ) {
-        // Il cambio ha effetto alla ricostruzione della vista, che
-        // reloadKeyboard forza subito: senza, la riga comparirebbe alla
-        // prossima apertura della tastiera e l'interruttore sembrerebbe rotto.
-        SwitchPreference(it, CipherCompose.DEFAULT_COMPOSE_MODE) {
-            KeyboardSwitcher.getInstance().reloadKeyboard()
-        }
-    },
     Setting(context, Settings.PREF_SAVE_SUBTYPE_PER_APP, R.string.save_subtype_per_app) {
         SwitchPreference(it, Defaults.PREF_SAVE_SUBTYPE_PER_APP)
     },

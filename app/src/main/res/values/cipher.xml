@@ -42,6 +42,15 @@
     <string name="cipher_settings_category" tools:ignore="MissingTranslation">Cifratura</string>
     <string name="cipher_compose_mode" tools:ignore="MissingTranslation">Scrivi dentro la tastiera</string>
     <string name="cipher_compose_mode_summary" tools:ignore="MissingTranslation">Il testo in chiaro resta nella tastiera e l\'app riceve solo il messaggio cifrato, quando premi il lucchetto. Senza, il chiaro passa dal campo dell\'app — che puo\' salvarlo come bozza gia\' prima che tu cifri.</string>
+    <string name="cipher_enabled" tools:ignore="MissingTranslation">Cifratura attiva</string>
+    <string name="cipher_enabled_summary" tools:ignore="MissingTranslation">Spegnendola, la tastiera si comporta come una tastiera normale: niente tasti di cifratura, niente riga di composizione. Le tue chiavi e i tuoi contatti restano dove sono.</string>
+    <string name="cipher_nothing_to_send" tools:ignore="MissingTranslation">Niente da inviare</string>
+    <string name="cipher_sent_plain" tools:ignore="MissingTranslation">Messo nel campo in chiaro, non cifrato</string>
+    <!--
+        Descrizione del tasto per TalkBack. Il nome viene dal nome della voce
+        dell'enum in minuscolo, quindi questa stringa si deve chiamare cosi'.
+    -->
+    <string name="send_plain" tools:ignore="MissingTranslation">Consegna in chiaro</string>
     <string name="cipher_compose_hint" tools:ignore="MissingTranslation">Scrivi qui: l\'app non lo vede</string>
     <!--
         Il campo non si e' lasciato sostituire: parte del chiaro e' rimasta

@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import helium314.keyboard.latin.utils.JniUtils
 import helium314.keyboard.settings.screens.createAboutSettings
+import helium314.keyboard.settings.screens.createCipherSettings
 import helium314.keyboard.settings.screens.createAdvancedSettings
 import helium314.keyboard.settings.screens.createAppearanceSettings
 import helium314.keyboard.settings.screens.createCorrectionSettings
@@ -62,7 +63,7 @@ class Setting(
 }
 
 // intentionally not putting individual debug settings in here so user knows the context
-private fun createSettings(context: Context) = createAboutSettings(context) + createAppearanceSettings(context) +
+private fun createSettings(context: Context) = createCipherSettings(context) + createAboutSettings(context) + createAppearanceSettings(context) +
         createCorrectionSettings(context) + createPreferencesSettings(context) + createToolbarSettings(context) +
         createLayoutSettings(context) + createAdvancedSettings(context) +
         if (JniUtils.sHaveGestureLib) createGestureTypingSettings(context) else emptyList()
@@ -84,4 +85,6 @@ object SettingsWithoutKey {
     const val BACKGROUND_IMAGE_LANDSCAPE = "background_image_landscape"
     const val CUSTOM_FONT = "custom_font"
     const val CUSTOM_EMOJI_FONT = "custom_emoji_font"
+    // keyboard-cipher
+    const val CIPHER_CONTACTS = "cipher_contacts"
 }

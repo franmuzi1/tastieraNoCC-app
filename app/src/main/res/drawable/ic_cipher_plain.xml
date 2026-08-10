@@ -1,0 +1,18 @@
+<!--
+    Aeroplanino di carta. Icona del tasto "consegna in chiaro": mette nel campo
+    dell'app il testo cosi' com'e', senza cifrarlo.
+
+    Deliberatamente diversa dai due lucchetti, e non un lucchetto aperto: un
+    lucchetto aperto accanto a uno chiuso si distingue male a colpo d'occhio, e
+    questo e' il tasto che consegna il chiaro — sbagliarlo costa il messaggio.
+    icon from pictogrammers.com (Material Design Icons, "send")
+    SPDX-License-Identifier: Apache-2.0
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="24dp"
+    android:width="24dp"
+    android:viewportHeight="24"
+    android:viewportWidth="24" >
+  <path android:fillColor="#FFF"
+      android:pathData="M2,21L23,12L2,3V10L17,12L2,14V21Z"/>
+</vector>

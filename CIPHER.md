@@ -476,6 +476,64 @@ barra spazio** muove il caret e che il carattere successivo entra li' e non in
 fondo. Disegnata anche la selezione, riga per riga — su piu' righe non e' un
 rettangolo.
 
+## Impostazioni: una categoria sola, e un interruttore generale
+
+`Impostazioni → Cifratura` (`CipherScreen`) raccoglie interruttore generale,
+modalita' di scrittura e contatti. Prima le preferenze stavano fra quelle
+generali e i contatti erano una voce a se': la funzione che distingue questa
+tastiera sembrava un dettaglio di configurazione.
+
+Le due preferenze stanno in `CipherSettings`, non in `Settings`/`Defaults` di
+HeliBoard: sono di una funzione che upstream non ha, e ogni riga aggiunta a un
+file di upstream e' un conflitto in attesa al prossimo merge.
+
+`cipher_enabled` spento fa comportare il fork come HeliBoard: i tasti spariscono
+dalla toolbar, la riga non c'e', e `CipherActions` rifiuta comunque ogni codice
+— un tasto puo' arrivare da una scorciatoia rimasta in un profilo salvato.
+Il filtro **non** tocca le preferenze della toolbar: quelle sono scelte
+dell'utente, e chi riaccende la cifratura deve ritrovare la barra com'era.
+
+### Il tasto "consegna in chiaro"
+
+Aeroplanino, terzo tasto, visibile **solo** in modalita' composizione: senza
+quella riga il testo e' gia' nel campo dell'app, quindi non avrebbe niente da
+consegnare.
+
+Serve al caso banale e frequente che altrimenti costringerebbe a spegnere la
+modalita': scrivere a chi non ha questa tastiera. Una funzione che si aggira
+dalle impostazioni e' una funzione che viene spenta e mai piu' riaccesa.
+
+Non spedisce: mette il testo nel campo, come farebbe la digitazione normale.
+A premere invio e' sempre l'utente.
+
+L'icona non e' un lucchetto aperto: accanto a uno chiuso si distingue male a
+colpo d'occhio, e questo e' il tasto che consegna il chiaro.
+
+*Aggiunto anche a chi aggiorna.* Le preferenze esistenti non vengono
+sovrascritte dai default, quindi il tasto viene inserito quando la preferenza
+salvata non lo nomina affatto. Un tasto messo a `false` dall'utente resta a
+`false`: quella e' una scelta, e il nome nella preferenza la registra.
+
+### Trappola: `reloadKeyboard` non ricostruisce la striscia
+
+I tasti in toolbar si costruiscono **una volta**, quando nasce
+`SuggestionStripView`. `KeyboardSwitcher.reloadKeyboard()` rifa' la tastiera e
+lascia la striscia com'era: il tasto nuovo compariva solo dopo aver cambiato
+tastiera e essere tornati indietro, cioe' l'interruttore sembrava non
+funzionare. Serve `setThemeNeedsReload()`, che nasconde e rimostra la finestra.
+
+Provato da installazione pulita (`pm clear`), che e' l'unico stato in cui i
+default valgono davvero:
+
+| Stato | Striscia | Riga |
+|---|---|---|
+| default (cifratura on, composizione off) | due lucchetti | assente |
+| composizione on | due lucchetti + aeroplanino | presente |
+| cifratura off | nessun tasto della cifratura | assente, altezza di prima |
+
+E il giro dell'aeroplanino: testo nella riga → tocco → il testo compare nel
+campo dell'app in chiaro, la riga si svuota.
+
 ## L'altezza della tastiera non e' cambiata — misurata
 
 Sospetto ragionevole, perche' i due lucchetti fissati stanno nella striscia dei
