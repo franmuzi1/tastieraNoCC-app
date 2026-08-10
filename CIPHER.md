@@ -63,26 +63,65 @@ diagnosticare.
 
 ## Cosa manca (e dove)
 
-**1. I tasti in toolbar.** `ToolbarKey` è un enum in
-`app/src/main/java/helium314/keyboard/latin/utils/ToolbarUtils.kt:121`.
-Servono due voci — cifra e decifra — con le rispettive icone e stringhe, e la
-gestione nel listener delle azioni.
+Lista ordinata per dipendenza. Chi la usa deve verificare **nel codice** se un
+punto è già fatto: questo documento può essere indietro rispetto ai commit.
 
-**2. Il ciclo di vita.** Nessuno chiama ancora `CipherCore.nativeInit`. Serve:
-generare il segreto al primo avvio con `nativeGenerateSecret`, cifrarlo con una
-chiave in Android Keystore, persisterlo, e ricaricarlo insieme al keyring
-(`nativeExportKeyring` / il blob passato a `nativeInit`).
+**~~1. Ciclo di vita della chiave.~~ FATTO.** `CipherKeystore` (chiave maestra
+AES-256-GCM in Android Keystore), `CipherStorage` (i due blob in
+`noBackupFilesDir`, scrittura atomica), `CipherIdentity`
+(`ensureReady`/`persistKeyring`/`resetIdentity`).
 
-**3. `onNewIntent` in `DecryptActivity`.** Con `launchMode=singleTask` un
-secondo intent verso un'istanza viva non passa da `onCreate`: la seconda
-decifratura verrebbe ignorata lasciando a schermo il plaintext precedente.
+**~~2. Tasti in toolbar.~~ FATTO.** `ToolbarKey.ENCRYPT`/`DECRYPT`,
+`KeyCode.CIPHER_ENCRYPT`/`CIPHER_DECRYPT` (-30000/-30001), le tre mappe di
+`KeyboardIconsSet`, `CipherActions`, due righe in `KeyboardActionListenerImpl`.
 
-**4. La cronologia clipboard.** Se si abilita la copia del testo decifrato, quel
+**~~3. `DecryptActivity`.~~ FATTO.** Decifra davvero, gestisce i sei esiti,
+`onNewIntent`, persiste il keyring dopo il pin.
+
+**4. Clipboard (via 1).** Polling passivo con `getPrimaryClipDescription()` —
+che non fa comparire il toast di Android 12 — e lettura del contenuto solo su
+gesto esplicito dell'utente. È la via che funziona ovunque; oggi non c'è niente.
+
+**5. Identity card.** `nativeIdentityCard` + `commitText`. Senza, il primo
+contatto in una direzione non si chiude. Serve un punto d'ingresso nella UI:
+una voce nelle impostazioni, o un long-press sul tasto cifra.
+
+**6. UI di `ContactsActivity`.** Elenco peer, fingerprint, etichette
+(`nativeAssignLabel`), verifica fuori banda (`nativeMarkVerified`), QR.
+Due schermate non sono cosmetiche:
+- **conflitto di etichetta** — è il "safety number changed" di Signal, e senza
+  di essa `nativeConfirmKeyChange` è irraggiungibile;
+- **`CipherState.Unreadable` → `resetIdentity`** — l'unica uscita da
+  un'identità non decifrabile, e va dietro una schermata che dica che si sta
+  distruggendo l'identità.
+
+**7. Cronologia clipboard.** Se si abilita la copia del testo decifrato, quel
 contenuto va escluso esplicitamente dalla cronologia clipboard della tastiera —
-che è la *stessa app*. Vedi il commento su `copyPlaintext`.
+che è la *stessa app*. Vedi il commento su `copyPlaintext` in `DecryptActivity`,
+che è dead code apposta finché questo non è risolto.
 
-**5. UI di `ContactsActivity`.** Elenco peer, fingerprint, etichette,
-schermata di conflitto, QR.
+**8. Prova su dispositivo.** Niente è mai stato eseguito: il `.so` non è mai
+stato caricato. Tutto il confine JNI e tutto Keystore sono verificati solo
+staticamente.
+
+## Procedura per una sessione automatica
+
+Se stai riprendendo questo lavoro senza contesto:
+
+1. leggi `tastieraNoCC/CLAUDE.md` — è il documento normativo, e le sue
+   decisioni non si rimettono in discussione;
+2. prendi il **primo** punto non fatto della lista qui sopra, verificandolo nel
+   codice e non nel documento. Uno solo, per intero;
+3. compila con `./gradlew assembleDebug`;
+4. **verifica sul dex, non sull'esito di Gradle** (vedi la trappola più su):
+   che le classi ci siano e che chiamino davvero il core;
+5. commit e push su `cipher`, messaggio in italiano. Mai `master`, mai
+   `upstream`, mai force-push;
+6. aggiorna questo file e `tastieraNoCC/HANDOFF.md`.
+
+Se l'ambiente non ha SDK/NDK e non riesci a compilare: implementa comunque, ma
+dichiaralo nel commit e qui. Codice non verificato dichiarato tale vale; codice
+non verificato spacciato per verificato no.
 
 ## Vincoli da non violare
 

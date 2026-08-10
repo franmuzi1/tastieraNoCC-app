@@ -42,6 +42,36 @@
     <string name="cipher_unavailable" tools:ignore="MissingTranslation">Cifratura non disponibile</string>
 
     <!--
+        Schermate di DecryptActivity.
+
+        "non e' cifrato" NON e' un errore: e' l'esito piu' comune, perche' la
+        maggior parte del testo che passa di qui non e' nostra.
+    -->
+    <string name="cipher_not_our_blob" tools:ignore="MissingTranslation">Questo testo non e\' cifrato</string>
+    <!--
+        Un blob prodotto da una versione futura deve dire "aggiorna", non
+        "non e\' cifrato". E\' la ragione per cui la versione sta nel primo byte
+        del body e non nel sentinel: con la versione nel sentinel il
+        riconoscimento fallirebbe e l\'utente leggerebbe il messaggio sbagliato.
+    -->
+    <string name="cipher_version_too_new" tools:ignore="MissingTranslation">Messaggio creato con una versione piu\' recente. Aggiorna l\'app.</string>
+    <string name="cipher_tier_unsupported" tools:ignore="MissingTranslation">Questo messaggio usa una modalita\' non ancora supportata</string>
+    <!--
+        UN solo messaggio per qualunque fallimento crypto. Non aggiungere
+        varianti: distinguere le cause e\' un canale che aiuta chi attacca, ed
+        e\' il motivo per cui il core restituisce un errore opaco.
+    -->
+    <string name="cipher_cannot_decrypt" tools:ignore="MissingTranslation">Impossibile decifrare questo messaggio</string>
+    <string name="cipher_unknown_sender" tools:ignore="MissingTranslation">Mittente sconosciuto</string>
+    <string name="cipher_sender_verified" tools:ignore="MissingTranslation">%1$s ✓</string>
+    <string name="cipher_composed_at" tools:ignore="MissingTranslation">Scritto il %1$s (secondo il mittente)</string>
+    <string name="cipher_card_title" tools:ignore="MissingTranslation">Nuovo contatto</string>
+    <string name="cipher_card_pinned" tools:ignore="MissingTranslation">Chiave memorizzata. Confronta questo codice di persona per essere sicuro che sia davvero lui.</string>
+    <string name="cipher_unreadable_title" tools:ignore="MissingTranslation">Dati non leggibili</string>
+    <string name="cipher_unreadable_identity" tools:ignore="MissingTranslation">La tua identita\' non e\' decifrabile su questo dispositivo. Non e\' stata cambiata: finche\' non decidi tu, resta com\'e\'.</string>
+    <string name="cipher_unreadable_keyring" tools:ignore="MissingTranslation">L\'elenco dei contatti non e\' decifrabile. Non e\' stato svuotato: finche\' non decidi tu, resta com\'e\'.</string>
+
+    <!--
         Tema dell'Activity che mostra il testo decifrato.
 
         Parent del framework e non della libreria di supporto: questa Activity
