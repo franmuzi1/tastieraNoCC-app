@@ -28,7 +28,7 @@ Cosa è stato verificato, e come:
 
 | | |
 |---|---|
-| core crittografico | 62 test, analisi statica severa, ~48 milioni di input di fuzzing |
+| core crittografico | 71 test, analisi statica severa, ~48 milioni di input di fuzzing |
 | ciclo completo | osservato su emulatore Android 6, 12 e 14 |
 | percorsi d'errore | blob corrotto, troncato, versione futura, testo non cifrato |
 | cambio chiave di un contatto | tutti e tre gli esiti |
