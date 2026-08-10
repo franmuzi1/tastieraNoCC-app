@@ -173,12 +173,47 @@ cd /tmp && setsid nohup $ANDROID_HOME/emulator/emulator -avd cipher34 \
   avviare l'emulatore, altrimenti la memoria non basta.
 - `locksettings set-pin 1234` per il caso col blocco schermo.
 
-**Non ancora risolto:** guidare l'IME via adb. Il servizio parte solo quando un
-campo di testo prende il fuoco, e le due Activity di impostazioni di HeliBoard
-non si avviano (`am start` dice "does not exist" benché le classi siano nel dex
-e nella resolver table del sistema). Causa non determinata, ed è codice di
-upstream. La via praticabile è un APK usa-e-getta con un solo `EditText`, fuori
-dal prodotto, da usare come bersaglio per `uiautomator`.
+### La trappola che costa più tempo: utente bloccato
+
+**Dopo ogni boot il PIN va inserito**, altrimenti quasi tutto fallisce in modi
+che sembrano bug dell'app:
+
+```
+adb shell input keyevent 224
+adb shell input swipe 540 1800 540 600
+adb shell input text 1234 && adb shell input keyevent 66
+```
+
+Come riconoscere lo stato, prima di perderci un'ora:
+
+| Sintomo | Cosa sembra | Cos'è davvero |
+|---|---|---|
+| `am start` → *"Activity class does not exist"* | classe rimossa da R8 | i componenti non direct-boot-aware sono filtrati |
+| `run-as ... ls` → *"No such file or directory"* | dati dell'AVD persi | storage credential-encrypted non montato |
+| `resolve-activity` → *"No activity found"* | manifest sbagliato | idem |
+
+La conferma è `dumpsys window | grep isKeyguardShowing` e la home risolta: se è
+`com.android.settings/.FallbackHome`, l'utente **non** è sbloccato. Con l'utente
+sbloccato la home diventa il launcher vero e i file ricompaiono da soli — non
+erano mai spariti.
+
+### Bersaglio per far partire l'IME
+
+Il servizio parte solo quando un campo di testo prende il fuoco, e l'immagine
+AOSP non offre un campo raggiungibile via `am start`. Serve un APK
+usa-e-getta con un solo `EditText`, **fuori dal prodotto**. Si costruisce senza
+Gradle, in cinque passaggi, con quello che c'è già nell'SDK:
+
+```
+javac --release 8 -cp $SDK/platforms/android-36/android.jar -d classes Main.java
+d8 --lib $SDK/platforms/android-36/android.jar --output . classes/.../Main.class
+aapt2 link -I .../android.jar --manifest AndroidManifest.xml -o base.apk
+zip -qj base.apk classes.dex
+zipalign -f 4 base.apk aligned.apk && apksigner sign --ks ks.jks ... aligned.apk
+```
+
+Verificato: con quel bersaglio in primo piano il processo
+`helium314.keyboard.debug` parte e serve il campo, senza crash.
 
 ## Cosa ha insegnato la prima esecuzione
 
