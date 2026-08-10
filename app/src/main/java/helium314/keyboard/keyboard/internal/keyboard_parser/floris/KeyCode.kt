@@ -199,6 +199,8 @@ object KeyCode {
     const val CIPHER_IDENTITY_CARD =      -30003
     /** Consegna il chiaro all'app senza cifrarlo. Solo in modalita' composizione. */
     const val CIPHER_SEND_PLAIN =         -30004
+    /** Accende e spegne la riga di composizione. */
+    const val CIPHER_TOGGLE_COMPOSE =     -30005
 
     // Intents
     const val SEND_INTENT_ONE =            -20000
@@ -359,7 +361,7 @@ object KeyCode {
         // richiede il dispositivo sbloccato: senza questa riga il tasto ci
         // sarebbe e fallirebbe sempre, che e' il modo peggiore di non esserci.
         CIPHER_ENCRYPT, CIPHER_DECRYPT, CIPHER_DECRYPT_CLIPBOARD, CIPHER_IDENTITY_CARD,
-            CIPHER_SEND_PLAIN -> true
+            CIPHER_SEND_PLAIN, CIPHER_TOGGLE_COMPOSE -> true
         else -> false
     }
 }

@@ -18,16 +18,17 @@
 
         `gone` per default: a modalita' spenta non deve costare un pixel di
         altezza, e in un LinearLayout verticale una vista `gone` non ne occupa.
-        maxLines la tiene a tre righe e il testo piu' lungo scorre, invece di
-        far crescere la tastiera mentre si scrive.
+
+        Altezza FISSA: crescendo mentre si scrive faceva crescere la tastiera, e
+        l'app di chat non sempre rifa' il proprio layout in tempo — la riga
+        finiva per coprire la casella di testo dell'app. Il testo piu' lungo
+        scorre, e lo scorrimento insegue il cursore.
     -->
     <helium314.keyboard.cipher.CipherComposeView
         android:id="@+id/cipher_compose_row"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="@dimen/cipher_compose_row_height"
         android:visibility="gone"
-        android:minHeight="@dimen/config_suggestions_strip_height"
-        android:maxLines="3"
         android:gravity="center_vertical"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"

@@ -139,6 +139,7 @@ object CipherIdentity {
             ready = false
             CipherStorage.delete(app, CipherStorage.IDENTITY)
             CipherStorage.delete(app, CipherStorage.KEYRING)
+            CipherRecipients.forget(app)
             // Dopo i file: cancellare prima la chiave lascerebbe su disco due
             // blob non piu' decifrabili se la cancellazione dei file fallisse.
             CipherKeystore.deleteKey()
@@ -281,6 +282,11 @@ object CipherIdentity {
                 return CipherState.Unavailable(CipherReason.CORE)
             }
             ready = true
+            // Dopo nativeInit, mai prima: il core tiene la scelta del
+            // destinatario in memoria, e senza questo ogni riavvio del servizio
+            // la azzerava — lucchetto che smette di funzionare da solo, ore
+            // dopo, chiedendo di scegliere un destinatario gia' scelto.
+            CipherRecipients.restore(context)
             return CipherState.Ready
         } finally {
             // Il core ha gia' copiato quello che gli serve; qui resta una copia

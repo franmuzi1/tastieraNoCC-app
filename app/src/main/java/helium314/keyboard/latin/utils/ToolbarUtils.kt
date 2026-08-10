@@ -81,6 +81,9 @@ private fun setToolbarButtonActivatedState(button: ImageButton) {
         // che il contenuto viene letto: guardarlo per conto nostro
         // significherebbe leggere gli appunti a ogni sessione di digitazione.
         DECRYPT -> CipherClipboard.clipboardLooksDecryptable()
+        // Acceso quando si scrive dentro la tastiera. E' un interruttore, non
+        // un comando: deve mostrare in che stato si trova senza doverlo premere.
+        COMPOSE -> CipherSettings.isComposeMode(button.context.prefs())
         else -> true
     }
 }
@@ -122,6 +125,7 @@ fun getCodeForToolbarKey(key: ToolbarKey) = Settings.getInstance().getCustomTool
     ENCRYPT -> KeyCode.CIPHER_ENCRYPT
     DECRYPT -> KeyCode.CIPHER_DECRYPT
     SEND_PLAIN -> KeyCode.CIPHER_SEND_PLAIN
+    COMPOSE -> KeyCode.CIPHER_TOGGLE_COMPOSE
 }
 
 fun getCodeForToolbarKeyLongClick(key: ToolbarKey) = Settings.getInstance().getCustomToolbarLongpressCode(key) ?: when (key) {
@@ -164,7 +168,7 @@ enum class ToolbarKey {
     // keyboard-cipher. In coda di proposito: l'ordine dell'enum e' l'ordine in
     // cui i tasti compaiono nel personalizzatore, e aggiungere in mezzo
     // sposterebbe quelli di HeliBoard senza motivo.
-    ENCRYPT, DECRYPT, SEND_PLAIN
+    ENCRYPT, DECRYPT, SEND_PLAIN, COMPOSE
 }
 
 enum class ToolbarMode {
@@ -183,7 +187,7 @@ val defaultToolbarPref by lazy {
     // profilo di toolbar salvato se li vede aggiunti da `upgradeToolbarPref`,
     // che pero' aggiunge le voci nuove come spente — e va bene cosi': quelle
     // preferenze sono scelte dell'utente, non nostre da sovrascrivere.
-    val default = listOf(ENCRYPT, DECRYPT, SEND_PLAIN, SETTINGS, VOICE, CLIPBOARD, UNDO, REDO, SELECT_WORD, COPY, PASTE, LEFT, RIGHT)
+    val default = listOf(ENCRYPT, DECRYPT, SEND_PLAIN, COMPOSE, SETTINGS, VOICE, CLIPBOARD, UNDO, REDO, SELECT_WORD, COPY, PASTE, LEFT, RIGHT)
     val others = entries.filterNot { it in default || it == CLOSE_HISTORY }
     default.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
@@ -196,7 +200,7 @@ val defaultPinnedToolbarPref by lazy {
     // Costa due posti alla striscia dei suggerimenti, ed e' un prezzo pagato
     // volentieri: attivi ma nascosti dietro una freccia significa che chi
     // installa non li trova, e una funzione che non si trova non esiste.
-    val pinned = listOf(ENCRYPT, DECRYPT, SEND_PLAIN)
+    val pinned = listOf(ENCRYPT, DECRYPT, SEND_PLAIN, COMPOSE)
     val others = entries.filterNot { it in pinned || it == CLOSE_HISTORY }
     pinned.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
@@ -266,17 +270,31 @@ fun getPinnedToolbarKeys(prefs: SharedPreferences) =
 private fun withCipherKeys(prefs: SharedPreferences, pref: String, default: String): List<ToolbarKey> {
     val keys = getEnabledToolbarKeys(prefs, pref, default)
     if (!CipherSettings.isEnabled(prefs)) return keys.filterNot { it in cipherKeys }
-    if (!CipherSettings.isComposeMode(prefs)) return keys.filterNot { it == SEND_PLAIN }
-    if (SEND_PLAIN in keys) return keys
+    // COMPOSE resta anche a modalita' spenta: e' l'interruttore, cioe' il modo
+    // per riaccenderla. SEND_PLAIN no — senza la riga il testo e' gia' nel
+    // campo dell'app e non ci sarebbe niente da consegnare.
+    val wanted = if (CipherSettings.isComposeMode(prefs)) {
+        listOf(COMPOSE, SEND_PLAIN)
+    } else {
+        listOf(COMPOSE)
+    }
+    val result = keys.filterNot { it == SEND_PLAIN && !CipherSettings.isComposeMode(prefs) }
+        .toMutableList()
+    // Aggiunti se la preferenza salvata non li nomina affatto: le preferenze
+    // esistenti non vengono sovrascritte dai default, quindi senza questo chi
+    // aggiorna non troverebbe mai i tasti nuovi. Un tasto messo a `false`
+    // dall'utente resta a `false`: quella e' una scelta, e il nome nella
+    // preferenza la registra.
     val saved = prefs.getString(pref, default).orEmpty()
-    if (saved.contains(SEND_PLAIN.name)) return keys
-    val result = keys.toMutableList()
-    val afterEncrypt = result.indexOf(ENCRYPT)
-    if (afterEncrypt >= 0) result.add(afterEncrypt + 1, SEND_PLAIN) else result.add(SEND_PLAIN)
+    for (key in wanted) {
+        if (key in result || saved.contains(key.name)) continue
+        val after = result.indexOf(ENCRYPT)
+        if (after >= 0) result.add(after.inc(), key) else result.add(key)
+    }
     return result
 }
 
-private val cipherKeys = setOf(ENCRYPT, DECRYPT, SEND_PLAIN)
+private val cipherKeys = setOf(ENCRYPT, DECRYPT, SEND_PLAIN, COMPOSE)
 
 fun getEnabledClipboardToolbarKeys(prefs: SharedPreferences) = getEnabledToolbarKeys(prefs, Settings.PREF_CLIPBOARD_TOOLBAR_KEYS, defaultClipboardToolbarPref)
 

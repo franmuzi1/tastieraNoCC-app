@@ -476,6 +476,59 @@ barra spazio** muove il caret e che il carattere successivo entra li' e non in
 fondo. Disegnata anche la selezione, riga per riga — su piu' righe non e' un
 rettangolo.
 
+## Tre guasti trovati usando la tastiera per davvero
+
+Nessuno dei tre si vedeva rileggendo il codice, e il primo rendeva il sistema
+inservibile dopo qualche ora d'uso.
+
+### Il destinatario spariva da solo
+
+Il core tiene la scelta del destinatario in memoria, ed e' giusto: e' un crate
+senza I/O. Ma la memoria di un IME e' quella di un servizio che Android riavvia
+quando gli pare — poca RAM, cambio di tastiera, riavvio del telefono.
+
+Effetto per chi la usa: fissi il destinatario, scrivi, cifri, tutto bene; ore
+dopo premi il lucchetto e non succede piu' niente, con un messaggio che ti
+chiede di scegliere un destinatario che *avevi gia' scelto*. Sembra una
+funzione rotta a caso, ed e' il tipo di guasto che fa abbandonare il sistema
+invece che segnalarlo.
+
+`CipherRecipients` scrive la mappa package → chiave in un terzo file, cifrato
+dallo stesso Keystore del keyring e con un dominio proprio. Si ripristina dopo
+`nativeInit`, mai prima. Non contiene segreti — chiavi pubbliche e nomi di
+package — ma e' esattamente il metadato che il progetto esiste per non
+regalare: con chi parli, e in quale applicazione.
+
+*Trappola nel provarlo:* `am force-stop` sull'IME attivo fa passare il sistema
+alla tastiera AOSP. Il primo test e' stato fatto scrivendo su un'altra
+tastiera, e sembrava confermare una diagnosi diversa. Dopo il force-stop va
+rimesso `ime set`, e va **verificato** con
+`settings get secure default_input_method`.
+
+### La riga copriva la casella dell'app
+
+`wrap_content` piu' `maxLines=3`: a ogni a capo la riga cresceva, la tastiera
+con lei, e l'app di chat non sempre rifa' il proprio layout in tempo — la riga
+finiva sopra la casella di testo dell'app.
+
+Ora l'altezza e' **fissa** (`cipher_compose_row_height`, 56dp; 40dp in
+orizzontale) e il testo scorre, con lo scorrimento che insegue il cursore.
+Misurato: il bordo della tastiera resta allo stesso pixel a riga vuota, con
+testo, dopo tre a capo e dopo altro testo ancora.
+
+### Cambiare modalita' costava un viaggio nelle impostazioni
+
+Dove si scrive non e' una configurazione che si fa una volta: e' una scelta che
+cambia da conversazione a conversazione — con chi ha questa tastiera si scrive
+dentro, con tutti gli altri no. Se per cambiarla bisogna uscire dalla chat e
+attraversare le impostazioni, non la cambia nessuno.
+
+Quarto tasto, `COMPOSE`, con lo stato *acceso* che riflette la modalita': e' un
+interruttore, deve dire in che stato si trova senza doverlo premere. Resta
+visibile anche a modalita' spenta, perche' e' il modo per riaccenderla —
+`SEND_PLAIN` invece sparisce, che senza la riga non avrebbe niente da
+consegnare.
+
 ## Firma delle release
 
 Gli APK pubblicati finora sono firmati con la **chiave di debug** della macchina

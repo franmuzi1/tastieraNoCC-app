@@ -158,6 +158,7 @@ class KeyboardIconsSet private constructor() {
                     ToolbarKey.SPLIT -> R.drawable.ic_ime_switcher
                     ToolbarKey.BACKGROUND_GATHERING -> R.drawable.ic_settings_gesture
                     ToolbarKey.SEND_PLAIN -> R.drawable.ic_cipher_plain
+                    ToolbarKey.COMPOSE -> R.drawable.ic_cipher_compose
                     ToolbarKey.ENCRYPT -> R.drawable.ic_cipher_encrypt
                     ToolbarKey.DECRYPT -> R.drawable.ic_cipher_decrypt
                 })
@@ -225,6 +226,7 @@ class KeyboardIconsSet private constructor() {
                     ToolbarKey.SPLIT -> R.drawable.ic_ime_switcher
                     ToolbarKey.BACKGROUND_GATHERING -> R.drawable.ic_settings_gesture
                     ToolbarKey.SEND_PLAIN -> R.drawable.ic_cipher_plain
+                    ToolbarKey.COMPOSE -> R.drawable.ic_cipher_compose
                     ToolbarKey.ENCRYPT -> R.drawable.ic_cipher_encrypt
                     ToolbarKey.DECRYPT -> R.drawable.ic_cipher_decrypt
                 })
@@ -292,6 +294,7 @@ class KeyboardIconsSet private constructor() {
                     ToolbarKey.SPLIT -> R.drawable.ic_ime_switcher
                     ToolbarKey.BACKGROUND_GATHERING -> R.drawable.ic_settings_gesture
                     ToolbarKey.SEND_PLAIN -> R.drawable.ic_cipher_plain
+                    ToolbarKey.COMPOSE -> R.drawable.ic_cipher_compose
                     ToolbarKey.ENCRYPT -> R.drawable.ic_cipher_encrypt
                     ToolbarKey.DECRYPT -> R.drawable.ic_cipher_decrypt
                 })

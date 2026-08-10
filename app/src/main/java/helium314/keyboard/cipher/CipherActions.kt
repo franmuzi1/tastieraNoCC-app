@@ -5,8 +5,10 @@ import android.inputmethodservice.InputMethodService
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.widget.Toast
+import helium314.keyboard.keyboard.KeyboardSwitcher
 import helium314.keyboard.latin.LatinIME
 import helium314.keyboard.latin.R
+import helium314.keyboard.latin.utils.prefs
 
 /**
  * I due gesti della tastiera: cifra il campo, manda il campo a decifrare.
@@ -151,6 +153,30 @@ object CipherActions {
         // quindi una card in mezzo ad altro resta leggibile.
         ic.commitText(card, 1)
         toast(ime, R.string.cipher_card_inserted)
+    }
+
+    /**
+     * Accende e spegne la riga di composizione dalla toolbar.
+     *
+     * La stessa cosa che fa l'interruttore nelle impostazioni, ma a portata di
+     * pollice: decidere dove si scrive non e' una configurazione che si fa una
+     * volta, e' una scelta che cambia da conversazione a conversazione — con
+     * chi ha la tastiera si scrive dentro, con tutti gli altri no. Se per
+     * cambiarla bisogna uscire dalla chat e attraversare le impostazioni, non
+     * la cambia nessuno.
+     *
+     * `setThemeNeedsReload` e non `reloadKeyboard`: i tasti della striscia si
+     * costruiscono una volta sola, e questo tocco ne fa comparire o sparire uno
+     * (`SEND_PLAIN`) oltre a cambiare l'altezza della tastiera.
+     */
+    fun toggleCompose(ime: InputMethodService) {
+        if (!CipherSettings.isEnabled(ime)) return
+        val prefs = ime.prefs()
+        val wanted = !CipherSettings.isComposeMode(prefs)
+        prefs.edit().putBoolean(CipherSettings.PREF_COMPOSE_MODE, wanted).apply()
+        CipherCompose.reload(ime)
+        KeyboardSwitcher.getInstance().setThemeNeedsReload()
+        toast(ime, if (wanted) R.string.cipher_compose_on else R.string.cipher_compose_off)
     }
 
     /**

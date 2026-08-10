@@ -1,0 +1,15 @@
+<!--
+    Riquadro di testo con una matita. Icona del tasto che accende e spegne la
+    riga di composizione, cioe' che decide DOVE si scrive: dentro la tastiera o
+    nel campo dell'app.
+    icon from pictogrammers.com (Material Design Icons, "text-box-edit")
+    SPDX-License-Identifier: Apache-2.0
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="24dp"
+    android:width="24dp"
+    android:viewportHeight="24"
+    android:viewportWidth="24" >
+  <path android:fillColor="#FFF"
+      android:pathData="M5,3C3.89,3 3,3.89 3,5V19C3,20.11 3.89,21 5,21H11V19H5V5H19V11H21V5C21,3.89 20.11,3 19,3H5M7,7V9H17V7H7M7,11V13H15V11H7M20.13,13.83C20,13.83 19.87,13.88 19.77,14L18.79,15L20.81,17L21.79,16C22,15.8 22,15.47 21.79,15.27L20.53,14C20.43,13.9 20.28,13.83 20.13,13.83M18.21,15.56L12.25,21.53V23.55H14.27L20.23,17.58L18.21,15.56Z"/>
+</vector>

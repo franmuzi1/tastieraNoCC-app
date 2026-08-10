@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    In orizzontale lo schermo e' corto e la tastiera ne prende gia' molto: la
+    riga di composizione scende a una riga di testo. Il contenuto non si perde,
+    scorre.
+-->
+<resources>
+    <dimen name="cipher_compose_row_height">40dp</dimen>
+</resources>

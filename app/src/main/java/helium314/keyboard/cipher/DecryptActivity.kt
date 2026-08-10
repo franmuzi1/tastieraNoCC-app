@@ -121,6 +121,16 @@ class DecryptActivity : Activity() {
         // che il pin serve a chiudere.
         CipherIdentity.persistKeyring(this)
 
+        // Decifrare stabilisce il destinatario: chi legge e poi risponde ha
+        // gia' scelto leggendo, ed e' la leva che rende automatico il caso
+        // dominante. Quella scelta vive in memoria dentro il core, quindi qui
+        // va anche scritta su disco, altrimenti il primo riavvio del servizio
+        // la cancella.
+        val decryptedFrom = result.senderKey
+        if (result.kind == CipherCore.KIND_MESSAGE && decryptedFrom != null) {
+            CipherRecipients.remember(this, appDiProvenienza, decryptedFrom)
+        }
+
         when (result.kind) {
             CipherCore.KIND_MESSAGE -> showMessage(result)
             CipherCore.KIND_IDENTITY_CARD -> showIdentityCard(result)
@@ -237,6 +247,7 @@ class DecryptActivity : Activity() {
                 setText(R.string.cipher_use_as_recipient)
                 setOnClickListener {
                     if (CipherCore.nativeSetCurrentPeer(app, peer) == CipherCore.OK) {
+                        CipherRecipients.remember(this@DecryptActivity, app, peer)
                         Toast.makeText(
                             this@DecryptActivity,
                             R.string.cipher_recipient_set,

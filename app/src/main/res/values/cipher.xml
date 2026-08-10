@@ -51,6 +51,20 @@
         dell'enum in minuscolo, quindi questa stringa si deve chiamare cosi'.
     -->
     <string name="send_plain" tools:ignore="MissingTranslation">Consegna in chiaro</string>
+    <!--
+        Altezza FISSA della riga, non `wrap_content`.
+
+        Crescendo mentre si scrive faceva crescere la tastiera, e l'app di chat
+        non sempre rifa' il proprio layout in tempo: il risultato era la riga
+        che copriva la casella di testo dell'app. Un'altezza costante toglie di
+        mezzo tutta la classe di problema; il testo piu' lungo scorre, e lo
+        scorrimento insegue il cursore.
+    -->
+    <dimen name="cipher_compose_row_height">56dp</dimen>
+    <!-- Nome del tasto per TalkBack: deve chiamarsi come la voce dell'enum. -->
+    <string name="compose" tools:ignore="MissingTranslation">Scrivi dentro la tastiera</string>
+    <string name="cipher_compose_on" tools:ignore="MissingTranslation">Ora scrivi dentro la tastiera: l\'app vedra\' solo il messaggio cifrato</string>
+    <string name="cipher_compose_off" tools:ignore="MissingTranslation">Ora scrivi nel campo dell\'app, come una tastiera normale</string>
     <string name="cipher_compose_hint" tools:ignore="MissingTranslation">Scrivi qui: l\'app non lo vede</string>
     <!--
         Il campo non si e' lasciato sostituire: parte del chiaro e' rimasta
