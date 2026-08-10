@@ -19,15 +19,21 @@ import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
  * e' il motivo per cui questo va reso facile da raggiungere invece che sepolto
  * in un sottomenu.
  *
- * ## Mostrare si', scansionare no
+ * ## Mostrare si', scansionare no — decisione chiusa
  *
- * Qui c'e' solo la generazione. Leggere un QR richiede `CAMERA`, e il fork non
- * ha permessi: non averne e' la sua proprieta' principale, e non si spende un
- * permesso di dispositivo per una comodita'. Il flusso che funziona senza:
- * l'altra persona inquadra con un lettore QR qualunque, ottiene il testo
- * `kc/...`, e lo condivide alla nostra Activity dallo share sheet. Se un
- * giorno si aggiunge lo scanner, `CAMERA` va chiesto **a runtime**,
- * all'apertura dello scanner, mai come permesso di installazione.
+ * Qui c'e' solo la generazione, e **ci resta**. Leggere un QR richiede
+ * `CAMERA`, e il fork non ha permessi: non averne e' la sua proprieta'
+ * principale. Non e' una funzione mancante in attesa di qualcuno che la
+ * completi.
+ *
+ * E soprattutto non serve, perche' **basta che UNO dei due scansioni**:
+ * l'altra persona inquadra questo codice con un lettore QR qualunque, ottiene
+ * la stringa `kc/...` e la consegna alla nostra Activity dallo share sheet. Il
+ * MITM al primo contatto — l'unica cosa che il TOFU da solo non chiude — si
+ * chiude comunque, e la tastiera resta senza permessi.
+ *
+ * Se una sessione futura trova comodo aggiungere lo scanner: non e' una svista
+ * da correggere. Vedi `CLAUDE.md` nel core.
  *
  * ## Cosa contiene
  *

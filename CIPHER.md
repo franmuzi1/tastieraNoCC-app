@@ -23,8 +23,9 @@ blob → "decifra" → mittente, data e testo originale.
 | conflitto di etichetta | tutti e tre gli esiti |
 | versioni Android | 22 (non disponibile), 23 (minimo), 34 (con e senza blocco schermo) |
 
-Cosa **non** è stato fatto: build riproducibile per F-Droid, scanner QR (serve
-`CAMERA`), e un merge da upstream con modifiche vere. Dettagli in fondo.
+Cosa **non** è stato fatto: un merge da upstream con modifiche vere, e la
+riproducibilità dell'APK — che non dipende da noi, vedi in fondo. Lo scanner QR
+non è mancante: è escluso, perché richiederebbe `CAMERA`.
 
 `proguard-rules.pro` ha `-keep` su `CipherCore` e `IncomingResult`, e
 `-dontobfuscate`: i nomi dei metodi nativi devono sopravvivere alla
@@ -137,12 +138,14 @@ che non cambia niente.
 nella sezione della propria identità. Nessun permesso nuovo: la generazione non
 ne richiede.
 
-*Residuo:* **non c'è lo scanner.** Leggere un QR richiede `CAMERA`, e non averne
-è la proprietà principale del fork. Il flusso che funziona senza: l'altra
-persona inquadra con un lettore QR qualunque, ottiene il testo `kc/…`, e lo
-condivide alla nostra Activity dallo share sheet. Se un giorno si aggiunge lo
-scanner, `CAMERA` va chiesto **a runtime**, all'apertura dello scanner, mai
-come permesso di installazione.
+**Solo generazione, e ci resta — decisione chiusa.** Leggere un QR richiede
+`CAMERA`, e il fork non prende permessi: non averne è la sua proprietà
+principale. Non è una funzione mancante in attesa di qualcuno che la completi.
+
+Non serve nemmeno, perché **basta che uno dei due scansioni**: l'altra persona
+inquadra il codice con un lettore QR qualunque, ottiene la stringa `kc/…` e la
+consegna alla nostra Activity dallo share sheet. Il MITM al primo contatto si
+chiude comunque, e la tastiera resta senza permessi.
 
 **~~Voce nelle impostazioni.~~ FATTA e verificata:** Impostazioni → *Contatti*.
 
@@ -614,9 +617,10 @@ non verificato spacciato per verificato no.
 
 ## Vincoli da non violare
 
-- **Nessun permesso nuovo.** HeliBoard non ha `INTERNET` ed è la sua proprietà
-  principale. Se servirà `CAMERA` per il QR: a runtime, all'apertura dello
-  scanner, mai come permesso di installazione.
+- **Zero permessi, `CAMERA` compresa.** HeliBoard non ha `INTERNET` ed è la sua
+  proprietà principale. Il QR si mostra e non si scansiona: decisione chiusa,
+  non un residuo. Se una sessione futura trova comodo aggiungere lo scanner,
+  non è una svista da correggere.
 - **`ACTION_PROCESS_TEXT` non deve mai restituire il plaintext al chiamante.**
   Il contratto di quell'intent prevede `setResult` con un testo sostitutivo, ed
   è l'implementazione naturale — che qui consegnerebbe il chiaro proprio

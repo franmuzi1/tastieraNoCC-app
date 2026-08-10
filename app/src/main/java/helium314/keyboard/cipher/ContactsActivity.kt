@@ -365,11 +365,4 @@ class ContactsActivity : Activity() {
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
-    // TODO: il QR. Di persona e' l'unica cosa che chiude il MITM al primo
-    //   contatto, che il TOFU da solo non chiude, quindi va reso facile da
-    //   raggiungere e non sepolto. Mostrarlo non costa permessi; SCANSIONARLO
-    //   richiede CAMERA, e allora: permesso a runtime, chiesto solo
-    //   all'apertura dello scanner, mai all'installazione. Il fork non deve
-    //   guadagnare permessi passivi — non averne e' la sua proprieta'
-    //   principale.
 }
