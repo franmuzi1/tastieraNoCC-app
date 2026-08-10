@@ -228,6 +228,16 @@ Cosa dimostra davvero: che le chiamate riservate ad API 28+
 protette dai controlli di versione**. Se una guardia fosse sbagliata, qui si
 sarebbe visto un `NoSuchMethodError` in faccia, non un degrado silenzioso.
 
+**Ciclo completo dalla tastiera, non solo dalla Activity:** card inserita con la
+pressione lunga → *"Nuovo contatto"* + fingerprint → testo cifrato → decifrato
+con timestamp e chiaro. Su uno schermo 320×640 mdpi, cioè la geometria più
+stretta che il fork supporti: la toolbar ci sta e i due tasti sono distinguibili.
+
+*Nota d'ambiente:* su API 23 non esiste lo storage device-protected, quindi i
+preferences stanno in `/data/data/<pkg>/shared_prefs/`. E
+`run-as … sh -c 'cat > file'` con stdin da `adb` **si pianta**: passare invece
+per `adb push` in `/data/local/tmp` + `run-as … cp`.
+
 **Controllo incrociato che vale più di quanto sembri:** la stessa card ha dato
 lo stesso fingerprint `bhai 4o4s ys8g ouie 6u4u x8j5` su API 34 e su API 23,
 con un `.so` costruito per un'altra piattaforma. È la proprietà su cui poggia
@@ -254,9 +264,6 @@ il file ma non lo si trova. Usare `/data/local/tmp/`.
 
 ## Cosa NON è ancora stato provato
 
-- **il percorso IME su API 23** (la via Activity lì è verificata). Tentato, si è
-  impantanato sulla configurazione dei preferences: su Marshmallow non esiste lo
-  storage device-protected, quindi il file sta in `/data/data/…`;
 - **build riproducibile** per F-Droid: mai affrontato;
 - **merge da upstream con modifiche vere.** Oggi non c'è niente di nuovo da
   `upstream/main`, quindi la tenuta non è provabile; misurata l'esposizione,
