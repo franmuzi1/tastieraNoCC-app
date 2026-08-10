@@ -105,6 +105,15 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
     }
 
     override fun onCodeInput(primaryCode: Int, x: Int, y: Int, isKeyRepeat: Boolean) {
+        // keyboard-cipher: se la riga e' vuota ma nel campo dell'app c'e' del
+        // testo, il primo tasto lo riporta nella riga. E' il caso di chi ha
+        // consegnato il messaggio in chiaro, si e' accorto di un refuso e vuole
+        // correggerlo: senza, quel testo resta a schermo e nessun tasto lo
+        // tocca, perche' cancellazione e cursore lavorano sul buffer.
+        //
+        // Costa una lettura del campo, e solo finche' il buffer e' vuoto: dal
+        // primo carattere in poi la condizione e' falsa e non si legge piu'.
+        CipherActions.adoptFieldText(latinIME)
         when (primaryCode) {
             KeyCode.TOGGLE_AUTOCORRECT -> return settings.toggleAutoCorrect()
             KeyCode.TOGGLE_INCOGNITO_MODE -> {

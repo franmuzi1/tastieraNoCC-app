@@ -547,6 +547,29 @@ chat.
 
 Ora si sottrae anche `CipherCompose.rowHeight()`.
 
+### Il testo sta in un posto solo
+
+Regola che governa tutto il comportamento della riga: **se la riga e' vuota e
+nel campo dell'app c'e' del testo, il primo tasto premuto lo riporta nella
+riga.**
+
+Copre tre casi che sembravano diversi e sono lo stesso:
+
+- la bozza che l'app ripristina aprendo la chat;
+- il testo scritto prima di accendere la modalita';
+- il messaggio consegnato in chiaro con l'aeroplanino e **non ancora inviato**,
+  in cui ci si accorge di un refuso. Senza questa regola quel testo restava a
+  schermo e nessun tasto lo toccava, perche' cancellazione e cursore lavorano
+  sul buffer.
+
+Costa una lettura del campo, e solo finche' il buffer e' vuoto: dal primo
+carattere in poi la condizione e' falsa e non si legge piu'. Non e' un controllo
+a ogni battuta.
+
+*Caso che resta fuori, per costruzione:* se l'invio automatico e' scattato
+davvero, il messaggio e' partito e la casella e' vuota — non c'e' piu' niente da
+riprendere, e si corregge con "modifica messaggio" dell'app.
+
 ### Il testo gia' nel campo non si poteva cancellare
 
 Apri una chat, l'app ripristina la bozza; oppure avevi scritto prima di
