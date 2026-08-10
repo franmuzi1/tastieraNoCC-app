@@ -198,6 +198,31 @@ object CipherActions {
     }
 
     /**
+     * Sposta nella riga il testo che era gia' nel campo dell'app.
+     *
+     * Serve al caso piu' banale e piu' fastidioso: apri una chat, l'app
+     * ripristina la bozza — oppure avevi scritto prima di accendere la
+     * modalita' — e quel testo resta a schermo senza che la tastiera possa
+     * toccarlo, perche' cancellazione e cursore lavorano sul buffer. Due
+     * caselle visibili e una sola che risponde ai tasti sono peggio che non
+     * avere la riga.
+     *
+     * **Si adotta solo se il campo si e' davvero svuotato.** Se la
+     * cancellazione non riesce, il testo resterebbe in tutti e due i posti: al
+     * momento di cifrare finirebbe nel blob *e* accanto ad esso, in chiaro.
+     * Meglio non adottare niente e lasciare le cose come stanno.
+     */
+    fun adoptFieldText(ime: InputMethodService) {
+        if (!CipherSettings.isEnabled(ime)) return
+        if (!CipherCompose.isEnabled() || !CipherCompose.isEmptyBuffer()) return
+        val ic = appConnection(ime) ?: return
+        val field = readField(ime, ic) ?: return
+        if (field.text.isEmpty()) return
+        if (!replaceField(ic, field, "")) return
+        CipherCompose.adopt(field.text)
+    }
+
+    /**
      * Accende e spegne la riga di composizione dalla toolbar.
      *
      * La stessa cosa che fa l'interruttore nelle impostazioni, ma a portata di

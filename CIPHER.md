@@ -529,6 +529,45 @@ visibile anche a modalita' spenta, perche' e' il modo per riaccenderla —
 `SEND_PLAIN` invece sparisce, che senza la riga non avrebbe niente da
 consegnare.
 
+## Due guasti della riga di composizione, e come si vedevano
+
+### La riga copriva la casella dell'app — davvero, e la prima correzione non bastava
+
+L'altezza fissa aveva tolto il problema di quando *cresceva*, ma la riga
+restava sopra la casella dell'app **sempre**. Causa in `onComputeInsets`:
+
+    visibleTopY = inputHeight - visibleKeyboardView.getHeight() - stripHeight
+
+Da li' il sistema decide dove finisce l'app e comincia la tastiera. La riga fa
+parte della vista dell'IME — quindi entra in `inputHeight` — ma non veniva
+sottratta: il sistema calcolava un confine 56dp piu' in basso di quello vero e
+disegnava l'app sotto la riga. Coperta la casella, coperti con lei il pulsante
+degli allegati e quello del microfono, cioe' meta' di cio' che serve in una
+chat.
+
+Ora si sottrae anche `CipherCompose.rowHeight()`.
+
+### Il testo gia' nel campo non si poteva cancellare
+
+Apri una chat, l'app ripristina la bozza; oppure avevi scritto prima di
+accendere la modalita'. Quel testo resta a schermo e la tastiera non lo puo'
+toccare, perche' cancellazione e cursore lavorano sul buffer. Due caselle
+visibili e una sola che risponde ai tasti sono peggio che non avere la riga.
+
+`CipherActions.adoptFieldText`, chiamata da `onStartInputViewInternal` — dove
+la connessione e' viva, in `onStartInput` no — sposta quel testo nella riga.
+
+**Si adotta solo se il campo si e' davvero svuotato.** Se la cancellazione non
+riesce il testo resterebbe in due posti, e al momento di cifrare finirebbe nel
+blob *e* accanto ad esso in chiaro.
+
+### Nel frattempo: niente riga sui campi password
+
+Trovato guardando il resto: su un campo password la riga avrebbe mostrato a
+schermo cio' che il campo nasconde con i pallini, e l'avrebbe tenuto in un
+buffer nostro. Ora su quei campi la modalita' si sospende — e non e' una
+perdita, una password non ha nessun bisogno di essere cifrata.
+
 ## Invio automatico
 
 Con la riga di composizione attiva, dopo aver consegnato il messaggio all'app le

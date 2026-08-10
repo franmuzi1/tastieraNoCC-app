@@ -14,6 +14,7 @@ import androidx.core.view.isVisible
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.common.ColorType
 import helium314.keyboard.latin.settings.Settings
+import helium314.keyboard.latin.utils.InputTypeUtils
 
 /**
  * Riga di composizione: il chiaro si scrive **dentro la tastiera**, e l'app
@@ -67,6 +68,12 @@ object CipherCompose {
     private var connection: CipherConnection? = null
     private var row: CipherComposeView? = null
 
+    /**
+     * Sospesa per il campo corrente. Vedi [onInputStarted]: su una password la
+     * riga non deve comparire ne' ricevere niente.
+     */
+    private var suppressed = false
+
     fun reload(context: Context) {
         self = context.packageName
         val wanted = CipherSettings.isComposeMode(context)
@@ -85,7 +92,20 @@ object CipherCompose {
      * La connessione da dare a HeliBoard al posto di quella dell'app, o `null`
      * se il testo deve andare all'app come sempre.
      */
-    fun connection(): InputConnection? = if (enabled) connection else null
+    fun connection(): InputConnection? = if (enabled && !suppressed) connection else null
+
+    /**
+     * Quanto e' alta la riga adesso, zero se non c'e'.
+     *
+     * Serve a `onComputeInsets`: il sistema decide da li' dove finisce l'app e
+     * comincia la tastiera. Senza contarla, l'app veniva disegnata **sotto** la
+     * riga, che le copriva la casella di testo — e con essa il pulsante per
+     * allegare e quello del microfono.
+     */
+    fun rowHeight(): Int {
+        val view = row ?: return 0
+        return if (view.isVisible) view.height else 0
+    }
 
     /** Il chiaro composto finora. */
     fun text(): String = connection?.buffer?.toString().orEmpty()
@@ -123,6 +143,16 @@ object CipherCompose {
     fun onInputStarted(editorInfo: EditorInfo?) {
         if (!enabled) return
         val app = editorInfo?.packageName.orEmpty()
+        // Su una password la riga NON compare e non riceve niente: mostrerebbe
+        // a schermo cio' che il campo nasconde con i pallini, e lo terrebbe in
+        // un buffer nostro. Il campo dell'app e' l'unico posto giusto per una
+        // password, ed e' anche l'unico che non ha bisogno di essere cifrato.
+        suppressed = editorInfo != null && InputTypeUtils.isPasswordInputType(editorInfo.inputType)
+        if (suppressed) {
+            connection?.buffer?.clear()
+            updateRow()
+            return
+        }
         if (editorInfo == null || editorInfo.inputType == InputType.TYPE_NULL) return
         if (app.isEmpty() || app == self) return
         if (owner.isNotEmpty() && owner != app) {
@@ -152,10 +182,32 @@ object CipherCompose {
         updateRow()
     }
 
+    /**
+     * Prende nel buffer il testo che era gia' nel campo dell'app.
+     *
+     * Senza, restava a schermo del testo che la tastiera non poteva piu'
+     * toccare: la cancellazione e il cursore lavorano sul buffer, quindi
+     * l'ultima parola scritta prima di accendere la modalita' — o una bozza
+     * ripristinata dall'app — diventava incancellabile. Due caselle visibili e
+     * una sola che risponde ai tasti e' peggio che non avere la riga.
+     *
+     * Si adotta solo a buffer vuoto: quello che si sta componendo non si tocca.
+     */
+    fun adopt(text: CharSequence) {
+        val connection = connection ?: return
+        if (!enabled || suppressed || text.isEmpty()) return
+        if (connection.buffer.isNotEmpty()) return
+        connection.buffer.append(text)
+        Selection.setSelection(connection.buffer, connection.buffer.length)
+        updateRow()
+    }
+
+    fun isEmptyBuffer(): Boolean = connection?.buffer?.isEmpty() != false
+
     private fun updateRow() {
         val view = row ?: return
-        view.isVisible = enabled
-        if (!enabled) return
+        view.isVisible = enabled && !suppressed
+        if (!enabled || suppressed) return
         val buffer = connection?.buffer
         val text = buffer?.toString().orEmpty()
         // La posizione del cursore viene dal buffer e non da noi: e' HeliBoard

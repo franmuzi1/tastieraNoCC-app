@@ -58,6 +58,7 @@ import helium314.keyboard.keyboard.KeyboardSwitcher;
 import helium314.keyboard.keyboard.MainKeyboardView;
 import helium314.keyboard.latin.SuggestedWords.SuggestedWordInfo;
 import helium314.keyboard.latin.common.ColorType;
+import helium314.keyboard.cipher.CipherActions;
 import helium314.keyboard.cipher.CipherCompose;
 import helium314.keyboard.latin.common.Constants;
 import helium314.keyboard.latin.common.CoordinateUtils;
@@ -890,6 +891,11 @@ public class LatinIME extends InputMethodService implements
     void onStartInputViewInternal(final EditorInfo editorInfo, final boolean restarting) {
         super.onStartInputView(editorInfo, restarting);
 
+        // keyboard-cipher: qui la connessione e' viva, in onStartInput no. Il
+        // testo gia' presente nel campo passa nella riga, altrimenti resta a
+        // schermo senza che la tastiera possa cancellarlo.
+        CipherActions.INSTANCE.adoptFieldText(this);
+
         setGestureDataGatheringMode(editorInfo, restarting);
 
         mDictionaryFacilitator.onStartInput();
@@ -1236,7 +1242,11 @@ public class LatinIME extends InputMethodService implements
             return;
         }
         final int stripHeight = mKeyboardSwitcher.isShowingStripContainer() ? mKeyboardSwitcher.getStripContainer().getHeight() : 0;
-        int visibleTopY = inputHeight - visibleKeyboardView.getHeight() - stripHeight;
+        // keyboard-cipher: la riga di composizione fa parte della tastiera e va
+        // contata, altrimenti il sistema disegna l'app sotto di lei e la riga
+        // copre la casella di testo dell'app — e con essa allegati e microfono.
+        final int cipherRowHeight = CipherCompose.INSTANCE.rowHeight();
+        int visibleTopY = inputHeight - visibleKeyboardView.getHeight() - stripHeight - cipherRowHeight;
         if (Settings.getValues().mIsFloatingKeyboard)
             visibleTopY = getResources().getDisplayMetrics().heightPixels;
 
