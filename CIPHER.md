@@ -215,6 +215,46 @@ zipalign -f 4 base.apk aligned.apk && apksigner sign --ks ks.jks ... aligned.apk
 Verificato: con quel bersaglio in primo piano il processo
 `helium314.keyboard.debug` parte e serve il campo, senza crash.
 
+### Per vedere i tasti in toolbar
+
+Sono disattivati per default. Vanno scritte due preferenze in
+`/data/user_de/0/<pkg>/shared_prefs/<pkg>_preferences.xml` (separatori: `|` fra
+voci, `:` fra chiave e valore):
+
+```xml
+<string name="toolbar_keys">ENCRYPT:true|DECRYPT:true|SETTINGS:true|...</string>
+<string name="toolbar_mode">TOOLBAR_KEYS</string>
+```
+
+Due inciampi:
+- **l'IME attivo non si lascia terminare** con `am force-stop`: il sistema lo
+  riavvia subito e i preferences restano quelli vecchi. Per farglieli rileggere
+  si cambia tastiera e si torna indietro (`ime set` sull'IME AOSP e poi sul
+  nostro);
+- all'inizio la striscia è occupata dall'avviso sui contatti, che copre la
+  toolbar. Va chiuso rispondendo al dialogo.
+
+### `uiautomator` non basta, lo screenshot sì
+
+`uiautomator dump` **non vede la finestra dell'IME** e **non espone il testo
+dell'`EditText`** del bersaglio: restituisce `text=""` anche quando il campo è
+pieno. Chi si fida di quel dump conclude che non è successo niente — è successo
+due volte qui. La verifica affidabile è `screencap` più una lettura
+dell'immagine.
+
+### Ciclo completo osservato
+
+Pressione lunga su "cifra" → nel campo dell'app compare `kc/` seguito da un
+blob z-base-32. È l'intera catena che gira per davvero:
+
+    toolbar → KeyCode.CIPHER_IDENTITY_CARD → KeyboardActionListenerImpl
+    → CipherActions.insertIdentityCard → CipherIdentity.ensureReady
+    (Keystore + storage + nativeInit) → CipherCore.nativeIdentityCard
+    → commitText
+
+Pressione breve su "cifra" senza destinatario fissato emette un toast e **non**
+tocca il campo, che è il comportamento voluto: il destinatario non si indovina.
+
 ## Cosa ha insegnato la prima esecuzione
 
 **`setUnlockedDeviceRequired(true)` fallisce alla *generazione* della chiave se
