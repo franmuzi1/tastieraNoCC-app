@@ -165,6 +165,7 @@ class DecryptActivity : Activity() {
         root.addView(header(senderLine(result), result.verified == 1))
         root.addView(caption(getString(R.string.cipher_composed_at, formatTimestamp(result.sentAtUnix))))
         root.addView(body(testo))
+        root.addView(contactsButton())
         root.addView(closeButton())
         setContentView(root)
     }
@@ -178,8 +179,29 @@ class DecryptActivity : Activity() {
         //   Arriva con la UI contatti, che e' anche l'unico posto in cui il
         //   conflitto "questo nome e' gia' di un'altra chiave" ha senso.
         root.addView(caption(getString(R.string.cipher_card_pinned)))
+        root.addView(contactsButton())
         root.addView(closeButton())
         setContentView(root)
+    }
+
+    /**
+     * Ingresso alla UI contatti, che e' dove si da' un nome a questa chiave e
+     * la si conferma di persona.
+     *
+     * Sta qui perche' e' il momento in cui serve: l'utente ha appena visto
+     * comparire un contatto nuovo. `ContactsActivity` non e' nel launcher e non
+     * e' esportata, quindi senza un aggancio come questo sarebbe irraggiungibile.
+     *
+     * TODO: manca ancora la voce nelle impostazioni della tastiera, che e' il
+     *   punto d'ingresso previsto e l'unico che si trova quando NON si sta
+     *   guardando un messaggio.
+     */
+    private fun contactsButton(): View = Button(this).apply {
+        setText(R.string.cipher_contacts)
+        setOnClickListener {
+            runCatching { startActivity(Intent(this@DecryptActivity, ContactsActivity::class.java)) }
+            finish()
+        }
     }
 
     private fun showUnreadable(part: CipherPart) {

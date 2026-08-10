@@ -99,14 +99,25 @@ leggere no.
 *Residuo:* un tocco lungo è poco scopribile. Il punto d'ingresso visibile è la
 UI contatti (punto 6); questo è il gesto veloce, non l'unico previsto.
 
-**6. UI di `ContactsActivity`.** Elenco peer, fingerprint, etichette
-(`nativeAssignLabel`), verifica fuori banda (`nativeMarkVerified`), QR.
-Due schermate non sono cosmetiche:
-- **conflitto di etichetta** — è il "safety number changed" di Signal, e senza
-  di essa `nativeConfirmKeyChange` è irraggiungibile;
-- **`CipherState.Unreadable` → `resetIdentity`** — l'unica uscita da
-  un'identità non decifrabile, e va dietro una schermata che dica che si sta
-  distruggendo l'identità.
+**~~6. UI di `ContactsActivity`.~~ FATTA, tranne il QR.** Elenco peer con
+fingerprint monospaziato, etichette (`nativeAssignLabel`), verifica fuori banda
+(`nativeMarkVerified`), schermata di conflitto (`nativeConfirmKeyChange`) e
+reset identità. `PeerList` decodifica il blob di `nativeListPeers` — record a
+lunghezza **variabile**, l'etichetta lo è.
+
+Nelle due schermate delicate l'azione distruttiva sta sul pulsante **negativo**,
+contro convenzione e apposta: il posto dove cade il pollice dev'essere quello
+che non cambia niente.
+
+*Residui:*
+- **il QR non c'è.** È l'unica cosa che chiude il MITM al primo contatto, che il
+  TOFU da solo non chiude. Mostrarlo non costa permessi; scansionarlo richiede
+  `CAMERA`, e allora va chiesto a runtime all'apertura dello scanner, mai
+  all'installazione;
+- **manca la voce nelle impostazioni.** Oggi a `ContactsActivity` si arriva solo
+  dal pulsante dentro `DecryptActivity`, cioè solo mentre si guarda un
+  messaggio. Serve l'ingresso dalle impostazioni della tastiera, che è quello
+  previsto e l'unico che si trova quando non si sta leggendo niente.
 
 **7. Cronologia clipboard.** Se si abilita la copia del testo decifrato, quel
 contenuto va escluso esplicitamente dalla cronologia clipboard della tastiera —

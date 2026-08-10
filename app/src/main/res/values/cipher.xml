@@ -76,6 +76,46 @@
     <string name="cipher_unreadable_identity" tools:ignore="MissingTranslation">La tua identita\' non e\' decifrabile su questo dispositivo. Non e\' stata cambiata: finche\' non decidi tu, resta com\'e\'.</string>
     <string name="cipher_unreadable_keyring" tools:ignore="MissingTranslation">L\'elenco dei contatti non e\' decifrabile. Non e\' stato svuotato: finche\' non decidi tu, resta com\'e\'.</string>
 
+    <!-- ContactsActivity. -->
+    <string name="cipher_my_identity" tools:ignore="MissingTranslation">La tua identita\'</string>
+    <string name="cipher_my_identity_hint" tools:ignore="MissingTranslation">Questo codice ti identifica. Leggilo a voce a chi vuoi contattare: se combacia, nessuno si e\' interposto.</string>
+    <string name="cipher_contacts" tools:ignore="MissingTranslation">Contatti</string>
+    <string name="cipher_no_contacts" tools:ignore="MissingTranslation">Nessun contatto. Ne comparira\' uno appena ricevi un messaggio cifrato o una presentazione.</string>
+    <string name="cipher_unnamed_peer" tools:ignore="MissingTranslation">Senza nome</string>
+    <string name="cipher_first_seen" tools:ignore="MissingTranslation">Visto la prima volta il %1$s</string>
+    <string name="cipher_peer_detail" tools:ignore="MissingTranslation">%1$s</string>
+    <string name="cipher_assign_label" tools:ignore="MissingTranslation">Dai un nome</string>
+    <!--
+        Il nome e\' LOCALE: sta su questo telefono e non viaggia con i messaggi.
+        Dirlo evita che l\'utente creda di star rinominando qualcuno anche
+        dall\'altra parte.
+    -->
+    <string name="cipher_assign_label_hint" tools:ignore="MissingTranslation">Il nome resta su questo telefono e serve ad accorgersi se un giorno la chiave cambia.</string>
+    <string name="cipher_mark_verified" tools:ignore="MissingTranslation">Ho confrontato di persona</string>
+    <string name="cipher_mark_verified_body" tools:ignore="MissingTranslation">Conferma solo se hai confrontato questo codice di persona o in una chiamata in cui riconosci la voce:\n\n%1$s</string>
+
+    <!--
+        Conflitto di etichetta: il "safety number changed" di Signal.
+        Si mostrano ENTRAMBI i fingerprint e si spiegano le due letture senza
+        sceglierne una. Non toccare il tono: la lettura innocua e quella
+        pericolosa devono restare sullo stesso piano, perche\' da qui nessuno
+        puo\' sapere quale delle due sia vera.
+    -->
+    <string name="cipher_conflict_title" tools:ignore="MissingTranslation">Questo nome e\' gia\' di un\'altra chiave</string>
+    <string name="cipher_conflict_body" tools:ignore="MissingTranslation">\"%1$s\" e\' gia\' associato a questa chiave:\n\n%2$s\n\nQuella che stai nominando e\' diversa:\n\n%3$s\n\nPuo\' voler dire due cose: ha reinstallato l\'app o cambiato telefono, oppure qualcuno si sta interponendo. Non c\'e\' modo di distinguerle da qui: chiediglielo su un altro canale.\n\nPer ora non e\' stato cambiato nulla.</string>
+    <string name="cipher_conflict_keep" tools:ignore="MissingTranslation">Non cambiare nulla</string>
+    <string name="cipher_conflict_replace" tools:ignore="MissingTranslation">E\' la sua chiave nuova</string>
+    <string name="cipher_key_replaced" tools:ignore="MissingTranslation">Nome spostato sulla chiave nuova. Va confrontata di nuovo di persona.</string>
+
+    <!--
+        Reset dell\'identita\'. Le tre conseguenze vanno tutte e tre nel testo:
+        e\' distruzione di dati, e il pulsante che la esegue e\' quello negativo
+        apposta.
+    -->
+    <string name="cipher_reset_identity" tools:ignore="MissingTranslation">Ricomincia da capo</string>
+    <string name="cipher_reset_identity_body" tools:ignore="MissingTranslation">Genera una nuova identita\' e butta via quella attuale.\n\n• La vecchia identita\' non e\' recuperabile.\n• I messaggi gia\' ricevuti non saranno piu\' leggibili.\n• Ogni tuo contatto vedra\' che la tua chiave e\' cambiata: lo stesso segnale che indica un tentativo di impersonarti.\n\nFallo solo se non c\'e\' altra via.</string>
+    <string name="cipher_reset_identity_confirm" tools:ignore="MissingTranslation">Butta via e ricomincia</string>
+
     <!--
         Tema dell'Activity che mostra il testo decifrato.
 
