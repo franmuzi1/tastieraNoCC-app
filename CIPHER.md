@@ -457,9 +457,24 @@ cio'):
 | decifra del blob | *"ciao mondo"*, integro |
 | modalita' spenta | riga assente, altezza identica al pixel, digitazione nel campo come prima |
 
-*Residuo dichiarato:* la riga mostra il testo ma non il **cursore** — la
-finestra di un IME non prende il fuoco, quindi nessuna vista ci puo' disegnare
-un caret lampeggiante. Il cursore esiste e si muove nel buffer, non si vede.
+### Il cursore e' disegnato a mano
+
+La finestra di un IME non prende il fuoco — se lo prendesse lo toglierebbe al
+campo dell'app, che e' cio' che la tastiera serve a riempire — e un `TextView`
+disegna il caret solo quando ce l'ha. Quindi il cursore di questa riga non e'
+quello di sistema: e' una barra disegnata in `onDraw` alla posizione che il
+buffer dichiara, con lampeggio a mezzo secondo, fermato quando la riga non e'
+visibile o non e' attaccata.
+
+Non e' estetica: in un campo il cui testo non compare da nessun'altra parte,
+senza cursore non c'e' modo di sapere dove finira' il prossimo carattere dopo
+aver cancellato o spostato.
+
+La posizione viene da `Selection` sul buffer, cioe' dalla stessa fonte che
+HeliBoard aggiorna scrivendo: verificato che lo spostamento con lo **swipe sulla
+barra spazio** muove il caret e che il carattere successivo entra li' e non in
+fondo. Disegnata anche la selezione, riga per riga — su piu' righe non e' un
+rettangolo.
 
 ## L'altezza della tastiera non e' cambiata — misurata
 

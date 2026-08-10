@@ -5,13 +5,11 @@ import android.text.Editable
 import android.text.InputType
 import android.text.Selection
 import android.text.SpannableStringBuilder
-import android.text.method.ScrollingMovementMethod
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
-import android.widget.TextView
 import androidx.core.view.isVisible
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.common.ColorType
@@ -75,7 +73,7 @@ object CipherCompose {
     private var self: String = ""
 
     private var connection: CipherConnection? = null
-    private var row: TextView? = null
+    private var row: CipherComposeView? = null
 
     fun reload(context: Context) {
         self = context.packageName
@@ -149,7 +147,7 @@ object CipherCompose {
      * vista non piu' attaccata a niente.
      */
     fun bind(view: View) {
-        val found: TextView? = view.findViewById(R.id.cipher_compose_row)
+        val found: CipherComposeView? = view.findViewById(R.id.cipher_compose_row)
         row = found
         if (found == null) return
         if (connection == null) connection = CipherConnection(view) { updateRow() }
@@ -158,10 +156,7 @@ object CipherCompose {
         colors.setBackground(found, ColorType.STRIP_BACKGROUND)
         found.setTextColor(colors.get(ColorType.KEY_TEXT))
         found.setHintTextColor(colors.get(ColorType.KEY_HINT_TEXT))
-        // Il testo puo' superare le righe visibili: senza un movement method la
-        // parte in fondo — cioe' quella che si sta scrivendo — resterebbe
-        // invisibile.
-        found.movementMethod = ScrollingMovementMethod()
+        found.setCaretColor(colors.get(ColorType.KEY_TEXT))
         updateRow()
     }
 
@@ -169,18 +164,14 @@ object CipherCompose {
         val view = row ?: return
         view.isVisible = enabled
         if (!enabled) return
-        val text = text()
-        view.text = text
-        // Alla fine, dov'e' il cursore quando si scrive. Va rimandato al giro
-        // di layout successivo: prima che la vista abbia misurato il testo
-        // nuovo, l'altezza da cui calcolare lo scorrimento e' ancora quella
-        // vecchia.
-        view.post {
-            val lines = view.layout?.lineCount ?: return@post
-            val visible = view.height - view.paddingTop - view.paddingBottom
-            val needed = view.layout?.getLineBottom(lines - 1) ?: 0
-            view.scrollTo(0, if (needed > visible) needed - visible else 0)
-        }
+        val buffer = connection?.buffer
+        val text = buffer?.toString().orEmpty()
+        // La posizione del cursore viene dal buffer e non da noi: e' HeliBoard
+        // a spostarla, scrivendo e cancellando, ed e' l'unica fonte di verita'
+        // su dove finira' il prossimo carattere.
+        val start = buffer?.let { Selection.getSelectionStart(it) } ?: 0
+        val end = buffer?.let { Selection.getSelectionEnd(it) } ?: 0
+        view.setComposed(text, minOf(start, end).coerceAtLeast(0), maxOf(start, end).coerceAtLeast(0))
     }
 
     /**

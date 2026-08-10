@@ -179,9 +179,24 @@ object CipherIdentity {
             if (CipherCore.nativeImportBackup(blob, passphrase, secret) != CipherCore.OK) {
                 return CipherState.Unreadable(CipherPart.IDENTITY)
             }
+            // ATTENZIONE: a questo punto la sessione nativa e' GIA' cambiata —
+            // `nativeImportBackup` sostituisce identita' e portachiavi prima di
+            // tornare. Da qui in poi un fallimento non e' piu' un "non e'
+            // successo niente": in memoria c'e' la nuova identita' e su disco
+            // la vecchia.
+            //
+            // Senza il ripristino qui sotto, l'utente leggeva "non e' stato
+            // possibile aprire il file" — falso, si era aperto benissimo — e
+            // continuava a cifrare con l'identita' importata finche' il
+            // processo restava vivo, per poi tornare alla vecchia al riavvio.
+            // Due identita' che si alternano senza che nulla lo dica.
             val wrapped = CipherKeystore.wrap(AAD_IDENTITY, secret)
-                ?: return CipherState.Unavailable(CipherReason.KEYSTORE)
+            if (wrapped == null) {
+                annullaImport(context)
+                return CipherState.Unavailable(CipherReason.KEYSTORE)
+            }
             if (!CipherStorage.write(context, CipherStorage.IDENTITY, wrapped)) {
+                annullaImport(context)
                 return CipherState.Unavailable(CipherReason.STORAGE)
             }
             ready = true
@@ -192,6 +207,18 @@ object CipherIdentity {
         } finally {
             secret.fill(0)
         }
+    }
+
+    /**
+     * Rimette la sessione com'era, ricaricandola dal disco.
+     *
+     * Serve quando l'import e' riuscito in memoria ma non si e' potuto
+     * persistere: lasciare le due cose disallineate e' peggio che fallire.
+     */
+    @RequiresApi(Build.VERSION_CODES.M)
+    private fun annullaImport(context: Context) {
+        ready = false
+        loadLocked(context)
     }
 
     /**

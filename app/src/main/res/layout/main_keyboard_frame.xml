@@ -21,7 +21,7 @@
         maxLines la tiene a tre righe e il testo piu' lungo scorre, invece di
         far crescere la tastiera mentre si scrive.
     -->
-    <TextView
+    <helium314.keyboard.cipher.CipherComposeView
         android:id="@+id/cipher_compose_row"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

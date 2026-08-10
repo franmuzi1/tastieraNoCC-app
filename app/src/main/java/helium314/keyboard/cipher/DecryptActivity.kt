@@ -33,6 +33,18 @@ import java.util.Date
  */
 class DecryptActivity : Activity() {
 
+    /**
+     * Il package dell'app da cui arriva il testo, risolto UNA volta per
+     * intent.
+     *
+     * Una volta e non a richiesta perche' il gettone di [CipherHandoff] e' a
+     * uso singolo: la prima chiamata lo consuma, e ogni chiamata successiva
+     * troverebbe "nessuna attribuzione". E' esattamente cio' che succedeva al
+     * pulsante "scrivi a questo contatto", che spariva perche' interrogava una
+     * seconda volta.
+     */
+    private var appDiProvenienza: String = ""
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Prima di qualunque cosa che possa finire sullo schermo.
         // Blocca screenshot, registrazione schermo, e la miniatura che il
@@ -62,6 +74,7 @@ class DecryptActivity : Activity() {
     }
 
     private fun handle(intent: Intent) {
+        appDiProvenienza = resolveCallerPackage()
         val incoming = extractText(intent)
         if (incoming == null) {
             finish()
@@ -77,7 +90,7 @@ class DecryptActivity : Activity() {
 
         val result = CipherCore.IncomingResult()
         val code = CipherCore.nativeHandleIncomingText(
-            callerPackage(),
+            appDiProvenienza,
             incoming.toString(),
             System.currentTimeMillis() / 1000,
             result,
@@ -134,36 +147,29 @@ class DecryptActivity : Activity() {
      * un'altra conversazione, e la prossima cifratura andrebbe alla persona
      * sbagliata senza che nulla lo segnali.
      */
-    private fun callerPackage(): String {
-        val referrerPackage = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-            referrer?.host.orEmpty()
-        } else {
-            ""
-        }
-        // Se a lanciarci e' stata la nostra stessa tastiera, `referrer` dice il
-        // package DI QUESTA APP e non quello della chat: e' l'IME che ci ha
-        // chiamati. In quel caso l'unico che sa dove stava scrivendo l'utente
-        // e' l'IME, che ce lo passa.
-        //
-        // Il controllo sul chiamante non e' formale: questa Activity e'
-        // esportata, quindi qualunque app puo' mandarci un intent e mettere
-        // quell'extra. Onorarlo senza verificare chi chiama permetterebbe a
-        // un'app qualsiasi di spostare il destinatario corrente di un'altra
-        // conversazione — e la cifratura successiva andrebbe alla persona
-        // sbagliata senza che nulla lo segnali.
-        if (referrerPackage == packageName || callingActivity?.packageName == packageName) {
-            val editor = intent.getStringExtra(EXTRA_EDITOR_PACKAGE)
-            if (!editor.isNullOrEmpty()) return editor
-            // L'IME non sapeva in che app si stava scrivendo: meglio nessuna
-            // attribuzione che una sbagliata.
-            return ""
-        }
-        return callingActivity?.packageName ?: referrerPackage
-    }
+    private fun resolveCallerPackage(): String {
+        // Il gettone lo puo' avere messo solo la nostra tastiera: e' generato a
+        // caso in memoria, nello stesso processo, e consumato una volta sola.
+        // Un'app esterna puo' scrivere qualunque extra ma non puo' indovinarlo.
+        CipherHandoff.consume(intent.getStringExtra(CipherHandoff.extraName()))
+            ?.let { return it }
 
-    companion object {
-        /** Vedi [callerPackage]. Onorato solo se a chiamare e' questa stessa app. */
-        const val EXTRA_EDITOR_PACKAGE = "helium314.keyboard.cipher.EDITOR_PACKAGE"
+        // `callingActivity` e' l'unica attribuzione che assegna il SISTEMA, e
+        // c'e' solo se il chiamante ha usato startActivityForResult — cioe' per
+        // ACTION_PROCESS_TEXT.
+        //
+        // NON si usa `getReferrer()`: restituisce `Intent.EXTRA_REFERRER` se
+        // presente, cioe' un extra scritto dal chiamante. La documentazione
+        // Android dice esplicitamente che non e' una funzione di sicurezza e
+        // che le applicazioni possono falsificarlo. Una versione precedente di
+        // questo codice lo usava sia come guardia sia come attribuzione, e la
+        // guardia non fermava niente: bastava dichiararsi com.whatsapp per
+        // spostare il destinatario della vera conversazione WhatsApp.
+        //
+        // Senza attribuzione si ritorna "", che il core tratta come "non
+        // determinabile" e che disabilita la scelta implicita del
+        // destinatario. E' il verso giusto in cui fallire.
+        return callingActivity?.packageName.orEmpty()
     }
 
     // ========================================================================
@@ -198,16 +204,59 @@ class DecryptActivity : Activity() {
 
     private fun showIdentityCard(result: CipherCore.IncomingResult) {
         val root = screen()
-        root.addView(header(getString(R.string.cipher_card_title), result.verified == 1))
+        val gia = result.alreadyPinned == 1
+        // Nessun segno di verifica qui: quello significa "confrontato di
+        // persona" e una presentazione non lo prova. Titolo diverso se la
+        // chiave era gia' nota, perche' "Nuovo contatto" su un contatto vecchio
+        // e' semplicemente falso.
+        root.addView(
+            header(
+                getString(
+                    if (gia) R.string.cipher_card_known else R.string.cipher_card_title
+                ),
+                false,
+            )
+        )
         root.addView(body(result.senderFingerprint.orEmpty()))
-        // TODO: da qui si arriva a dare un nome alla chiave (nativeAssignLabel)
-        //   e a confrontare il fingerprint di persona (nativeMarkVerified).
-        //   Arriva con la UI contatti, che e' anche l'unico posto in cui il
-        //   conflitto "questo nome e' gia' di un'altra chiave" ha senso.
-        root.addView(caption(getString(R.string.cipher_card_pinned)))
+        root.addView(
+            caption(
+                getString(
+                    if (gia) R.string.cipher_card_known_hint else R.string.cipher_card_pinned
+                )
+            )
+        )
+
+        // La presentazione NON sceglie il destinatario da sola: non e'
+        // autenticata, quindi chiunque potrebbe mandarne una e dirottare per
+        // chi cifri. Qui c'e' il gesto esplicito che lo fa, e solo se sappiamo
+        // in quale app siamo.
+        val peer = result.senderKey
+        val app = appDiProvenienza
+        if (peer != null && app.isNotEmpty()) {
+            root.addView(Button(this).apply {
+                setText(R.string.cipher_use_as_recipient)
+                setOnClickListener {
+                    if (CipherCore.nativeSetCurrentPeer(app, peer) == CipherCore.OK) {
+                        Toast.makeText(
+                            this@DecryptActivity,
+                            R.string.cipher_recipient_set,
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                        finish()
+                    } else {
+                        Toast.makeText(
+                            this@DecryptActivity,
+                            R.string.cipher_unavailable,
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }
+            })
+        }
+
         root.addView(contactsButton())
         root.addView(closeButton())
-        setContentView(root)
+        setContentView(scroll(root))
     }
 
     /**
@@ -215,12 +264,8 @@ class DecryptActivity : Activity() {
      * la si conferma di persona.
      *
      * Sta qui perche' e' il momento in cui serve: l'utente ha appena visto
-     * comparire un contatto nuovo. `ContactsActivity` non e' nel launcher e non
-     * e' esportata, quindi senza un aggancio come questo sarebbe irraggiungibile.
-     *
-     * TODO: manca ancora la voce nelle impostazioni della tastiera, che e' il
-     *   punto d'ingresso previsto e l'unico che si trova quando NON si sta
-     *   guardando un messaggio.
+     * comparire un contatto. `ContactsActivity` non e' nel launcher, quindi
+     * senza un aggancio come questo si arriverebbe solo dalle impostazioni.
      */
     private fun contactsButton(): View = Button(this).apply {
         setText(R.string.cipher_contacts)
@@ -270,6 +315,8 @@ class DecryptActivity : Activity() {
         val date = Date(unix * 1000)
         return "${DateFormat.getDateFormat(this).format(date)} ${DateFormat.getTimeFormat(this).format(date)}"
     }
+
+    private fun scroll(content: View): View = ScrollView(this).apply { addView(content) }
 
     private fun screen(): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL

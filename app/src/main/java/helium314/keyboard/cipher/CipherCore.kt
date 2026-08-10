@@ -77,8 +77,14 @@ object CipherCore {
      */
     class IncomingResult {
         @JvmField var kind: Int = -1
-        /** 1 se il mittente e' stato verificato fuori banda. */
+        /**
+         * 1 se il mittente e' stato verificato fuori banda, cioe' se l'utente
+         * ha confrontato il codice di persona. E' l'unico segnale anti-MITM
+         * del sistema: non va mai riempito con altro.
+         */
         @JvmField var verified: Int = 0
+        /** Solo per le presentazioni: 1 se quella chiave era gia' nota. */
+        @JvmField var alreadyPinned: Int = 0
         /** Solo per [KIND_MESSAGE]. Da azzerare dopo l'uso. */
         @JvmField var plaintext: ByteArray? = null
         /**
