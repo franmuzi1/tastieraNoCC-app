@@ -181,7 +181,24 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
         <category android:name="android.intent.category.DEFAULT" />
         <data android:mimeType="text/plain" />
     </intent-filter>
+
 </activity>
+
+<!--
+  Scelta esplicita del destinatario, dalla tastiera.
+
+  Stessi attributi di DecryptActivity e per gli stessi motivi: mostra
+  fingerprint, quindi FLAG_SECURE e niente miniatura nei Recenti. NON esportata:
+  ci si arriva solo dalla tastiera, con il gettone che dice da quale app.
+-->
+<activity
+    android:name="helium314.keyboard.cipher.RecipientActivity"
+    android:exported="false"
+    android:noHistory="true"
+    android:excludeFromRecents="true"
+    android:taskAffinity=""
+    android:launchMode="singleTask"
+    android:theme="@style/Theme.Cipher.Dialog" />
 
 <!--
   Gestione contatti, fingerprint e conflitti di chiave.

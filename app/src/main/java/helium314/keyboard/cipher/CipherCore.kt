@@ -60,6 +60,8 @@ object CipherCore {
     // Valori del campo `kind` di [IncomingResult] dopo nativeHandleIncomingText.
     const val KIND_MESSAGE = 0
     const val KIND_IDENTITY_CARD = 1
+    /** Allegato cifrato: vedi [nativeDecryptFile]. */
+    const val KIND_FILE = 2
 
     // Valori del campo `kind` dopo nativeAssignLabel.
     const val LABEL_ASSIGNED = 0
@@ -101,6 +103,17 @@ object CipherCore {
         @JvmField var senderLabel: String? = null
         /** Pubkey del mittente: serve per etichettarlo o selezionarlo. */
         @JvmField var senderKey: ByteArray? = null
+        /**
+         * Solo per [KIND_FILE]. Nome e tipo arrivano da chi ha mandato il
+         * file: sono autenticati — l'AEAD ha detto di si' — ma **non
+         * credibili**, perche' il mittente puo' averci scritto qualunque cosa.
+         * Chi li usa per salvare deve ripulirli: un nome puo' contenere `../`
+         * o un separatore di percorso.
+         */
+        @JvmField var fileName: String? = null
+        @JvmField var fileMime: String? = null
+        /** Solo per [KIND_FILE]. Da azzerare dopo l'uso, come il plaintext. */
+        @JvmField var fileContent: ByteArray? = null
         /** Solo su [LABEL_CONFLICT]: la chiave che tiene gia' quel nome. */
         @JvmField var existingFingerprint: String? = null
         @JvmField var existingKey: ByteArray? = null
@@ -189,6 +202,37 @@ object CipherCore {
     ): String?
 
     external fun nativeSetCurrentPeer(appPackage: String, peer: ByteArray): Int
+
+    /**
+     * C'e' gia' un destinatario per questa app?
+     *
+     * Serve a distinguere "non so a chi cifrare" da "la cifratura e' fallita":
+     * due cose che l'utente risolve in modi diversi e che senza questa domanda
+     * si vedono uguali, cioe' come un tasto che non fa niente.
+     */
+    external fun nativeHasCurrentPeer(appPackage: String): Boolean
+
+    /**
+     * Cifra un file per un peer **scelto esplicitamente**: qui non c'e' un'app
+     * di provenienza da cui dedurre il destinatario, e indovinarlo sarebbe il
+     * modo per mandare una foto alla persona sbagliata.
+     *
+     * Ritorna i byte dell'allegato, o null se il peer non e' nel keyring o la
+     * cifratura fallisce. Il chiamante azzera `content` appena consegnato.
+     */
+    external fun nativeEncryptFile(
+        peer: ByteArray,
+        name: String,
+        mime: String,
+        content: ByteArray,
+        nowUnix: Long,
+    ): ByteArray?
+
+    /**
+     * Apre un allegato ricevuto. Riempie `fileName`, `fileMime`, `fileContent`,
+     * piu' i campi sul mittente. Ritorna uno dei codici sopra.
+     */
+    external fun nativeDecryptFile(blob: ByteArray, nowUnix: Long, result: IncomingResult): Int
 
     /**
      * Attribuisce un nome a una chiave gia' fissata. E' il punto in cui il

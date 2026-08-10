@@ -43,6 +43,11 @@ object CipherActions {
      */
     fun encrypt(ime: InputMethodService) {
         if (!ready(ime)) return
+        val pacchetto = ime.currentInputEditorInfo?.packageName.orEmpty()
+        if (pacchetto.isNotEmpty() && !CipherCore.nativeHasCurrentPeer(pacchetto)) {
+            chiediDestinatario(ime)
+            return
+        }
         val ic = appConnection(ime) ?: return
 
         // Con la riga di composizione attiva il chiaro non e' mai stato nel
@@ -77,7 +82,10 @@ object CipherActions {
         }
 
         if (blob == null) {
-            toast(ime, R.string.cipher_no_recipient)
+            // Un vicolo cieco diventa il punto d'ingresso: chiedere "a chi?" e
+            // non offrire il modo di rispondere e' il motivo per cui il tasto
+            // sembrava rotto.
+            chiediDestinatario(ime)
             return
         }
         if (composed != null) {
@@ -254,6 +262,23 @@ object CipherActions {
         CipherCompose.reload(ime)
         KeyboardSwitcher.getInstance().setThemeNeedsReload()
         toast(ime, if (wanted) R.string.cipher_compose_on else R.string.cipher_compose_off)
+    }
+
+    /**
+     * Apre la scelta del destinatario per l'app in cui si sta scrivendo.
+     *
+     * Il package viaggia nel gettone di [CipherHandoff], non come extra
+     * qualunque: gli extra li scrive chiunque, e attribuire la scelta all'app
+     * sbagliata dirotterebbe per chi si cifra.
+     */
+    private fun chiediDestinatario(ime: InputMethodService) {
+        val pacchetto = ime.currentInputEditorInfo?.packageName.orEmpty()
+        if (pacchetto.isEmpty()) {
+            toast(ime, R.string.cipher_no_recipient)
+            return
+        }
+        runCatching { ime.startActivity(RecipientActivity.intent(ime, pacchetto)) }
+            .onFailure { toast(ime, R.string.cipher_no_recipient) }
     }
 
     /**
@@ -546,7 +571,23 @@ object CipherActions {
         hintMaxLines = 0
     }
 
+    /**
+     * Messaggi all'utente, per la via che funziona davvero.
+     *
+     * **Non** `Toast.makeText`: da Android 13 un toast viene soppresso se le
+     * notifiche dell'app sono disattivate, e una tastiera quel permesso non lo
+     * chiede mai. Il risultato era che la tastiera rispondeva — "scegli prima
+     * un destinatario", "niente da decifrare" — e sullo schermo non compariva
+     * niente: il guasto peggiore da diagnosticare, perche' sembra che il tasto
+     * non faccia nulla.
+     *
+     * `KeyboardSwitcher.showToast` sceglie da se': toast vero fino ad Android
+     * 12, e da li' in poi un avviso disegnato dentro la finestra della
+     * tastiera, che nessun permesso puo' sopprimere. HeliBoard aveva gia'
+     * risolto il problema per se'; qui si riusa la sua soluzione invece di
+     * inventarne una seconda.
+     */
     private fun toast(ime: InputMethodService, resId: Int) {
-        Toast.makeText(ime, resId, Toast.LENGTH_SHORT).show()
+        KeyboardSwitcher.getInstance().showToast(ime.getString(resId), true)
     }
 }
