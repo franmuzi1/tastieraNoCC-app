@@ -187,19 +187,35 @@ identità, i tasti in toolbar dentro l'IME vero, e il conflitto di etichetta.
 | ciclo completo sul dispositivo da stato pulito | card → pin → cifra → decifra, nessun crash |
 | dialogo QR nel build minificato | si apre, `ImageView` presente, nessun problema con R8 |
 
+## Percorsi negativi — PROVATI
+
+Fabbricati alterando i byte del corpo di un messaggio valido (decodifica
+z-base-32 → mutazione → ricodifica), poi dati in pasto al tasto "decifra":
+
+| Variante | Cosa appare |
+|---|---|
+| `body[0] = 2` (versione futura) | *"Messaggio creato con una versione più recente. Aggiorna l'app."* |
+| `body[2] = 1` (tier forward-secrecy) | *"Questo messaggio usa una modalità non ancora supportata"* |
+| ultimo byte del tag alterato | *"Impossibile decifrare questo messaggio"* |
+| ciphertext troncato di 20 byte | *"Impossibile decifrare questo messaggio"* |
+| testo qualunque | *"Questo testo non è cifrato"* |
+
+Le due righe che contano sono le ultime tre:
+
+- **corrotto e troncato danno il messaggio identico.** È la regola di opacità:
+  il core non distingue "tag non valido" da "ciphertext accorciato", e la UI non
+  reintroduce la distinzione travestita da messaggi diversi;
+- **la versione futura non dice "non è cifrato".** È la conferma pratica della
+  scelta di tenere la versione nel primo byte del corpo e non nel sentinel: col
+  sentinel versionato, un blob della v2 non sarebbe stato nemmeno riconosciuto
+  come nostro;
+- **il testo qualunque non è un errore**, ed è l'esito più comune.
+
 ## Cosa NON è ancora stato provato
 
-Tutti i percorsi felici sono coperti. Restano scoperti i **negativi** e i
-**margini di versione**, che è dove il comportamento è stato progettato con più
-cura e verificato di meno:
-
-- **blob corrotto o troncato** → deve dare *"Impossibile decifrare"*, un solo
-  messaggio per qualunque causa. Mai provato su dispositivo;
-- **versione futura** → deve dire *"aggiorna l'app"*, non *"non è cifrato"*;
-- **tier non supportato** → messaggio dedicato;
 - **API 23** (il minimo in cui la cifratura esiste): niente StrongBox, niente
   `setUnlockedDeviceRequired`. È il terzo ramo di `CipherKeystore.generate`,
-  osservato solo su API 34 senza blocco schermo;
+  osservato finora solo su API 34 senza blocco schermo;
 - **API 21–22**, dove la funzione deve dichiararsi non disponibile invece di
   fallire.
 
