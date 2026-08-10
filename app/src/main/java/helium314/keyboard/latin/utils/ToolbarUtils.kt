@@ -183,8 +183,17 @@ val defaultToolbarPref by lazy {
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
 }
 
-val defaultPinnedToolbarPref = entries.filterNot { it == CLOSE_HISTORY }.joinToString(Separators.ENTRY) {
-    it.name + Separators.KV + false
+val defaultPinnedToolbarPref by lazy {
+    // keyboard-cipher: i due lucchetti sono fissati, cioe' restano visibili
+    // accanto ai suggerimenti senza dover aprire la barra.
+    //
+    // Costa due posti alla striscia dei suggerimenti, ed e' un prezzo pagato
+    // volentieri: attivi ma nascosti dietro una freccia significa che chi
+    // installa non li trova, e una funzione che non si trova non esiste.
+    val pinned = listOf(ENCRYPT, DECRYPT)
+    val others = entries.filterNot { it in pinned || it == CLOSE_HISTORY }
+    pinned.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
+            others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
 }
 
 val defaultClipboardToolbarPref by lazy {

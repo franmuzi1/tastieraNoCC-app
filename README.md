@@ -127,12 +127,13 @@ pacchetto diverso e non lo sostituisce.
 1. installa l'APK;
 2. Impostazioni → Sistema → Lingue e immissione → Tastiera su schermo → attiva
    questa tastiera, poi selezionala;
-3. sulla tastiera, tocca la **freccia** a sinistra della striscia dei
-   suggerimenti: i due lucchetti sono i primi due tasti della barra.
+I due lucchetti sono già lì, a destra della striscia dei suggerimenti: non
+serve configurare niente.
 
-Se hai già usato questa tastiera prima della versione 0.1.2 i due tasti
-risultano spenti — le preferenze salvate non vengono sovrascritte, sono tue.
-Si attivano da impostazioni della tastiera → Toolbar.
+Se hai già usato questa tastiera prima della versione 0.1.2 non compaiono — le
+preferenze salvate non vengono sovrascritte, sono tue. Si attivano da
+impostazioni della tastiera → Toolbar, oppure cancellando i dati dell'app (che
+però **distrugge l'identità**: fai prima un backup).
 
 Serve **Android 6.0** o superiore per la cifratura. Sotto, la tastiera funziona
 normalmente e i tasti dicono che la cifratura non è disponibile.
