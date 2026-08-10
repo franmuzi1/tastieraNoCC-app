@@ -84,12 +84,33 @@ lettura del contenuto, che avviene solo su gesto esplicito. Il tasto "decifra"
 prova prima il campo e poi gli appunti; la pressione lunga va dritta agli
 appunti.
 
-*Residuo:* nessun indizio visivo che negli appunti ci sia qualcosa da
-decifrare. Servirebbe rivalutare lo stato del pulsante a ogni cambio di
-clipboard, e `setToolbarButtonsActivatedStateOnPrefChange` si attiva sui
-preferences, non sulla clipboard. Il gancio esiste — `ClipboardHistoryManager`
-ha già un `OnPrimaryClipChangedListener` — ma è codice di HeliBoard, quindi va
-pesato contro il costo nei merge.
+**Indizio sul tasto "decifra": FATTO.** Il tasto si accende quando negli
+appunti c'è qualcosa che ha la forma di un nostro blob.
+
+Il vincolo che ne ha deciso la forma: per saperlo bisogna *leggere* gli
+appunti, e su Android 12+ ogni lettura di un contenuto messo da un'altra app fa
+comparire il toast di sistema. Farlo per conto nostro a ogni sessione di
+digitazione avrebbe fatto sembrare la tastiera un'app che spia la clipboard.
+Quindi ci si aggancia alla lettura che `ClipboardHistoryManager` fa **già** per
+la cronologia: il controllo costa zero.
+
+*Conseguenza dichiarata:* **con la cronologia clipboard disattivata l'indizio
+non si accende.** È il prezzo di non leggere di nascosto, e in questo progetto
+è il verso giusto.
+
+Il riconoscimento passa da `nativeLooksLikeOurBlob`, che guarda solo sentinel e
+lunghezza minima: nessuna decifratura, nessun accesso al keyring, nessun
+effetto collaterale. Il sentinel resta in un posto solo — scriverlo a mano in
+Kotlin sarebbe stata una seconda fonte di verità.
+
+Servito anche un `refreshToolbarButtonStates`: i tasti si costruiscono una
+volta sola, e senza un ricalcolo l'indizio resterebbe congelato a com'era
+quando la striscia è nata.
+
+*Verifica numerica* (l'occhio non basta per un'icona più o meno chiara):
+misurata la luminosità media dell'icona rispetto a quella di "cifra" come
+riferimento. Con testo qualunque negli appunti **+14,2** (spenta); con un
+nostro blob **+1,1** (accesa).
 
 **~~5. Identity card.~~ FATTO.** `CipherActions.insertIdentityCard`, agganciata
 alla pressione lunga su "cifra". Passa dal campo e non dagli appunti per

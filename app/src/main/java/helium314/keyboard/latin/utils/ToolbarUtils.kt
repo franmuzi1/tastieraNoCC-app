@@ -10,6 +10,7 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import androidx.core.content.edit
 import androidx.core.view.forEach
+import helium314.keyboard.cipher.CipherClipboard
 import helium314.keyboard.event.HapticEvent
 import helium314.keyboard.keyboard.internal.KeyboardIconsSet
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
@@ -50,6 +51,19 @@ fun setToolbarButtonsActivatedStateOnPrefChange(buttonsGroup: ViewGroup, key: St
     }
 }
 
+/**
+ * keyboard-cipher: ricalcola lo stato "acceso" dei tasti.
+ *
+ * Serve perche' i tasti si costruiscono UNA volta, e da allora il loro stato
+ * resta congelato. Va bene per tutto cio' che dipende dai preferences, e non
+ * va bene per il tasto "decifra", che dipende dagli appunti: il contenuto puo'
+ * cambiare mentre la tastiera e' viva, e senza un ricalcolo l'indizio
+ * resterebbe quello del momento in cui la striscia e' nata.
+ */
+fun refreshToolbarButtonStates(buttonsGroup: ViewGroup) {
+    buttonsGroup.forEach { if (it is ImageButton) setToolbarButtonActivatedState(it) }
+}
+
 private fun setToolbarButtonActivatedState(button: ImageButton) {
     button.isActivated = when (button.tag) {
         INCOGNITO -> button.context.prefs().getBoolean(Settings.PREF_ALWAYS_INCOGNITO_MODE, Defaults.PREF_ALWAYS_INCOGNITO_MODE)
@@ -57,6 +71,15 @@ private fun setToolbarButtonActivatedState(button: ImageButton) {
         SPLIT -> Settings.getValues().mIsSplitKeyboardEnabled
         AUTOCORRECT -> Settings.getValues().mAutoCorrectionEnabledPerUserSettings
         BACKGROUND_GATHERING -> useBackgroundGathering
+        // keyboard-cipher: acceso quando negli appunti c'e' qualcosa che ha la
+        // forma di un nostro blob. Non promette che sia decifrabile — potrebbe
+        // essere troncato o per un altro destinatario — dice solo che vale la
+        // pena provare.
+        //
+        // Si accende solo con la cronologia clipboard attiva, perche' e' li'
+        // che il contenuto viene letto: guardarlo per conto nostro
+        // significherebbe leggere gli appunti a ogni sessione di digitazione.
+        DECRYPT -> CipherClipboard.clipboardLooksDecryptable()
         else -> true
     }
 }

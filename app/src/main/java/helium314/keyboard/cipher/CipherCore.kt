@@ -136,6 +136,18 @@ object CipherCore {
         result: IncomingResult,
     ): Int
 
+    /**
+     * Dice se il testo *sembra* contenere un nostro blob. Nessuna
+     * decifratura, nessun accesso al keyring, nessun effetto collaterale.
+     *
+     * NON e' una verifica: `true` non dice che il blob sia integro ne' che sia
+     * per noi. Serve solo a decidere se accendere un indizio nella UI.
+     *
+     * Unica entry che NON richiede [nativeInit]: guarda solo la forma del
+     * testo.
+     */
+    external fun nativeLooksLikeOurBlob(text: String): Boolean
+
     /** Ritorna il blob cifrato, o null se per quell'app non c'e' un destinatario. */
     external fun nativeEncryptForApp(
         appPackage: String,

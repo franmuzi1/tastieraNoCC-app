@@ -88,6 +88,11 @@ class ClipboardHistoryManager(
             // scriverebbe in un archivio persistente della tastiera, che e'
             // l'opposto di cio' per cui il messaggio era cifrato.
             if (CipherClipboard.isSensitive(content)) return
+            // keyboard-cipher: il testo e' gia' stato letto qui per la
+            // cronologia, quindi controllare se ha la forma di un nostro blob
+            // non costa un secondo accesso agli appunti — che su Android 12+
+            // farebbe comparire il toast di sistema a ogni cambio di clip.
+            CipherClipboard.noteClipboardContent(content)
             clipboardDao?.addClip(timeStamp, false, content.toString())
         } else if (maySaveFromUri(clipItem.uri, latinIME)) {
             clipboardDao?.addClipUri(timeStamp, false, clipItem.uri, description, latinIME)

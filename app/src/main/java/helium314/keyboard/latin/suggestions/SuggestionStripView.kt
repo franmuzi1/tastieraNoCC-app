@@ -49,6 +49,7 @@ import helium314.keyboard.latin.utils.ToolbarKey
 import helium314.keyboard.latin.utils.ToolbarMode
 import helium314.keyboard.latin.utils.addPinnedKey
 import helium314.keyboard.latin.utils.createToolbarKey
+import helium314.keyboard.latin.utils.refreshToolbarButtonStates
 import helium314.keyboard.latin.utils.dpToPx
 import helium314.keyboard.latin.utils.getEnabledToolbarKeys
 import helium314.keyboard.latin.utils.getPinnedToolbarKeys
@@ -239,6 +240,11 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         }
 
         toolbarExpandKey.scaleX = (if (toolbarVisible) -1f else 1f) * direction
+
+        // keyboard-cipher: il tasto "decifra" si accende in base agli appunti,
+        // che cambiano mentre la tastiera e' viva. Senza questo ricalcolo
+        // l'indizio resterebbe quello del momento in cui la striscia e' nata.
+        if (toolbarVisible) refreshToolbarButtonStates(toolbar)
     }
 
     fun setSuggestions(suggestions: SuggestedWords, isRtlLanguage: Boolean) {

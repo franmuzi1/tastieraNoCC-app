@@ -70,6 +70,43 @@ internal object CipherClipboard {
         context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
 
     // ========================================================================
+    // Indizio: negli appunti c'e' qualcosa da decifrare
+    // ========================================================================
+
+    @Volatile
+    private var clipLooksLikeOurs = false
+
+    /**
+     * Chiamata da `ClipboardHistoryManager` **sul testo che ha gia' letto**.
+     *
+     * E' l'unico modo onesto di alimentare l'indizio. Guardare da soli il
+     * contenuto per sapere se c'e' qualcosa da decifrare vorrebbe dire leggere
+     * la clipboard a ogni sessione di digitazione, e su Android 12+ ogni
+     * lettura di un contenuto messo da un'altra app fa comparire il toast di
+     * sistema: la tastiera sembrerebbe spiare gli appunti. Qui invece la
+     * lettura e' gia' avvenuta per la cronologia, quindi il controllo costa
+     * zero.
+     *
+     * Conseguenza dichiarata: **con la cronologia clipboard disattivata
+     * l'indizio non si accende.** E' il prezzo di non leggere di nascosto, ed
+     * e' preferibile al contrario.
+     */
+    fun noteClipboardContent(text: CharSequence) {
+        clipLooksLikeOurs = CipherCore.available &&
+            runCatching { CipherCore.nativeLooksLikeOurBlob(text.toString()) }.getOrDefault(false)
+    }
+
+    /**
+     * Se il tasto "decifra" debba mostrarsi acceso.
+     *
+     * Non promette niente: dice che negli appunti c'e' qualcosa che ha la
+     * forma di un nostro blob. Potrebbe essere troncato, di un'altra versione,
+     * o per un altro destinatario — lo si scopre decifrando, che e' un gesto
+     * dell'utente.
+     */
+    fun clipboardLooksDecryptable(): Boolean = clipLooksLikeOurs
+
+    // ========================================================================
     // Esclusione dalla cronologia della tastiera
     // ========================================================================
 
