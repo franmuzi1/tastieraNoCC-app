@@ -153,6 +153,33 @@ I tre stati Keystore ora coperti e osservati:
 *Ancora da provare su dispositivo:* il ciclo cifra/decifra completo con due
 identità, i tasti in toolbar dentro l'IME vero, e il conflitto di etichetta.
 
+## Come far girare l'emulatore qui
+
+Roba scoperta a fatica, per non ripeterla:
+
+```
+sdkmanager "emulator" "system-images;android-34;default;x86_64"
+avdmanager create avd -n cipher34 -k "system-images;android-34;default;x86_64" -d pixel_5
+# lanciarlo STACCATO, altrimenti viene ucciso come figlio della sessione
+cd /tmp && setsid nohup $ANDROID_HOME/emulator/emulator -avd cipher34 \
+    -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect \
+    -no-snapshot -memory 2048 > /tmp/emu.log 2>&1 < /dev/null & disown
+```
+
+- **Va lanciato staccato** (`setsid` + `disown`). Lanciato come processo figlio
+  della sessione viene terminato, e il crash **azzera i dati dell'AVD**: APK,
+  PIN e identità vanno rifatti.
+- La macchina ha ~7 GB: fermare il daemon Gradle (`./gradlew --stop`) prima di
+  avviare l'emulatore, altrimenti la memoria non basta.
+- `locksettings set-pin 1234` per il caso col blocco schermo.
+
+**Non ancora risolto:** guidare l'IME via adb. Il servizio parte solo quando un
+campo di testo prende il fuoco, e le due Activity di impostazioni di HeliBoard
+non si avviano (`am start` dice "does not exist" benché le classi siano nel dex
+e nella resolver table del sistema). Causa non determinata, ed è codice di
+upstream. La via praticabile è un APK usa-e-getta con un solo `EditText`, fuori
+dal prodotto, da usare come bersaglio per `uiautomator`.
+
 ## Cosa ha insegnato la prima esecuzione
 
 **`setUnlockedDeviceRequired(true)` fallisce alla *generazione* della chiave se
