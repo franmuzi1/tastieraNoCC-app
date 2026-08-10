@@ -476,6 +476,62 @@ barra spazio** muove il caret e che il carattere successivo entra li' e non in
 fondo. Disegnata anche la selezione, riga per riga — su piu' righe non e' un
 rettangolo.
 
+## Firma delle release
+
+Gli APK pubblicati finora sono firmati con la **chiave di debug** della macchina
+che li ha costruiti. Va bene per provare e non va bene per distribuire: quella
+chiave non e' gestita come un segreto — password predefinita nota, file in
+`~/.android` — quindi chiunque ne entri in possesso puo' firmare aggiornamenti
+che i telefoni accettano come tuoi. Per una tastiera che cifra e' il tipo di
+dettaglio che decide se il sistema vale qualcosa.
+
+`app/build.gradle.kts` ha ora un `signingConfig` per `release` e `nouserlib`.
+Valori da `keystore.properties` nella radice del progetto, oppure dalle
+variabili d'ambiente `KC_KEYSTORE`, `KC_KEYSTORE_PASSWORD`, `KC_KEY_ALIAS`,
+`KC_KEY_PASSWORD`. Il file e i keystore sono in `.gitignore`.
+
+**Senza chiave il build non fallisce**: produce un APK non firmato. Chi clona il
+repo deve poterlo costruire, e rompergli il build per una chiave che non e' sua
+sarebbe un ostacolo senza scopo. Un APK non firmato non si installa comunque,
+quindi l'errore arriva — ma arriva dove si capisce cos'e'.
+
+Il blocco sta **fuori** da `android { }`: li' dentro `java` e' l'estensione
+Gradle e non il package, quindi `java.util.Properties` non si risolve.
+
+Creare la chiave (interattivo, cosi' la password non finisce nella cronologia
+della shell):
+
+```
+keytool -genkeypair -v -keystore ~/keyboard-cipher-release.jks \
+    -alias tastiera -keyalg RSA -keysize 4096 -validity 10000
+```
+
+Verificato con un keystore usa-e-getta: `assembleRelease` produce un APK di
+23,4 MB firmato con quella chiave, con le quattro ABI del `.so` e le classi
+`cipher` nel dex.
+
+### La conseguenza che va detta agli utenti PRIMA
+
+Android rifiuta di installare un APK con una firma diversa sopra uno gia'
+installato. Il passaggio dalla chiave di debug a quella di release **rompe
+l'aggiornamento**: chi ha una versione da 0.1.0 a 0.1.3 dovra' disinstallare.
+
+E disinstallare **distrugge l'identita'**: chiave privata e keyring stanno in
+`noBackupFilesDir` e in Keystore, e spariscono entrambi. Da quel momento i
+contatti vedrebbero un cambio di chiave, cioe' esattamente il segnale che il
+sistema usa per dire "qualcuno si sta spacciando per lui".
+
+Ordine obbligatorio, da scrivere nelle note della prima release firmata:
+
+1. Contatti → **salva il backup dell'identita'** (file cifrato con passphrase);
+2. disinstalla la versione vecchia;
+3. installa quella nuova;
+4. Contatti → **ripristina** dal backup.
+
+Da li' in poi gli aggiornamenti tornano normali, per sempre — a patto di non
+perdere la chiave di firma. Persa quella, non esiste modo di aggiornare l'app
+di nessuno: si ricomincia da un pacchetto diverso.
+
 ## Impostazioni: una categoria sola, e un interruttore generale
 
 `Impostazioni → Cifratura` (`CipherScreen`) raccoglie interruttore generale,

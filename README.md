@@ -151,6 +151,12 @@ Due modi, si sceglie in Cifratura → *Scrivi dentro la tastiera*.
   l'aeroplanino: consegna il testo **in chiaro**, per quando il destinatario
   non ha questa tastiera.
 
+> **Attenzione al prossimo aggiornamento.** Le build da 0.1.0 a 0.1.3 sono
+> firmate con una chiave di debug; dalla prossima si passa a una chiave di
+> release, e Android non installa un APK con firma diversa sopra uno esistente.
+> Servira' disinstallare, e disinstallare **cancella la tua identita'**. Prima
+> di farlo: Contatti → salva il backup, e dopo l'installazione ripristinalo.
+
 Serve **Android 6.0** o superiore per la cifratura. Sotto, la tastiera funziona
 normalmente e i tasti dicono che la cifratura non è disponibile.
 

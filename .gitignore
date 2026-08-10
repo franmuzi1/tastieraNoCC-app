@@ -18,3 +18,10 @@ tools/*.txt
 
 # keyboard-cipher: .so prodotti da cargo-ndk, non sorgenti
 /app/src/main/jniLibs/
+
+# keyboard-cipher: la chiave di firma delle release. Non deve entrare nel repo
+# in nessuna forma: chi la ottiene puo' firmare aggiornamenti che i telefoni
+# accettano come tuoi.
+keystore.properties
+*.jks
+*.keystore

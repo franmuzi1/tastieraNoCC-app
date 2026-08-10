@@ -1,4 +1,5 @@
 import com.android.build.api.variant.ApplicationVariant
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -7,6 +8,34 @@ plugins {
     kotlin("plugin.serialization") version "2.3.20"
     kotlin("plugin.compose") version "2.3.20"
 }
+
+// keyboard-cipher: firma delle release.
+//
+// La chiave NON sta nel repo e non ci deve entrare mai: il file di proprieta'
+// e' in .gitignore e il percorso del keystore punta fuori dall'albero. Chi
+// clona costruisce lo stesso, senza firma — vedi il buildType `release`.
+//
+// I valori si prendono da `keystore.properties` nella radice del progetto,
+// oppure dalle variabili d'ambiente KC_KEYSTORE / KC_KEYSTORE_PASSWORD /
+// KC_KEY_ALIAS / KC_KEY_PASSWORD, che e' la forma comoda per una CI.
+//
+// Sta fuori dal blocco `android { }` di proposito: li' dentro `java` e' la
+// estensione Gradle e non il package, quindi `java.util.Properties` non si
+// risolve.
+val cipherKeystoreProps = Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
+fun cipherSecret(name: String, env: String): String? =
+    (cipherKeystoreProps.getProperty(name) ?: System.getenv(env))?.takeIf { it.isNotBlank() }
+
+val cipherKeystoreFile = cipherSecret("storeFile", "KC_KEYSTORE")?.let { file(it) }
+
+/** `false` se manca la chiave: il build prosegue e produce un APK non firmato. */
+val cipherSigningReady: Boolean = cipherKeystoreFile?.exists() == true &&
+        cipherSecret("storePassword", "KC_KEYSTORE_PASSWORD") != null &&
+        cipherSecret("keyAlias", "KC_KEY_ALIAS") != null
 
 android {
     compileSdk = 36
@@ -24,18 +53,40 @@ android {
         proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
     }
 
+    signingConfigs {
+        if (cipherSigningReady) {
+            create("cipherRelease") {
+                storeFile = cipherKeystoreFile
+                storePassword = cipherSecret("storePassword", "KC_KEYSTORE_PASSWORD")
+                keyAlias = cipherSecret("keyAlias", "KC_KEY_ALIAS")
+                // Se la password della chiave non c'e' si usa quella del
+                // keystore: keytool le fa coincidere quando non se ne da' una
+                // seconda, ed e' il caso normale.
+                keyPassword = cipherSecret("keyPassword", "KC_KEY_PASSWORD")
+                    ?: cipherSecret("storePassword", "KC_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = false
             isDebuggable = false
             isJniDebuggable = false
+            // Senza chiave l'APK esce NON firmato invece di fallire: chi
+            // clona il repo deve poterlo costruire, e un build che si rompe
+            // per una chiave che non e' sua sarebbe un ostacolo senza scopo.
+            // Un APK non firmato non si installa, quindi l'errore arriva
+            // comunque — ma arriva dove si capisce cos'e'.
+            if (cipherSigningReady) signingConfig = signingConfigs.getByName("cipherRelease")
         }
         create("nouserlib") { // same as release, but does not allow the user to provide a library
             isMinifyEnabled = true
             isShrinkResources = false
             isDebuggable = false
             isJniDebuggable = false
+            if (cipherSigningReady) signingConfig = signingConfigs.getByName("cipherRelease")
         }
         debug {
             // "normal" debug has minify for smaller APK to fit the GitHub 25 MB limit when zipped
