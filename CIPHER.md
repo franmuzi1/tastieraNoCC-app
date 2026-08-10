@@ -270,6 +270,39 @@ che fa il suo lavoro. Il testo resta leggibile via accessibilità, che
 `FLAG_SECURE` non copre — ed è il motivo per cui un accessibility service è
 escluso dal progetto.
 
+### UI contatti, osservata
+
+Impostazioni → **Contatti** (la voce compare dopo "Toolbar") apre
+`ContactsActivity`, che mostra la propria identità, l'elenco dei peer con
+fingerprint e data di primo avvistamento. Toccando un peer: *Dai un nome* e
+*Ho confrontato di persona*.
+
+Assegnata l'etichetta "Marco", la lista si aggiorna e `keyring.bin` passa da 77
+a **82 byte** — esattamente i 5 caratteri del nome. La persistenza si misura,
+non si presume.
+
+### Ricetta per provare il conflitto di etichetta
+
+Non ancora eseguita. Serve **un'identità con due peer distinti**, e il solo modo
+di fabbricare identità nuove senza toccare il prodotto è `pm clear` (i file
+sotto `no_backup` spariscono, la chiave in Keystore no, quindi al riavvio ne
+nasce una nuova).
+
+1. lunga pressione su "cifra" → cattura la card dal log (vedi sotto) = **A**;
+2. `pm clear` → nuova identità; cattura la sua card = **B**;
+3. `pm clear` → identità **C**, quella che farà da osservatore;
+4. sotto C: incolla la card A nel campo, "decifra" → peer A fissato; nominalo
+   *Marco*;
+5. sotto C: stessa cosa con la card B, e nominalo *Marco* → **conflitto**.
+
+Attenzione: `pm clear` cancella anche i preferences, quindi i tasti in toolbar
+vanno riabilitati ogni volta.
+
+**Catturare un blob:** `uiautomator` non espone il testo dell'`EditText`, quindi
+il bersaglio ha un `TextWatcher` che lo scrive nel log. Si legge con
+`adb logcat -d -s IMETARGET`. È l'unico modo di rigiocare un blob prodotto
+prima.
+
 ## Cosa ha insegnato la prima esecuzione
 
 **`setUnlockedDeviceRequired(true)` fallisce alla *generazione* della chiave se
