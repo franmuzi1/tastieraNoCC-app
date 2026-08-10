@@ -177,6 +177,32 @@ I tre stati Keystore ora coperti e osservati:
 *Ancora da provare su dispositivo:* il ciclo cifra/decifra completo con due
 identità, i tasti in toolbar dentro l'IME vero, e il conflitto di etichetta.
 
+## Regressione completa (ultimo giro)
+
+| Cosa | Esito |
+|---|---|
+| core Rust | 62 test, clippy pulito |
+| ponte JNI | 6 test, clippy pulito |
+| fuzzing (`decode`, `parse`, `roundtrip`) | ~48 M input in 3 minuti, nessun crash |
+| ciclo completo sul dispositivo da stato pulito | card → pin → cifra → decifra, nessun crash |
+| dialogo QR nel build minificato | si apre, `ImageView` presente, nessun problema con R8 |
+
+## Cosa NON è ancora stato provato
+
+Tutti i percorsi felici sono coperti. Restano scoperti i **negativi** e i
+**margini di versione**, che è dove il comportamento è stato progettato con più
+cura e verificato di meno:
+
+- **blob corrotto o troncato** → deve dare *"Impossibile decifrare"*, un solo
+  messaggio per qualunque causa. Mai provato su dispositivo;
+- **versione futura** → deve dire *"aggiorna l'app"*, non *"non è cifrato"*;
+- **tier non supportato** → messaggio dedicato;
+- **API 23** (il minimo in cui la cifratura esiste): niente StrongBox, niente
+  `setUnlockedDeviceRequired`. È il terzo ramo di `CipherKeystore.generate`,
+  osservato solo su API 34 senza blocco schermo;
+- **API 21–22**, dove la funzione deve dichiararsi non disponibile invece di
+  fallire.
+
 ## Come far girare l'emulatore qui
 
 Roba scoperta a fatica, per non ripeterla:
