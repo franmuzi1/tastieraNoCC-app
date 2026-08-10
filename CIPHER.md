@@ -211,13 +211,34 @@ Le due righe che contano sono le ultime tre:
   come nostro;
 - **il testo qualunque non è un errore**, ed è l'esito più comune.
 
+## API 23 — PROVATO
+
+Emulatore x86_64 API 23, cioè il minimo in cui la cifratura esiste.
+
+| Cosa | Esito |
+|---|---|
+| installazione e avvio | nessun crash |
+| `identity.bin` | creato, 61 byte |
+| card riconosciuta | *"Nuovo contatto"* + fingerprint |
+| `keyring.bin` | scritto, 77 byte |
+| errori Keystore o `NoSuchMethodError` | nessuno |
+
+Cosa dimostra davvero: che le chiamate riservate ad API 28+
+(`setIsStrongBoxBacked`, `setUnlockedDeviceRequired`) sono **correttamente
+protette dai controlli di versione**. Se una guardia fosse sbagliata, qui si
+sarebbe visto un `NoSuchMethodError` in faccia, non un degrado silenzioso.
+
+**Controllo incrociato che vale più di quanto sembri:** la stessa card ha dato
+lo stesso fingerprint `bhai 4o4s ys8g ouie 6u4u x8j5` su API 34 e su API 23,
+con un `.so` costruito per un'altra piattaforma. È la proprietà su cui poggia
+l'intera verifica di persona: se il fingerprint dipendesse dal dispositivo, due
+persone che confrontano il codice vedrebbero valori diversi e concluderebbero
+che qualcuno si è interposto.
+
 ## Cosa NON è ancora stato provato
 
-- **API 23** (il minimo in cui la cifratura esiste): niente StrongBox, niente
-  `setUnlockedDeviceRequired`. È il terzo ramo di `CipherKeystore.generate`,
-  osservato finora solo su API 34 senza blocco schermo;
-- **API 21–22**, dove la funzione deve dichiararsi non disponibile invece di
-  fallire.
+- **API 21–22**, dove la cifratura deve dichiararsi non disponibile invece di
+  fallire. È l'ultimo margine rimasto.
 
 ## Come far girare l'emulatore qui
 
