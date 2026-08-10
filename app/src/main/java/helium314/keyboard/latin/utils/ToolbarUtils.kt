@@ -168,7 +168,16 @@ enum class ToolbarMode {
 val toolbarKeyStrings = entries.associateWithTo(EnumMap(ToolbarKey::class.java)) { it.toString().lowercase(Locale.US) }
 
 val defaultToolbarPref by lazy {
-    val default = listOf(SETTINGS, VOICE, CLIPBOARD, UNDO, REDO, SELECT_WORD, COPY, PASTE, LEFT, RIGHT)
+    // keyboard-cipher: ENCRYPT e DECRYPT sono attivi di default e stanno in
+    // testa. E' la ragione per cui questo fork esiste, e lasciarli spenti
+    // significava che chi installava non trovava niente e concludeva che non
+    // funzionasse — succede anche a chi il progetto lo conosce.
+    //
+    // Attenzione: questo vale per le installazioni NUOVE. Chi ha gia' un
+    // profilo di toolbar salvato se li vede aggiunti da `upgradeToolbarPref`,
+    // che pero' aggiunge le voci nuove come spente — e va bene cosi': quelle
+    // preferenze sono scelte dell'utente, non nostre da sovrascrivere.
+    val default = listOf(ENCRYPT, DECRYPT, SETTINGS, VOICE, CLIPBOARD, UNDO, REDO, SELECT_WORD, COPY, PASTE, LEFT, RIGHT)
     val others = entries.filterNot { it in default || it == CLOSE_HISTORY }
     default.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
