@@ -137,10 +137,21 @@ e dopo un `force-stop` viene **ricaricata e non rigenerata** (stesso hash).
 
 Ha trovato subito un bug che nessuna analisi statica avrebbe preso: vedi sotto.
 
+Secondo giro, **con PIN impostato**: la chiave si crea con
+`setUnlockedDeviceRequired` attivo (nessun errore ECDH), e a schermo sbloccato
+viene ricaricata intatta. A schermo bloccato Keystore la rifiuta con
+`Error::Km(DEVICE_LOCKED)` — vedi sotto, ha trovato il secondo bug.
+
+I tre stati Keystore ora coperti e osservati:
+
+| Dispositivo | Chiave generata | Uso |
+|---|---|---|
+| senza blocco schermo | terzo tentativo, senza il flag | funziona sempre |
+| con blocco schermo, sbloccato | secondo tentativo, col flag | funziona |
+| con blocco schermo, bloccato | — | Keystore rifiuta, → `Locked` |
+
 *Ancora da provare su dispositivo:* il ciclo cifra/decifra completo con due
-identità, i tasti in toolbar dentro l'IME vero, il conflitto di etichetta, e il
-comportamento con un blocco schermo impostato (dove il percorso Keystore è
-diverso da quello osservato).
+identità, i tasti in toolbar dentro l'IME vero, e il conflitto di etichetta.
 
 ## Cosa ha insegnato la prima esecuzione
 
@@ -153,6 +164,24 @@ semplicemente non disponibile per chiunque non tenga un PIN sul telefono.
 Non si perde nulla di reale nel fallback: quel flag protegge i dati *mentre il
 dispositivo è bloccato*, e un dispositivo senza blocco schermo non è mai
 bloccato.
+
+**Uno schermo bloccato non è un'identità corrotta.** Con una chiave generata
+con `setUnlockedDeviceRequired`, a schermo bloccato Keystore rifiuta con
+`Error::Km(DEVICE_LOCKED)`. Dall'interno di `CipherKeystore` quel rifiuto è lo
+stesso `null` di un blob manomesso, e veniva presentato come "la tua identità
+non è decifrabile" — il cui unico rimedio offerto è `resetIdentity`. Si sarebbe
+invitato l'utente a **distruggere irreversibilmente la propria identità per una
+condizione che passa premendo un tasto.**
+
+`unreadableOrLocked` classifica il fallimento consultando `isDeviceLocked`, e lo
+fa **dopo** il tentativo, non prima: una chiave generata su un dispositivo senza
+blocco schermo non ha quel vincolo e funziona anche a schermo bloccato, quindi
+rifiutare in anticipo bloccherebbe un caso legittimo.
+
+*Limite della verifica:* il rifiuto `DEVICE_LOCKED` è confermato nel logcat, ma
+il messaggio che l'utente vede in quello stato non è osservabile via adb —
+l'Activity resta dietro il keyguard. Quella parte è verificata per ispezione,
+non per esecuzione.
 
 **I file non stanno in device-protected storage**, malgrado
 `defaultToDeviceProtectedStorage="true"` nel manifest. Stanno in

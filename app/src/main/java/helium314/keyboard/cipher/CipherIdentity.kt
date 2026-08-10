@@ -3,6 +3,7 @@ package helium314.keyboard.cipher
 import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
+import helium314.keyboard.compat.isDeviceLocked
 import helium314.keyboard.compat.isUserLocked
 
 /**
@@ -166,9 +167,9 @@ object CipherIdentity {
         try {
             val loaded = if (CipherStorage.exists(context, CipherStorage.IDENTITY)) {
                 val blob = CipherStorage.read(context, CipherStorage.IDENTITY)
-                    ?: return CipherState.Unreadable(CipherPart.IDENTITY)
+                    ?: return unreadableOrLocked(context, CipherPart.IDENTITY)
                 CipherKeystore.unwrap(AAD_IDENTITY, blob)
-                    ?: return CipherState.Unreadable(CipherPart.IDENTITY)
+                    ?: return unreadableOrLocked(context, CipherPart.IDENTITY)
             } else {
                 when (val created = createIdentity(context)) {
                     is Created.Ok -> created.secret
@@ -179,13 +180,13 @@ object CipherIdentity {
 
             val keyring = if (CipherStorage.exists(context, CipherStorage.KEYRING)) {
                 val blob = CipherStorage.read(context, CipherStorage.KEYRING)
-                    ?: return CipherState.Unreadable(CipherPart.KEYRING)
+                    ?: return unreadableOrLocked(context, CipherPart.KEYRING)
                 // Un keyring illeggibile NON si sostituisce con uno vuoto:
                 // significherebbe perdere in silenzio ogni pin e ogni
                 // "verificato di persona", che e' una regressione di sicurezza
                 // travestita da ripartenza pulita.
                 CipherKeystore.unwrap(AAD_KEYRING, blob)
-                    ?: return CipherState.Unreadable(CipherPart.KEYRING)
+                    ?: return unreadableOrLocked(context, CipherPart.KEYRING)
             } else {
                 ByteArray(0)
             }
@@ -201,6 +202,27 @@ object CipherIdentity {
             secret?.fill(0)
         }
     }
+
+    /**
+     * Distingue "dati corrotti" da "dispositivo bloccato", che dall'interno di
+     * [CipherKeystore] sono lo stesso `null`.
+     *
+     * Verificato su emulatore API 34 con PIN impostato: a schermo bloccato
+     * Keystore rifiuta la chiave con `Error::Km(DEVICE_LOCKED)`, perche' e'
+     * stata generata con `setUnlockedDeviceRequired`. Senza questa distinzione
+     * quel rifiuto — transitorio, normale, e che passa da solo allo sblocco
+     * successivo — verrebbe presentato come "la tua identita' non e'
+     * decifrabile", il cui unico rimedio offerto e' [resetIdentity]: cioe' si
+     * inviterebbe l'utente a distruggere irreversibilmente la propria identita'
+     * per una condizione che si risolve premendo un tasto.
+     *
+     * Si classifica DOPO il fallimento e non prima: se la chiave e' stata
+     * generata su un dispositivo senza blocco schermo non ha quel vincolo e
+     * funziona anche a schermo bloccato. Rifiutare in anticipo bloccherebbe un
+     * caso che invece va benissimo.
+     */
+    private fun unreadableOrLocked(context: Context, part: CipherPart): CipherState =
+        if (isDeviceLocked(context)) CipherState.Locked else CipherState.Unreadable(part)
 
     private sealed class Created {
         class Ok(val secret: ByteArray) : Created()
