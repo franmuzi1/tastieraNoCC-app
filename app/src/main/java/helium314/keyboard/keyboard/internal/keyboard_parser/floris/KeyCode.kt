@@ -196,6 +196,7 @@ object KeyCode {
     const val CIPHER_ENCRYPT =            -30000
     const val CIPHER_DECRYPT =            -30001
     const val CIPHER_DECRYPT_CLIPBOARD =  -30002
+    const val CIPHER_IDENTITY_CARD =      -30003
 
     // Intents
     const val SEND_INTENT_ONE =            -20000
@@ -355,7 +356,7 @@ object KeyCode {
         // PIN. Cifrarlo o decifrarlo non ha senso, e in piu' la chiave maestra
         // richiede il dispositivo sbloccato: senza questa riga il tasto ci
         // sarebbe e fallirebbe sempre, che e' il modo peggiore di non esserci.
-        CIPHER_ENCRYPT, CIPHER_DECRYPT, CIPHER_DECRYPT_CLIPBOARD -> true
+        CIPHER_ENCRYPT, CIPHER_DECRYPT, CIPHER_DECRYPT_CLIPBOARD, CIPHER_IDENTITY_CARD -> true
         else -> false
     }
 }

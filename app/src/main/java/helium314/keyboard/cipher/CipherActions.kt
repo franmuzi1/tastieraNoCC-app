@@ -74,6 +74,51 @@ object CipherActions {
      * per tenerlo lontano. Il chiaro si vede solo nella nostra finestra, che e'
      * `FLAG_SECURE`, e finisce li'.
      */
+    /**
+     * Scrive nel campo la propria identity card.
+     *
+     * E' il bootstrap del primo contatto, e chiude l'unico buco che il TOFU
+     * lascia aperto: ogni messaggio cifrato porta gia' `sender_pub` in chiaro,
+     * quindi *ricevere* un messaggio fissa automaticamente la chiave del
+     * mittente — resta scoperta solo la primissima direzione, prima che l'altro
+     * abbia scritto qualcosa.
+     *
+     * Passa dal campo e non dagli appunti per l'asimmetria che governa tutto il
+     * progetto: **inserire nel campo e' nativo per un IME, leggere no.** La
+     * tastiera vede il campo di input, mai la cronologia della chat. Per questo
+     * la cifratura non tocca la clipboard e la decifratura si'.
+     *
+     * Costo di bootstrap risultante: un tocco lungo, una volta per contatto, in
+     * una sola direzione. L'utente poi preme invio come per qualunque
+     * messaggio.
+     *
+     * Dall'esterno la card e' indistinguibile da un messaggio: stesso sentinel,
+     * il tipo sta in un byte DENTRO il cifrato, e la lunghezza e' randomizzata
+     * apposta perche' non sia isolabile con una regex. Un sentinel dedicato
+     * alle presentazioni sarebbe un marcatore in chiaro di "utente che aggancia
+     * un contatto nuovo", raccolto a costo zero da uno scanning di massa.
+     *
+     * *Nota di scopribilita':* un tocco lungo e' nascosto. Il punto d'ingresso
+     * visibile e' la UI contatti, che non c'e' ancora; questo e' il gesto
+     * veloce, non l'unico previsto.
+     */
+    fun insertIdentityCard(ime: InputMethodService) {
+        if (!ready(ime)) return
+        val ic = ime.currentInputConnection ?: return
+        val card = CipherCore.nativeIdentityCard()
+        if (card == null) {
+            toast(ime, R.string.cipher_unavailable)
+            return
+        }
+        // Inserimento al cursore, non sostituzione: se il campo contiene gia'
+        // del testo non c'e' motivo di buttarlo via. Il riconoscimento
+        // tollera il contesto — `parse` cerca il sentinel dentro la stringa e
+        // prende la sequenza massima di caratteri dell'alfabeto che segue —
+        // quindi una card in mezzo ad altro resta leggibile.
+        ic.commitText(card, 1)
+        toast(ime, R.string.cipher_card_inserted)
+    }
+
     fun decrypt(ime: InputMethodService) = decrypt(ime, clipboardOnly = false)
 
     /**

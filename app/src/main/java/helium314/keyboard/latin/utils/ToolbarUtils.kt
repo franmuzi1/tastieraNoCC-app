@@ -100,6 +100,10 @@ fun getCodeForToolbarKey(key: ToolbarKey) = Settings.getInstance().getCustomTool
 }
 
 fun getCodeForToolbarKeyLongClick(key: ToolbarKey) = Settings.getInstance().getCustomToolbarLongpressCode(key) ?: when (key) {
+    // Pressione lunga su "cifra": inserisce la propria identity card. E' il
+    // bootstrap del primo contatto, e sta qui perche' inserire nel campo e'
+    // nativo per un IME mentre leggere la cronologia della chat non lo e'.
+    ENCRYPT -> KeyCode.CIPHER_IDENTITY_CARD
     // Pressione lunga: salta il campo di input e vai dritto agli appunti.
     // Serve quando il campo contiene gia' altro — una risposta cominciata —
     // e la pressione breve userebbe quel testo dicendo "non e' cifrato".

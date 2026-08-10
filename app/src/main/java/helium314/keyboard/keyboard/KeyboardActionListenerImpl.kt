@@ -132,6 +132,7 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
             KeyCode.CIPHER_ENCRYPT -> return CipherActions.encrypt(latinIME)
             KeyCode.CIPHER_DECRYPT -> return CipherActions.decrypt(latinIME)
             KeyCode.CIPHER_DECRYPT_CLIPBOARD -> return CipherActions.decryptFromClipboard(latinIME)
+            KeyCode.CIPHER_IDENTITY_CARD -> return CipherActions.insertIdentityCard(latinIME)
             KeyCode.BACKGROUND_GATHERING_TEMP_OFF -> {
                 GestureDataGatheringSettings.tempDisableBackgroundGathering(latinIME.prefs())
                 BackgroundGatheringCache.clear()

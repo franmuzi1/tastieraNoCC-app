@@ -91,9 +91,13 @@ preferences, non sulla clipboard. Il gancio esiste — `ClipboardHistoryManager`
 ha già un `OnPrimaryClipChangedListener` — ma è codice di HeliBoard, quindi va
 pesato contro il costo nei merge.
 
-**5. Identity card.** `nativeIdentityCard` + `commitText`. Senza, il primo
-contatto in una direzione non si chiude. Serve un punto d'ingresso nella UI:
-una voce nelle impostazioni, o un long-press sul tasto cifra.
+**~~5. Identity card.~~ FATTO.** `CipherActions.insertIdentityCard`, agganciata
+alla pressione lunga su "cifra". Passa dal campo e non dagli appunti per
+l'asimmetria che governa il progetto: inserire nel campo è nativo per un IME,
+leggere no.
+
+*Residuo:* un tocco lungo è poco scopribile. Il punto d'ingresso visibile è la
+UI contatti (punto 6); questo è il gesto veloce, non l'unico previsto.
 
 **6. UI di `ContactsActivity`.** Elenco peer, fingerprint, etichette
 (`nativeAssignLabel`), verifica fuori banda (`nativeMarkVerified`), QR.

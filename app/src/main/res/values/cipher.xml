@@ -38,6 +38,11 @@
     -->
     <string name="cipher_no_recipient" tools:ignore="MissingTranslation">Scegli prima un destinatario per questa app</string>
     <string name="cipher_text_too_long" tools:ignore="MissingTranslation">Testo troppo lungo per essere cifrato</string>
+    <!--
+        Dice "invia", non "fatto": la card e\' nel campo ma non e\' ancora
+        partita, e senza l\'invio il primo contatto non si chiude.
+    -->
+    <string name="cipher_card_inserted" tools:ignore="MissingTranslation">La tua presentazione e\' nel campo: invia per farti riconoscere</string>
     <string name="cipher_locked" tools:ignore="MissingTranslation">Sblocca il dispositivo per cifrare</string>
     <string name="cipher_unavailable" tools:ignore="MissingTranslation">Cifratura non disponibile</string>
 
