@@ -32,6 +32,7 @@ Cosa è stato verificato, e come:
 | ciclo completo | osservato su emulatore Android 6, 12 e 14 |
 | percorsi d'errore | blob corrotto, troncato, versione futura, testo non cifrato |
 | cambio chiave di un contatto | tutti e tre gli esiti |
+| backup e ripristino dell'identità | salvataggio, cancellazione dei dati, ripristino, passphrase sbagliata |
 
 Cosa **non** è stato fatto:
 
@@ -39,10 +40,9 @@ Cosa **non** è stato fatto:
 - **nessun audit indipendente**;
 - **il formato dei messaggi non è congelato**: una versione futura potrebbe non
   leggere i messaggi di oggi;
-- **non c'è modo di salvare o trasferire la propria identità.** Se cancelli i
-  dati dell'app o cambi telefono, la tua chiave sparisce — e ogni tuo contatto
-  vedrà un cambio chiave, cioè lo stesso segnale che indica un tentativo di
-  impersonazione.
+- **il backup dell'identità c'è, ma proteggerlo tocca a te.** Il file è cifrato
+  soltanto con la passphrase che scegli: se è debole, lo è il backup; se la
+  dimentichi, il file non si apre più e non esiste modo di recuperarla.
 
 Se stai valutando di usarlo in una situazione dove sbagliare ha conseguenze
 serie: **non usarlo.** Usa Signal.

@@ -3,7 +3,10 @@ package helium314.keyboard.cipher
 import android.app.Activity
 import android.app.AlertDialog
 import android.graphics.Typeface
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.text.InputType
 import android.text.format.DateFormat
 import android.util.TypedValue
 import android.view.View
@@ -27,6 +30,9 @@ import java.util.Date
  * non faccia gia'.
  */
 class ContactsActivity : Activity() {
+
+    /** Viva solo fra la richiesta della passphrase e il ritorno del selettore. */
+    private var passphraseInAttesa: ByteArray? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Non mostra plaintext, ma mostra fingerprint: roba che non deve
@@ -61,6 +67,14 @@ class ContactsActivity : Activity() {
         root.addView(Button(this).apply {
             setText(R.string.cipher_show_qr)
             setOnClickListener { showQr() }
+        })
+        root.addView(Button(this).apply {
+            setText(R.string.cipher_backup_export)
+            setOnClickListener { chiediPassphrase(esporta = true) }
+        })
+        root.addView(Button(this).apply {
+            setText(R.string.cipher_backup_import)
+            setOnClickListener { chiediPassphrase(esporta = false) }
         })
 
         root.addView(sectionTitle(getString(R.string.cipher_contacts)))
@@ -262,6 +276,156 @@ class ContactsActivity : Activity() {
     }
 
     // ========================================================================
+    // Backup
+    // ========================================================================
+
+    /**
+     * Chiede la passphrase, poi apre il selettore di file.
+     *
+     * La passphrase si chiede PRIMA del file per una ragione pratica: se la
+     * si chiedesse dopo, l'utente sceglierebbe dove salvare e solo allora
+     * scoprirebbe di doversi inventare qualcosa da ricordare — che e' il modo
+     * migliore per farsi scegliere una passphrase pessima.
+     */
+    private fun chiediPassphrase(esporta: Boolean) {
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        AlertDialog.Builder(this)
+            .setTitle(if (esporta) R.string.cipher_backup_export else R.string.cipher_backup_import)
+            .setMessage(
+                if (esporta) R.string.cipher_backup_export_hint
+                else R.string.cipher_backup_import_hint
+            )
+            .setView(input)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val pass = input.text.toString()
+                if (pass.isEmpty()) {
+                    toast(R.string.cipher_backup_passphrase_vuota)
+                    return@setPositiveButton
+                }
+                // Sopravvive fino al ritorno del selettore di file: e' una
+                // finestra breve ma reale, ed e' il motivo per cui viene
+                // azzerata appena usata.
+                passphraseInAttesa = pass.toByteArray()
+                apriSelettore(esporta)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun apriSelettore(esporta: Boolean) {
+        // Storage Access Framework: l'utente sceglie il file, e l'app non
+        // guadagna nessun permesso sullo storage. Un permesso di lettura su
+        // tutto il disco per salvare un file sarebbe sproporzionato, e in
+        // questo progetto anche contraddittorio.
+        val intent = if (esporta) {
+            Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                type = "application/octet-stream"
+                putExtra(Intent.EXTRA_TITLE, "identita-tastiera.kcb")
+            }
+        } else {
+            Intent(Intent.ACTION_OPEN_DOCUMENT).apply { type = "*/*" }
+        }.apply { addCategory(Intent.CATEGORY_OPENABLE) }
+
+        val richiesta = if (esporta) RICHIESTA_ESPORTA else RICHIESTA_IMPORTA
+        if (runCatching { startActivityForResult(intent, richiesta) }.isFailure) {
+            azzeraPassphrase()
+            toast(R.string.cipher_unavailable)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        val uri = data?.data
+        if (resultCode != RESULT_OK || uri == null) {
+            azzeraPassphrase()
+            return
+        }
+        when (requestCode) {
+            RICHIESTA_ESPORTA -> esegui(uri, esporta = true)
+            RICHIESTA_IMPORTA -> esegui(uri, esporta = false)
+        }
+    }
+
+    private fun esegui(uri: Uri, esporta: Boolean) {
+        val pass = passphraseInAttesa
+        if (pass == null) {
+            toast(R.string.cipher_unavailable)
+            return
+        }
+        try {
+            if (esporta) {
+                val blob = CipherIdentity.exportBackup(pass)
+                if (blob == null) {
+                    toast(R.string.cipher_unavailable)
+                    return
+                }
+                val scritto = runCatching {
+                    contentResolver.openOutputStream(uri)?.use { it.write(blob) } != null
+                }.getOrDefault(false)
+                toast(
+                    if (scritto) R.string.cipher_backup_esportato
+                    else R.string.cipher_unavailable
+                )
+            } else {
+                val blob = runCatching {
+                    contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                }.getOrNull()
+                if (blob == null) {
+                    toast(R.string.cipher_unavailable)
+                    return
+                }
+                confermaImport(blob, pass)
+                return
+            }
+        } finally {
+            if (esporta) azzeraPassphrase()
+        }
+    }
+
+    /**
+     * L'ultima conferma prima di sostituire l'identita'.
+     *
+     * Il pulsante che procede sta sul negativo, come per il conflitto di
+     * chiave e per il reset: dove cade il pollice deve esserci cio' che non
+     * cambia niente.
+     */
+    private fun confermaImport(blob: ByteArray, pass: ByteArray) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.cipher_backup_import)
+            .setMessage(R.string.cipher_backup_import_conferma)
+            .setPositiveButton(android.R.string.cancel) { _, _ -> azzeraPassphrase() }
+            .setNegativeButton(R.string.cipher_backup_import_procedi) { _, _ ->
+                val esito = CipherIdentity.importBackup(this, blob, pass)
+                azzeraPassphrase()
+                if (esito == CipherState.Ready) {
+                    toast(R.string.cipher_backup_importato)
+                    render()
+                } else {
+                    // Passphrase sbagliata e file manomesso danno lo stesso
+                    // messaggio: distinguerli direbbe a chi prova le
+                    // passphrase quando ne ha indovinata una.
+                    toast(R.string.cipher_backup_non_aperto)
+                }
+            }
+            .setOnCancelListener { azzeraPassphrase() }
+            .show()
+    }
+
+    private fun azzeraPassphrase() {
+        passphraseInAttesa?.fill(0)
+        passphraseInAttesa = null
+    }
+
+    override fun onDestroy() {
+        // Se l'utente esce a meta' flusso la passphrase non deve restare in
+        // heap ad aspettare la GC.
+        azzeraPassphrase()
+        super.onDestroy()
+    }
+
+    // ========================================================================
     // Identita' non leggibile
     // ========================================================================
 
@@ -364,5 +528,10 @@ class ContactsActivity : Activity() {
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private companion object {
+        const val RICHIESTA_ESPORTA = 1
+        const val RICHIESTA_IMPORTA = 2
+    }
 
 }

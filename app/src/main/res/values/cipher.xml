@@ -93,6 +93,27 @@
     <string name="cipher_show_qr" tools:ignore="MissingTranslation">Mostra il codice QR</string>
     <string name="cipher_qr_hint" tools:ignore="MissingTranslation">Fallo inquadrare di persona a chi vuoi contattare. E\' l\'unico modo di essere sicuri che nessuno si sia messo in mezzo al primo scambio.</string>
 
+    <!--
+        Backup dell\'identita\'. I testi devono dire due cose che l\'utente non
+        puo\' dedurre: che la sicurezza del file dipende SOLO dalla passphrase,
+        e che importare sostituisce l\'identita\' attuale.
+    -->
+    <string name="cipher_backup_export" tools:ignore="MissingTranslation">Salva una copia dell\'identita\'</string>
+    <string name="cipher_backup_export_hint" tools:ignore="MissingTranslation">Scegli una passphrase. Il file sara\' protetto SOLO da questa: se e\' debole, lo e\' il backup. Se la dimentichi, il file non si apre piu\' — non esiste un modo di recuperarla.</string>
+    <string name="cipher_backup_import" tools:ignore="MissingTranslation">Ripristina da una copia</string>
+    <string name="cipher_backup_import_hint" tools:ignore="MissingTranslation">Inserisci la passphrase con cui hai protetto il file.</string>
+    <string name="cipher_backup_import_conferma" tools:ignore="MissingTranslation">Questo sostituisce la tua identita\' attuale con quella del file.\n\n• L\'identita\' di adesso non sara\' piu\' recuperabile, se non ne hai un\'altra copia.\n• I messaggi ricevuti finora potrebbero non essere piu\' leggibili.\n• I tuoi contatti vedranno la chiave del file, non quella di adesso.</string>
+    <string name="cipher_backup_import_procedi" tools:ignore="MissingTranslation">Sostituisci l\'identita\'</string>
+    <string name="cipher_backup_passphrase_vuota" tools:ignore="MissingTranslation">Serve una passphrase</string>
+    <string name="cipher_backup_esportato" tools:ignore="MissingTranslation">Copia salvata. Tienila in un posto sicuro: chi ha il file e la passphrase ha la tua identita\'.</string>
+    <string name="cipher_backup_importato" tools:ignore="MissingTranslation">Identita\' ripristinata</string>
+    <!--
+        UN solo messaggio per passphrase sbagliata e file manomesso.
+        Distinguerli direbbe a chi prova le passphrase quando ne ha indovinata
+        una.
+    -->
+    <string name="cipher_backup_non_aperto" tools:ignore="MissingTranslation">Non e\' stato possibile aprire il file</string>
+
     <!-- ContactsActivity. -->
     <string name="cipher_my_identity" tools:ignore="MissingTranslation">La tua identita\'</string>
     <string name="cipher_my_identity_hint" tools:ignore="MissingTranslation">Questo codice ti identifica. Leggilo a voce a chi vuoi contattare: se combacia, nessuno si e\' interposto.</string>

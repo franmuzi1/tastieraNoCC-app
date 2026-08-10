@@ -146,6 +146,65 @@ object CipherIdentity {
         }
     }
 
+    /**
+     * Sostituisce l'identita' corrente con quella di un backup, e la persiste.
+     *
+     * Distruttivo quanto [resetIdentity], ma con una differenza importante:
+     * qui l'identita' vecchia viene buttata per una NUOVA che l'utente ha
+     * scelto, non per una generata a caso. Va comunque dietro una conferma.
+     *
+     * Ordine: prima si apre il backup, poi si scrive su disco, e solo se
+     * entrambe riescono si considera fatto. Se il processo morisse fra
+     * l'import in memoria e la scrittura, al riavvio tornerebbe la vecchia
+     * identita' — sgradevole, ma coerente. Il contrario (nuova su disco,
+     * vecchia in memoria) sarebbe peggio.
+     */
+    fun importBackup(context: Context, blob: ByteArray, passphrase: ByteArray): CipherState {
+        if (!CipherCore.available) return CipherState.Unavailable(CipherReason.MISSING_LIBRARY)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return CipherState.Unavailable(CipherReason.API_TOO_OLD)
+        }
+        val app = context.applicationContext
+        return synchronized(this) { importLocked(app, blob, passphrase) }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.M)
+    private fun importLocked(
+        context: Context,
+        blob: ByteArray,
+        passphrase: ByteArray,
+    ): CipherState {
+        val secret = ByteArray(SECRET_LEN)
+        try {
+            if (CipherCore.nativeImportBackup(blob, passphrase, secret) != CipherCore.OK) {
+                return CipherState.Unreadable(CipherPart.IDENTITY)
+            }
+            val wrapped = CipherKeystore.wrap(AAD_IDENTITY, secret)
+                ?: return CipherState.Unavailable(CipherReason.KEYSTORE)
+            if (!CipherStorage.write(context, CipherStorage.IDENTITY, wrapped)) {
+                return CipherState.Unavailable(CipherReason.STORAGE)
+            }
+            ready = true
+            // Il portachiavi arriva insieme al segreto: senza questa riga si
+            // ripartirebbe con i contatti in memoria e nessuno su disco.
+            persistLocked(context)
+            return CipherState.Ready
+        } finally {
+            secret.fill(0)
+        }
+    }
+
+    /**
+     * Produce il blob di backup. `null` se la sessione non e' pronta o se
+     * qualcosa fallisce.
+     */
+    fun exportBackup(passphrase: ByteArray): ByteArray? {
+        if (!ready) return null
+        return synchronized(this) { CipherCore.nativeExportBackup(passphrase) }
+    }
+
+    private const val SECRET_LEN = 32
+
     private fun loadLocked(context: Context): CipherState {
         if (ready) return CipherState.Ready
         // Il .so puo' mancare senza che sia colpa di nessuno: build senza core,

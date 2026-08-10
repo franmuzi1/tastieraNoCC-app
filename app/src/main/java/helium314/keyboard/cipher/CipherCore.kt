@@ -137,6 +137,33 @@ object CipherCore {
     ): Int
 
     /**
+     * Esporta identita' e portachiavi cifrati con una passphrase.
+     *
+     * La passphrase e' un `ByteArray` e non una `String` per la solita
+     * ragione: una `String` non e' azzerabile. Azzerala appena chiamata.
+     *
+     * `null` se qualcosa e' andato storto — un solo esito per tutti i casi,
+     * non c'e' niente di utile da distinguere.
+     */
+    external fun nativeExportBackup(passphrase: ByteArray): ByteArray?
+
+    /**
+     * Apre un backup e **sostituisce** identita' e portachiavi correnti.
+     *
+     * Distruttivo. Va chiamata solo dopo una conferma esplicita dell'utente, e
+     * il risultato va persistito SUBITO: se il processo muore prima, su disco
+     * resta la vecchia identita' e in memoria c'e' la nuova.
+     *
+     * @param secretOut array di 32 byte che il chiamante alloca; ci finisce il
+     *   segreto da cifrare per lo storage. Azzeralo appena l'hai usato.
+     */
+    external fun nativeImportBackup(
+        blob: ByteArray,
+        passphrase: ByteArray,
+        secretOut: ByteArray,
+    ): Int
+
+    /**
      * Dice se il testo *sembra* contenere un nostro blob. Nessuna
      * decifratura, nessun accesso al keyring, nessun effetto collaterale.
      *

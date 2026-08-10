@@ -193,6 +193,44 @@ identità, i tasti in toolbar dentro l'IME vero, e il conflitto di etichetta.
 | ciclo completo sul dispositivo da stato pulito | card → pin → cifra → decifra, nessun crash |
 | dialogo QR nel build minificato | si apre, `ImageView` presente, nessun problema con R8 |
 
+## Backup dell'identità — PROVATO sul dispositivo
+
+Il buco più grave era che perdere i dati dell'app significava perdere la chiave,
+in silenzio e per sempre. Ora c'è un file cifrato con una passphrase.
+
+Ciclo completo osservato su emulatore:
+
+| Passo | Esito |
+|---|---|
+| salvataggio | file di 189 byte scelto dall'utente via Storage Access Framework |
+| `pm clear` | identità diversa: `k1zp bokq …` invece di `mssw sqex …` |
+| ripristino con passphrase giusta | identità **identica** a prima, contatti tornati |
+| `force-stop` e riapertura | ancora quella: scritta su disco, non solo in memoria |
+| ripristino con passphrase **sbagliata** | non cambia niente, identità intatta |
+
+Scelte che vale la pena conoscere:
+
+- **Argon2id, non HKDF.** HKDF è veloce apposta ed è giusto per i messaggi; il
+  backup invece esce dal dispositivo, quindi chi lo ottiene può provare
+  passphrase offline e in parallelo. Qui ogni tentativo costa 64 MiB e tre
+  passate — il costo di memoria è il freno vero, perché su GPU è la memoria il
+  collo di bottiglia;
+- **i parametri stanno nel file e sono autenticati.** Servono per rifare la
+  derivazione, ma se fossero modificabili si potrebbero riscrivere a `m=8, t=1`:
+  il file resterebbe apribile con la stessa passphrase e provarle tutte
+  costerebbe migliaia di volte meno, senza che la vittima se ne accorga;
+- **Storage Access Framework**, quindi nessun permesso sullo storage. Chiedere
+  accesso a tutto il disco per salvare un file sarebbe sproporzionato, e in
+  questo progetto contraddittorio;
+- **la passphrase si chiede prima del file.** Chiederla dopo significherebbe
+  farla inventare a chi ha già scelto dove salvare e vuole solo finire — cioè
+  il modo migliore per ottenere una passphrase pessima;
+- **il pulsante che sostituisce l'identità sta sul negativo**, come per il
+  conflitto di chiave e per il reset.
+
+*Residuo dichiarato:* la sicurezza del file dipende **solo** dalla passphrase.
+Non è un dettaglio da nascondere e infatti è scritto nella schermata.
+
 ## Percorsi negativi — PROVATI
 
 Fabbricati alterando i byte del corpo di un messaggio valido (decodifica
