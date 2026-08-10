@@ -258,8 +258,37 @@ il file ma non lo si trova. Usare `/data/local/tmp/`.
   impantanato sulla configurazione dei preferences: su Marshmallow non esiste lo
   storage device-protected, quindi il file sta in `/data/data/…`;
 - **build riproducibile** per F-Droid: mai affrontato;
-- **tenuta del merge con upstream.** Il fork tocca sette file di HeliBoard, e
-  nessuno ha mai provato un merge da upstream dopo queste modifiche.
+- **merge da upstream con modifiche vere.** Oggi non c'è niente di nuovo da
+  `upstream/main`, quindi la tenuta non è provabile; misurata l'esposizione,
+  vedi sotto.
+
+## Quanto invade il fork nel codice di HeliBoard
+
+Misurato rispetto al punto di divergenza da upstream, escludendo tutto ciò che
+è solo nostro (`cipher/`, `CIPHER.md`, risorse dedicate):
+
+| File | righe |
+|---|---|
+| `app/build.gradle.kts` | +67 |
+| `app/src/main/AndroidManifest.xml` | +67 |
+| `ToolbarUtils.kt` | +38 −1 |
+| `MainSettingsScreen.kt` | +18 |
+| `KeyCode.kt` | +15 |
+| `ClipboardHistoryManager.kt` | +12 |
+| `KeyboardActionListenerImpl.kt` | +8 |
+| `proguard-rules.pro` | +7 |
+| `KeyboardIconsSet.kt` | +6 |
+| `SuggestionStripView.kt` | +6 |
+| **totale** | **+244 −1** |
+
+**Una sola riga rimossa** in tutto il codice di HeliBoard, e sono aggiunte per
+il resto. È il profilo che serve per un merge indolore: le aggiunte pure
+confliggono solo se upstream tocca esattamente le stesse righe.
+
+Nei soli file Kotlin di upstream le aggiunte sono 103, di cui **56 commenti e
+41 di codice**. Il rapporto è voluto: quelle 41 righe sono sparse in codice
+altrui, e chi le incontrerà fra sei mesi non avrà il contesto per capire perché
+ci sono.
 
 ## Come far girare l'emulatore qui
 
