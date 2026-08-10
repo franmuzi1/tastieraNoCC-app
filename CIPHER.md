@@ -267,10 +267,36 @@ il file ma non lo si trova. Usare `/data/local/tmp/`.
 
 ## Cosa NON è ancora stato provato
 
-- **build riproducibile** per F-Droid: mai affrontato;
 - **merge da upstream con modifiche vere.** Oggi non c'è niente di nuovo da
   `upstream/main`, quindi la tenuta non è provabile; misurata l'esposizione,
   vedi sotto.
+
+## Build riproducibile — misurata
+
+Due build da pulito della libreria nativa danno un `.so` **byte per byte
+identico** (`sha256` uguale). È la condizione necessaria perché qualcun altro
+possa ricostruire il binario e confrontarlo con quello distribuito.
+
+Ci si arriva con `--remap-path-prefix`, impostato dal task Gradle. Senza, il
+`.so` incide i percorsi assoluti della macchina che l'ha costruito — otto
+occorrenze di `/home/<utente>/.cargo/registry` — che sono le stringhe di
+posizione dei `panic!` delle dipendenze (`jni`, `curve25519-dalek`,
+`rand_core`, `cesu8`, `cipher`).
+
+Due cose da sapere, perché non sono ovvie:
+
+- **lo strip del debuginfo non le toglie.** Stanno in `.rodata`, non nel
+  debuginfo. `strip = "debuginfo"` serve ad altro e resta utile, ma non
+  risolve questo;
+- **`strip = "symbols"` romperebbe tutto**: i simboli dinamici esportati verso
+  la JVM devono restare, perché JNI li risolve per nome.
+
+Verificato dopo il rimappaggio: zero percorsi macchina in tutte e quattro le
+ABI dell'APK, 28 simboli `Java_…_native…` intatti, app funzionante.
+
+*Cosa questo NON dimostra:* la riproducibilità **fra macchine diverse**, che
+richiede in più la stessa versione di Rust e dello stesso NDK. Quelle F-Droid
+le fissa; il rimappaggio toglie la parte che dipendeva da *dove* si compila.
 
 ## Quanto invade il fork nel codice di HeliBoard
 

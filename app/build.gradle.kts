@@ -193,11 +193,33 @@ val cipherCoreDir = file(cipherCorePath).resolve("jni")
 val cipherLibsDir = file("src/main/jniLibs")
 val cipherCoreAvailable = cipherCoreDir.resolve("Cargo.toml").exists()
 
+// Rimappaggi dei percorsi sorgente, risolti qui a tempo di configurazione.
+//
+// Senza, il `.so` incide nella .rodata i percorsi assoluti della macchina che
+// l'ha costruito: sono le stringhe di posizione dei `panic!` delle dipendenze
+// (jni, curve25519-dalek, rand_core, cesu8, cipher), e restano anche dopo lo
+// strip del debuginfo perche' non sono debuginfo.
+//
+// Due conseguenze, entrambe indesiderabili. La libreria rivela la struttura di
+// chi compila — nome utente compreso. E soprattutto cambia a seconda di DOVE
+// e' stata costruita, il che rende impossibile una build riproducibile: un
+// binario che nessuno puo' ricostruire identico e' un binario di cui bisogna
+// fidarsi sulla parola, che in un progetto di cifratura e' il contrario di
+// cio' che serve.
+val cipherCargoHome: String = System.getenv("CARGO_HOME")
+    ?: "${System.getProperty("user.home")}/.cargo"
+val cipherRustFlags: String = listOf(
+    "--remap-path-prefix=$cipherCargoHome=/cargo",
+    "--remap-path-prefix=${cipherCoreDir.absolutePath}=/src",
+    "--remap-path-prefix=${cipherCoreDir.parentFile.absolutePath}=/src-core",
+).joinToString(" ")
+
 val buildCipherCore by tasks.registering(Exec::class) {
     group = "build"
     description = "Compila keyboard-cipher-jni per le ABI Android con cargo-ndk"
 
     workingDir = cipherCoreDir
+    environment("RUSTFLAGS", cipherRustFlags)
     commandLine(
         buildList {
             add("cargo")
