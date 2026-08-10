@@ -8,26 +8,29 @@ Il core crypto sta in un repo separato (`keyboard-cipher-core` + il ponte
 `keyboard-cipher-jni`) e non è incluso qui: questo repo contiene solo il lato
 Android.
 
-## Stato: compila, con la funzionalità ancora scheletro
+## Stato: funziona, e gira su dispositivo
 
-`./gradlew assembleDebug` passa. Verificato **sull'APK**, non sull'esito di
-Gradle (vedi sotto perché la distinzione conta):
+Il ciclo completo è stato osservato su emulatore: pressione lunga su "cifra" →
+la propria presentazione nel campo → "decifra" → contatto fissato con il suo
+fingerprint → testo in chiaro + "cifra" → il chiaro sparisce, sostituito dal
+blob → "decifra" → mittente, data e testo originale.
 
-| Cosa | Esito |
+| Piano | Copertura |
 |---|---|
-| `lib/{arm64-v8a,armeabi-v7a,x86,x86_64}/libkeyboard_cipher_jni.so` | presenti, 339–573 KB |
-| `Lhelium314/keyboard/cipher/DecryptActivity;` nel dex | presente |
-| `Lhelium314/keyboard/cipher/ContactsActivity;` nel dex | presente |
-| `CipherCore` nel dex | **assente, ed è corretto** — vedi sotto |
+| core Rust + ponte JNI | 62 + 6 test, clippy pulito, ~48 M input di fuzzing |
+| percorsi felici | tutti, sul dispositivo |
+| percorsi negativi | blob corrotto, troncato, versione futura, tier ignoto, testo non nostro |
+| conflitto di etichetta | tutti e tre gli esiti |
+| versioni Android | 22 (non disponibile), 23 (minimo), 34 (con e senza blocco schermo) |
 
-`CipherCore` non è nel dex perché **nessuno lo chiama ancora**: l'unica
-occorrenza del nome in tutto il sorgente è il TODO dentro
-`DecryptActivity.onCreate`. R8 rimuove le classi irraggiungibili, e questa lo
-è. Comparirà nel dex insieme al primo chiamante vero; `proguard-rules.pro` ha
-già `-keepclassmembers class * { native <methods>; }` e `-dontobfuscate`,
-quindi i nomi dei metodi nativi sopravvivono alla minificazione — che è
-l'unica cosa che conta, dato che JNI risolve **per nome**
-(`Java_helium314_keyboard_cipher_CipherCore_native...`).
+Cosa **non** è stato fatto: build riproducibile per F-Droid, scanner QR (serve
+`CAMERA`), e un merge da upstream con modifiche vere. Dettagli in fondo.
+
+`proguard-rules.pro` ha `-keep` su `CipherCore` e `IncomingResult`, e
+`-dontobfuscate`: i nomi dei metodi nativi devono sopravvivere alla
+minificazione, perché JNI risolve **per nome**
+(`Java_helium314_keyboard_cipher_CipherCore_native…`), e R8 rimuoverebbe i
+campi di `IncomingResult` non vedendone lettori Kotlin.
 
 ### Trappola: un build verde non dimostra che la funzionalità ci sia
 
@@ -48,7 +51,7 @@ alle classi vere e le toglie dal dex. Da qui due regole:
 
 | Dove | Cosa |
 |---|---|
-| `app/src/main/java/helium314/keyboard/cipher/` | `CipherCore` (binding JNI), `DecryptActivity`, `ContactsActivity` |
+| `app/src/main/java/helium314/keyboard/cipher/` | tutto il codice del fork: `CipherCore` (binding JNI), `CipherIdentity`, `CipherKeystore`, `CipherStorage`, `CipherClipboard`, `CipherActions`, `CipherQr`, `PeerList`, `DecryptActivity`, `ContactsActivity` |
 | `app/src/main/AndroidManifest.xml` | le due Activity con i loro attributi di sicurezza, e gli intent filter `PROCESS_TEXT` / `SEND` |
 | `app/build.gradle.kts` | task `buildCipherCore` che invoca `cargo-ndk` e deposita i `.so` in `jniLibs`, agganciato a `preBuild` |
 | `.gitignore` | `app/src/main/jniLibs/` — sono artefatti, non sorgenti |
@@ -61,9 +64,9 @@ fallire sarà il caricamento della libreria, dove il messaggio è comprensibile.
 Un build rotto per un percorso sbagliato sarebbe molto più difficile da
 diagnosticare.
 
-## Cosa manca (e dove)
+## La lista di lavoro (esaurita)
 
-Lista ordinata per dipendenza. Chi la usa deve verificare **nel codice** se un
+Lista ordinata per dipendenza, tenuta come storia delle decisioni. Chi la usa deve verificare **nel codice** se un
 punto è già fatto: questo documento può essere indietro rispetto ai commit.
 
 **~~1. Ciclo di vita della chiave.~~ FATTO.** `CipherKeystore` (chiave maestra
