@@ -32,6 +32,7 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InlineSuggestion;
 import android.view.inputmethod.InlineSuggestionsRequest;
 import android.view.inputmethod.InlineSuggestionsResponse;
+import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodSubtype;
 
 import helium314.keyboard.accessibility.AccessibilityUtils;
@@ -57,6 +58,7 @@ import helium314.keyboard.keyboard.KeyboardSwitcher;
 import helium314.keyboard.keyboard.MainKeyboardView;
 import helium314.keyboard.latin.SuggestedWords.SuggestedWordInfo;
 import helium314.keyboard.latin.common.ColorType;
+import helium314.keyboard.cipher.CipherCompose;
 import helium314.keyboard.latin.common.Constants;
 import helium314.keyboard.latin.common.CoordinateUtils;
 import helium314.keyboard.latin.common.InputPointers;
@@ -762,6 +764,35 @@ public class LatinIME extends InputMethodService implements
         mInsetsUpdater = ViewOutlineProviderUtilsKt.setInsetsOutlineProvider(view);
         KtxKt.updateSoftInputWindowLayoutParameters(this, mInputView);
         updateSuggestionStripView(view);
+        // keyboard-cipher: la gerarchia viene ricostruita a ogni cambio di
+        // tema, rotazione o modalita', quindi la riga va riagganciata qui e non
+        // tenuta da parte.
+        CipherCompose.INSTANCE.reload(this);
+        CipherCompose.INSTANCE.bind(view);
+    }
+
+    /**
+     * keyboard-cipher: a modalita' composizione attiva il testo va nel buffer
+     * della tastiera, non nel campo dell'app.
+     *
+     * E' l'unico punto di innesto necessario, e il motivo per cui non c'e' un
+     * secondo motore di digitazione: tutto cio' che HeliBoard scrive passa da
+     * qui, quindi correzione, suggerimenti, cancellazione e cursore continuano
+     * a funzionare senza sapere che il bersaglio e' cambiato.
+     */
+    @Override
+    public InputConnection getCurrentInputConnection() {
+        final InputConnection redirected = CipherCompose.INSTANCE.connection();
+        return redirected != null ? redirected : super.getCurrentInputConnection();
+    }
+
+    /**
+     * La connessione vera verso l'app, qualunque cosa dica la modalita'
+     * composizione. La usa il codice che deve consegnare all'app il blob gia'
+     * cifrato — e solo quello.
+     */
+    public InputConnection getAppInputConnection() {
+        return super.getCurrentInputConnection();
     }
 
     public void updateSuggestionStripView(View view) {
@@ -838,6 +869,12 @@ public class LatinIME extends InputMethodService implements
 
     private void onStartInputInternal(final EditorInfo editorInfo, final boolean restarting) {
         super.onStartInput(editorInfo, restarting);
+
+        // keyboard-cipher: il destinatario e' per app, quindi un testo
+        // cominciato altrove non deve poter essere cifrato qui — sarebbe
+        // cifrato per la persona sbagliata.
+        CipherCompose.INSTANCE.reload(this);
+        CipherCompose.INSTANCE.onInputStarted(editorInfo);
 
         final RichInputMethodSubtype subtypeForApp = editorInfo == null
             ? null :

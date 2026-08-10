@@ -407,6 +407,60 @@ Non si vede da nessun avviso e l'APK funziona benissimo, quindi va ricordato:
 Come accorgersene: sommare le dimensioni compresse delle voci e confrontarle
 con la dimensione del file. Se il file e' molto piu' grande, e' spazio morto.
 
+## Riga di composizione — il chiaro non passa piu' dal campo dell'app
+
+Opzionale, spenta di default: Impostazioni → Preferences → Cifratura → *Scrivi
+dentro la tastiera*.
+
+**Cosa chiudeva.** Prima il chiaro veniva digitato nel campo dell'app di chat e
+ci restava fino alla pressione del lucchetto. In quella finestra l'app lo vede
+per intero — e' il suo `EditText`, riceve ogni battuta, puo' salvarlo come bozza
+sul proprio server e intanto annuncia "sta scrivendo". Il progetto esiste per
+non consegnare il chiaro all'app di chat, e glielo consegnava lo stesso: per
+pochi secondi, e con l'utente convinto del contrario.
+
+**Come e' fatta.** Non c'e' un secondo motore di digitazione: si sostituisce la
+sola `InputConnection`. HeliBoard scrive dove gli dice `getCurrentInputConnection`,
+quindi basta che quella — a modalita' attiva — sia una `BaseInputConnection` su
+un buffer nostro perche' correzione, suggerimenti, cancellazione, cursore e
+gesti continuino a funzionare senza modifiche. L'innesto in `LatinIME` e' un
+override e un accessore: `getAppInputConnection()` restituisce quella vera, e la
+usa solo cio' che deve arrivare davvero all'app — il blob, la presentazione, e
+la lettura del campo per decifrare.
+
+**Il tasto invio non fa niente.** E' il punto piu' importante della classe:
+inoltrarlo consegnerebbe all'app il comando di spedire mentre il chiaro non e'
+ancora cifrato. Finche' non si preme il lucchetto non c'e' niente da spedire.
+
+**Il buffer appartiene a un'app.** Il destinatario e' per package: un testo
+cominciato in una conversazione non deve poter essere cifrato in un'altra,
+sarebbe cifrato per la persona sbagliata. Quindi il buffer ricorda il package
+per cui e' nato e si azzera quando il fuoco passa a un'app *diversa*. Due casi
+vanno ignorati, ed entrambi sono costati un giro di prove:
+
+- `inputType == TYPE_NULL` — il fuoco su qualcosa che non e' un campo di testo;
+- **le nostre schermate**. Andare a decifrare e tornare indietro passa da
+  `onStartInput` col nostro package: senza l'eccezione, il messaggio in corso
+  spariva proprio nel flusso piu' comune, leggere e rispondere.
+
+Provato sull'emulatore battendo i tasti veri (`adb shell input text` inietta gli
+eventi nell'app e **salta la tastiera**: con quello non si prova niente di tutto
+cio'):
+
+| Passo | Esito |
+|---|---|
+| digitazione | testo nella riga, campo dell'app **vuoto** |
+| backspace | cancella nel buffer |
+| invio | va a capo, non spedisce, campo dell'app ancora vuoto |
+| decifra e ritorno | il testo in composizione e' ancora li' |
+| lucchetto | blob nel campo dell'app, riga svuotata |
+| decifra del blob | *"ciao mondo"*, integro |
+| modalita' spenta | riga assente, altezza identica al pixel, digitazione nel campo come prima |
+
+*Residuo dichiarato:* la riga mostra il testo ma non il **cursore** — la
+finestra di un IME non prende il fuoco, quindi nessuna vista ci puo' disegnare
+un caret lampeggiante. Il cursore esiste e si muove nel buffer, non si vede.
+
 ## L'altezza della tastiera non e' cambiata — misurata
 
 Sospetto ragionevole, perche' i due lucchetti fissati stanno nella striscia dei

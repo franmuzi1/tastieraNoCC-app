@@ -5,6 +5,7 @@ import android.inputmethodservice.InputMethodService
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.widget.Toast
+import helium314.keyboard.latin.LatinIME
 import helium314.keyboard.latin.R
 
 /**
@@ -37,8 +38,19 @@ object CipherActions {
      */
     fun encrypt(ime: InputMethodService) {
         if (!ready(ime)) return
-        val ic = ime.currentInputConnection ?: return
-        val field = readField(ime, ic) ?: return
+        val ic = appConnection(ime) ?: return
+
+        // Con la riga di composizione attiva il chiaro non e' mai stato nel
+        // campo dell'app: sta nel buffer della tastiera, e il campo va
+        // riempito, non sostituito. Se il buffer e' vuoto si guarda comunque il
+        // campo — puo' esserci del testo scritto prima di accendere la
+        // modalita', e buttarlo via sarebbe una sorpresa.
+        val composed = if (CipherCompose.isEnabled() && !CipherCompose.isEmpty()) {
+            Field(CipherCompose.text(), 0, 0)
+        } else {
+            null
+        }
+        val field = composed ?: readField(ime, ic) ?: return
         if (field.text.isEmpty()) {
             toast(ime, R.string.cipher_nothing_to_encrypt)
             return
@@ -63,6 +75,18 @@ object CipherActions {
             toast(ime, R.string.cipher_no_recipient)
             return
         }
+        if (composed != null) {
+            // Il campo dell'app e' vuoto per costruzione: qui non si sostituisce
+            // niente, si consegna. E il buffer si svuota solo DOPO che il blob
+            // e' stato consegnato — svuotarlo prima, con la consegna che poi
+            // fallisce, cancellerebbe un messaggio che non e' mai partito.
+            ic.beginBatchEdit()
+            ic.finishComposingText()
+            ic.commitText(blob, 1)
+            ic.endBatchEdit()
+            CipherCompose.clear()
+            return
+        }
         if (!replaceField(ic, field, blob)) {
             // Il campo non e' stato sostituito: nel dubbio l'utente deve
             // saperlo, perche' il fallimento silenzioso qui e' il peggiore
@@ -70,6 +94,18 @@ object CipherActions {
             toast(ime, R.string.cipher_replace_failed)
         }
     }
+
+    /**
+     * La connessione verso l'app, non quella verso il buffer di composizione.
+     *
+     * A modalita' composizione attiva `currentInputConnection` e' dirottata sul
+     * buffer della tastiera: per tutto cio' che deve arrivare davvero all'app —
+     * il blob cifrato, la presentazione — serve quella vera. Leggere il campo
+     * per decifrare passa di qui per lo stesso motivo: il blob da decifrare sta
+     * nell'app, non in cio' che si sta scrivendo.
+     */
+    private fun appConnection(ime: InputMethodService): InputConnection? =
+        (ime as? LatinIME)?.appInputConnection ?: ime.currentInputConnection
 
     /**
      * Scrive nel campo la propria identity card.
@@ -101,7 +137,8 @@ object CipherActions {
      */
     fun insertIdentityCard(ime: InputMethodService) {
         if (!ready(ime)) return
-        val ic = ime.currentInputConnection ?: return
+        // Nel campo dell'app: la card serve a essere spedita.
+        val ic = appConnection(ime) ?: return
         val card = CipherCore.nativeIdentityCard()
         if (card == null) {
             toast(ime, R.string.cipher_unavailable)
@@ -178,7 +215,7 @@ object CipherActions {
      */
     private fun source(ime: InputMethodService, clipboardOnly: Boolean): CharSequence? {
         if (!clipboardOnly) {
-            val ic = ime.currentInputConnection
+            val ic = appConnection(ime)
             if (ic != null) {
                 // Distinzione che conta: `null` qui vuol dire "campo troppo
                 // lungo, gia' segnalato", non "campo vuoto". Ricadere sugli

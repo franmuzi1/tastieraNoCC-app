@@ -12,6 +12,31 @@
     android:layout_gravity="bottom"
     android:orientation="vertical" >
 
+    <!--
+        keyboard-cipher: la riga di composizione. Il chiaro si scrive qui e
+        l'app riceve solo il blob.
+
+        `gone` per default: a modalita' spenta non deve costare un pixel di
+        altezza, e in un LinearLayout verticale una vista `gone` non ne occupa.
+        maxLines la tiene a tre righe e il testo piu' lungo scorre, invece di
+        far crescere la tastiera mentre si scrive.
+    -->
+    <TextView
+        android:id="@+id/cipher_compose_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:minHeight="@dimen/config_suggestions_strip_height"
+        android:maxLines="3"
+        android:gravity="center_vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        android:textSize="16sp"
+        android:hint="@string/cipher_compose_hint"
+        android:textDirection="locale" />
+
     <include
         android:id="@+id/strip_container"
         layout="@layout/strip_container" />
