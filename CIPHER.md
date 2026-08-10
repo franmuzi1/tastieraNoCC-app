@@ -298,6 +298,29 @@ ABI dell'APK, 28 simboli `Java_…_native…` intatti, app funzionante.
 richiede in più la stessa versione di Rust e dello stesso NDK. Quelle F-Droid
 le fissa; il rimappaggio toglie la parte che dipendeva da *dove* si compila.
 
+### L'APK invece NON è riproducibile, e la colpa è di R8
+
+Due build complete danno APK diversi. Le voci che cambiano sono `classes.dex`
+(372 byte di differenza) e i tre file sotto `META-INF/`, che differiscono solo
+di conseguenza — la firma copre il dex.
+
+Isolata la causa con un esperimento: la variante **`debugNoMinify`**, cioè la
+stessa app senza R8, produce un dex **byte per byte identico** su due build.
+Con R8 no.
+
+Quindi:
+
+- **non è colpa di questo fork.** Riguarda l'intera app, e upstream allo stesso
+  modo;
+- **non è correggibile da qui.** È il comportamento di R8 con questa versione
+  di AGP;
+- resta un ostacolo reale se un giorno si vuole una build riproducibile delle
+  varianti minificate. Le vie sono due, entrambe fuori da questo repo: fissare
+  una versione di R8 che sia deterministica, o distribuire una variante non
+  minificata.
+
+Il pezzo che dipende da noi — la libreria nativa — è riproducibile.
+
 ## Quanto invade il fork nel codice di HeliBoard
 
 Misurato rispetto al punto di divergenza da upstream, escludendo tutto ciò che
