@@ -113,7 +113,7 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
         //
         // Costa una lettura del campo, e solo finche' il buffer e' vuoto: dal
         // primo carattere in poi la condizione e' falsa e non si legge piu'.
-        CipherActions.adoptFieldText(latinIME)
+        CipherActions.adoptFieldText(latinIME, primaryCode)
         when (primaryCode) {
             KeyCode.TOGGLE_AUTOCORRECT -> return settings.toggleAutoCorrect()
             KeyCode.TOGGLE_INCOGNITO_MODE -> {

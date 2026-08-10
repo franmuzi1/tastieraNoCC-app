@@ -7,6 +7,7 @@ import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.widget.Toast
 import helium314.keyboard.keyboard.KeyboardSwitcher
+import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.LatinIME
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.utils.InputTypeUtils
@@ -212,7 +213,16 @@ object CipherActions {
      * momento di cifrare finirebbe nel blob *e* accanto ad esso, in chiaro.
      * Meglio non adottare niente e lasciare le cose come stanno.
      */
-    fun adoptFieldText(ime: InputMethodService) {
+    @JvmOverloads
+    fun adoptFieldText(ime: InputMethodService, primaryCode: Int = 0) {
+        // MAI sui tasti della cifratura. Sono gli unici che leggono il campo
+        // dell'app per conto proprio — "decifra" cerca li' il blob, "cifra" ci
+        // ricade quando la riga e' vuota — e adottare un istante prima glielo
+        // toglierebbe di sotto: il tasto decifra smetteva di funzionare del
+        // tutto, perche' trovava il campo vuoto.
+        if (primaryCode <= KeyCode.CIPHER_ENCRYPT && primaryCode >= KeyCode.CIPHER_TOGGLE_COMPOSE) {
+            return
+        }
         if (!CipherSettings.isEnabled(ime)) return
         if (!CipherCompose.isEnabled() || !CipherCompose.isEmptyBuffer()) return
         val ic = appConnection(ime) ?: return
