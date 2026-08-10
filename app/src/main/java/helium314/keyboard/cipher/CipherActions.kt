@@ -74,14 +74,21 @@ object CipherActions {
      * per tenerlo lontano. Il chiaro si vede solo nella nostra finestra, che e'
      * `FLAG_SECURE`, e finisce li'.
      */
-    fun decrypt(ime: InputMethodService) {
+    fun decrypt(ime: InputMethodService) = decrypt(ime, clipboardOnly = false)
+
+    /**
+     * Pressione lunga sul tasto "decifra": salta il campo e va dritto agli
+     * appunti.
+     *
+     * Serve quando il campo NON e' vuoto ma contiene altro — una risposta gia'
+     * cominciata, per dirne una. Senza, la pressione breve userebbe quel testo
+     * e direbbe "non e' cifrato", che e' vero e inutile.
+     */
+    fun decryptFromClipboard(ime: InputMethodService) = decrypt(ime, clipboardOnly = true)
+
+    private fun decrypt(ime: InputMethodService, clipboardOnly: Boolean) {
         if (!ready(ime)) return
-        val ic = ime.currentInputConnection ?: return
-        val text = readField(ime, ic) ?: return
-        if (text.isEmpty()) {
-            toast(ime, R.string.cipher_nothing_to_decrypt)
-            return
-        }
+        val text = source(ime, clipboardOnly) ?: return
 
         // ACTION_SEND e non un'azione nostra: DecryptActivity la gestisce gia'
         // per lo share sheet, e avere una via sola dentro l'Activity significa
@@ -93,6 +100,43 @@ object CipherActions {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         runCatching { ime.startActivity(intent) }
+    }
+
+    /**
+     * Da dove prendere il testo da decifrare: prima il campo, poi gli appunti.
+     *
+     * Quest'ordine perche' il campo e' gratis e non ha effetti collaterali,
+     * mentre leggere gli appunti su Android 12+ fa comparire un toast di
+     * sistema e tira dentro qualunque cosa l'utente abbia copiato. Si arriva
+     * agli appunti solo quando il campo non ha niente da offrire.
+     *
+     * `null` significa "gia' detto all'utente cosa non va": chi chiama esce e
+     * basta.
+     */
+    private fun source(ime: InputMethodService, clipboardOnly: Boolean): CharSequence? {
+        if (!clipboardOnly) {
+            val ic = ime.currentInputConnection
+            if (ic != null) {
+                // Distinzione che conta: `null` qui vuol dire "campo troppo
+                // lungo, gia' segnalato", non "campo vuoto". Ricadere sugli
+                // appunti in quel caso decifrerebbe una cosa diversa da quella
+                // che l'utente stava guardando.
+                val field = readField(ime, ic) ?: return null
+                if (field.isNotEmpty()) return field
+            }
+        }
+        // La descrizione prima del contenuto: e' l'unica chiamata che non fa
+        // comparire il toast di sistema. Vedi CipherClipboard.
+        if (!CipherClipboard.hasText(ime)) {
+            toast(ime, R.string.cipher_nothing_to_decrypt)
+            return null
+        }
+        val clip = CipherClipboard.read(ime)
+        if (clip.isNullOrEmpty()) {
+            toast(ime, R.string.cipher_nothing_to_decrypt)
+            return null
+        }
+        return clip
     }
 
     /**

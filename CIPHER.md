@@ -78,9 +78,18 @@ AES-256-GCM in Android Keystore), `CipherStorage` (i due blob in
 **~~3. `DecryptActivity`.~~ FATTO.** Decifra davvero, gestisce i sei esiti,
 `onNewIntent`, persiste il keyring dopo il pin.
 
-**4. Clipboard (via 1).** Polling passivo con `getPrimaryClipDescription()` —
-che non fa comparire il toast di Android 12 — e lettura del contenuto solo su
-gesto esplicito dell'utente. È la via che funziona ovunque; oggi non c'è niente.
+**~~4. Clipboard (via 1).~~ FATTO.** `CipherClipboard` separa la descrizione
+(`getPrimaryClipDescription`, non fa comparire il toast di Android 12) dalla
+lettura del contenuto, che avviene solo su gesto esplicito. Il tasto "decifra"
+prova prima il campo e poi gli appunti; la pressione lunga va dritta agli
+appunti.
+
+*Residuo:* nessun indizio visivo che negli appunti ci sia qualcosa da
+decifrare. Servirebbe rivalutare lo stato del pulsante a ogni cambio di
+clipboard, e `setToolbarButtonsActivatedStateOnPrefChange` si attiva sui
+preferences, non sulla clipboard. Il gancio esiste — `ClipboardHistoryManager`
+ha già un `OnPrimaryClipChangedListener` — ma è codice di HeliBoard, quindi va
+pesato contro il costo nei merge.
 
 **5. Identity card.** `nativeIdentityCard` + `commitText`. Senza, il primo
 contatto in una direzione non si chiude. Serve un punto d'ingresso nella UI:

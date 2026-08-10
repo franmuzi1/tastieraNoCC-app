@@ -100,6 +100,10 @@ fun getCodeForToolbarKey(key: ToolbarKey) = Settings.getInstance().getCustomTool
 }
 
 fun getCodeForToolbarKeyLongClick(key: ToolbarKey) = Settings.getInstance().getCustomToolbarLongpressCode(key) ?: when (key) {
+    // Pressione lunga: salta il campo di input e vai dritto agli appunti.
+    // Serve quando il campo contiene gia' altro — una risposta cominciata —
+    // e la pressione breve userebbe quel testo dicendo "non e' cifrato".
+    DECRYPT -> KeyCode.CIPHER_DECRYPT_CLIPBOARD
     CLIPBOARD -> KeyCode.CLIPBOARD_PASTE
     UNDO -> KeyCode.REDO
     REDO -> KeyCode.UNDO
