@@ -78,6 +78,41 @@ object CipherSettings {
 
     fun isAutoOpen(context: Context): Boolean = isAutoOpen(context.prefs())
 
+    /**
+     * Forward secrecy: la chiave con cui il messaggio e' stato cifrato smette
+     * di esistere appena il messaggio parte.
+     *
+     * In pratica: nell'intestazione viaggia una chiave usa-e-getta al posto
+     * della tua, e la chiave del messaggio nasce da due scambi messi insieme —
+     * quello usa-e-getta e quello con la tua chiave stabile. Il primo fa si'
+     * che **chi domani si impossessasse della tua chiave non riaprirebbe i
+     * messaggi che hai gia' mandato**; il secondo dimostra a chi riceve che sei
+     * stato tu, senza bisogno di firme.
+     *
+     * Di conseguenza la tua chiave non compare piu' in chiaro, quindi due
+     * messaggi tuoi non si possono nemmeno piu' legare fra loro guardando il
+     * traffico.
+     *
+     * **Cosa non copre:** chi ottiene la chiave del *destinatario* apre tutto
+     * lo stesso, perche' entrambi gli scambi passano di li'. Per quello serve
+     * una chiave temporanea anche dal lato di chi riceve, che e' un lavoro a
+     * parte.
+     *
+     * **Acceso di default**, con due conseguenze da conoscere: chi riceve deve
+     * avere questa versione o piu' recente, e il mittente dev'essere gia' fra i
+     * contatti — senza la sua chiave in chiaro, chi riceve lo riconosce
+     * provando i propri contatti, e uno sconosciuto non e' fra quelli. Lo
+     * scambio delle presentazioni, che era gia' il primo passo, ora e'
+     * necessario.
+     */
+    const val PREF_FORWARD_SECRECY = "cipher_forward_secrecy"
+    const val DEFAULT_FORWARD_SECRECY = true
+
+    fun isForwardSecrecy(prefs: SharedPreferences): Boolean =
+        isEnabled(prefs) && prefs.getBoolean(PREF_FORWARD_SECRECY, DEFAULT_FORWARD_SECRECY)
+
+    fun isForwardSecrecy(context: Context): Boolean = isForwardSecrecy(context.prefs())
+
     fun isEnabled(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(PREF_ENABLED, DEFAULT_ENABLED)
 

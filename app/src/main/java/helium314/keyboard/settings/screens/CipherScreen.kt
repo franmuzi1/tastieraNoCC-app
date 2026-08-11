@@ -48,6 +48,8 @@ fun CipherScreen(
         // in cui scattare.
         if (enabled && CipherSettings.isComposeMode(prefs)) CipherSettings.PREF_AUTO_SEND else null,
         if (enabled) CipherSettings.PREF_AUTO_OPEN else null,
+        if (enabled) CipherSettings.PREF_FORWARD_SECRECY else null,
+        if (enabled) CipherSettings.PREF_FORWARD_SECRECY else null,
         if (enabled) SettingsWithoutKey.CIPHER_CONTACTS else null,
     )
     SearchSettingsScreen(
@@ -91,6 +93,18 @@ fun createCipherSettings(context: Context) = listOf(
         R.string.cipher_auto_open, R.string.cipher_auto_open_summary
     ) {
         SwitchPreference(it, CipherSettings.DEFAULT_AUTO_OPEN)
+    },
+    Setting(
+        context, CipherSettings.PREF_FORWARD_SECRECY,
+        R.string.cipher_forward_secrecy, R.string.cipher_forward_secrecy_summary
+    ) {
+        SwitchPreference(it, CipherSettings.DEFAULT_FORWARD_SECRECY)
+    },
+    Setting(
+        context, CipherSettings.PREF_FORWARD_SECRECY,
+        R.string.cipher_forward_secrecy, R.string.cipher_forward_secrecy_summary
+    ) {
+        SwitchPreference(it, CipherSettings.DEFAULT_FORWARD_SECRECY)
     },
     Setting(context, SettingsWithoutKey.CIPHER_CONTACTS, R.string.cipher_contacts) {
         // Un'Activity e non una destinazione Compose: ContactsActivity ha

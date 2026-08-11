@@ -591,6 +591,38 @@ schermo cio' che il campo nasconde con i pallini, e l'avrebbe tenuto in un
 buffer nostro. Ora su quei campi la modalita' si sospende — e non e' una
 perdita, una password non ha nessun bisogno di essere cifrata.
 
+## Forward secrecy
+
+Impostazioni → Cifratura → *Forward secrecy*, **accesa di default**.
+
+La chiave con cui il messaggio viene cifrato smette di esistere appena il
+messaggio parte: nell'intestazione viaggia una chiave usa-e-getta al posto
+della tua, e la chiave del messaggio nasce da due scambi messi insieme — quello
+usa-e-getta e quello con la tua chiave stabile. Il primo fa si' che chi domani
+si impossessasse della tua chiave **non riaprirebbe i messaggi gia' mandati**;
+il secondo dimostra a chi riceve che sei stato tu, senza firme.
+
+Di conseguenza la tua chiave non compare piu' in chiaro: due tuoi messaggi non
+si possono nemmeno piu' legare fra loro guardando il traffico. Dentro la chat
+non cambia niente — la piattaforma sa gia' chi scrive dal tuo account — ma un
+blob che gira inoltrato, citato o archiviato non porta piu' la tua firma.
+
+**Cosa non copre:** chi ottiene la chiave del *destinatario* apre tutto lo
+stesso, perche' entrambi gli scambi passano di li'. Per quello serve una chiave
+temporanea anche dal lato di chi riceve, ed e' un lavoro a parte.
+
+**Due conseguenze da conoscere,** ed e' il motivo per cui l'interruttore esiste:
+
+1. un messaggio cosi' **non lo apre una versione precedente**;
+2. chi riceve deve avere il mittente **gia' fra i contatti**. Senza la chiave in
+   chiaro lo riconosce provando i propri contatti uno per uno, e uno
+   sconosciuto non e' fra quelli. Lo scambio delle presentazioni era gia' il
+   primo passo consigliato; ora e' necessario.
+
+Provato sull'emulatore: messaggio cifrato con l'interruttore acceso, poi
+riaperto — mittente riconosciuto per tentativi, con il fingerprint giusto,
+benche' la sua chiave non fosse nell'intestazione.
+
 ## Invio automatico
 
 Con la riga di composizione attiva, dopo aver consegnato il messaggio all'app le

@@ -116,6 +116,7 @@ object CipherActions {
                 ime.currentInputEditorInfo?.packageName.orEmpty(),
                 plaintext,
                 System.currentTimeMillis() / 1000,
+                CipherSettings.isForwardSecrecy(ime),
             )
         } finally {
             plaintext.fill(0)
