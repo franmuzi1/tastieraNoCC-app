@@ -237,11 +237,15 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
   tastiera, come una qualsiasi schermata di HeliBoard. Un'icona nel launcher
   sarebbe un secondo marcatore visibile del sistema, e non serve a niente che
   una voce nelle impostazioni non faccia gia'.
+
+  Stesso tema delle impostazioni: ci si arriva da li' con un tocco, e una barra
+  di stato di un altro colore basta a far sembrare di essere usciti dall'app.
 -->
 <activity
     android:name="helium314.keyboard.cipher.ContactsActivity"
     android:exported="false"
-    android:excludeFromRecents="true" />
+    android:excludeFromRecents="true"
+    android:theme="@style/platformActivityTheme" />
 
     </application>
 
