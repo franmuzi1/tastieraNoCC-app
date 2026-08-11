@@ -79,6 +79,12 @@ object CipherCore {
     const val KIND_OWN_MESSAGE = 3
     /** Un allegato nostro, riaperto. Come [KIND_OWN_MESSAGE]: il peer e' il destinatario. */
     const val KIND_OWN_FILE = 4
+    /**
+     * L'altro ha chiesto di bruciare la conversazione, e l'abbiamo fatto: le
+     * chiavi con cui si leggeva non esistono piu' da questo lato. Non c'e'
+     * testo da mostrare, e' un gesto.
+     */
+    const val KIND_BURNED = 5
 
     // Valori del campo `kind` dopo nativeAssignLabel.
     const val LABEL_ASSIGNED = 0
@@ -234,6 +240,19 @@ object CipherCore {
         nowUnix: Long,
         forwardSecrecy: Boolean,
     ): String?
+
+    /**
+     * Brucia la conversazione con [peer] (decisione J).
+     *
+     * Ritorna il blob da consegnare all'altra persona, o null se non si e'
+     * potuto. **Quando ritorna, da questo lato e' gia' fatto**: chi chiama deve
+     * persistere subito, altrimenti un processo che muore lascia le chiavi su
+     * disco e il rogo non e' avvenuto.
+     *
+     * Dall'altro lato e' una **richiesta**, non un comando: la sua app deve
+     * onorarla. Non presentarlo all'utente come cancellazione garantita.
+     */
+    external fun nativeBurnConversation(peer: ByteArray, nowUnix: Long): String?
 
     external fun nativeSetCurrentPeer(appPackage: String, peer: ByteArray): Int
 

@@ -146,8 +146,60 @@ class ContactsActivity : Activity() {
         azione(R.string.cipher_assign_label) { askLabel(peer) }
         azione(R.string.cipher_mark_verified) { markVerified(peer) }
         azione(R.string.cipher_file_send) { inviaFile(peer) }
+        azione(R.string.cipher_burn) { chiediDiBruciare(peer) }
         azione(R.string.cipher_forget) { chiediDiDimenticare(peer) }
         dialog.show()
+    }
+
+    /**
+     * Brucia la conversazione, dopo conferma.
+     *
+     * L'avviso dice due cose diverse, e devono restare distinte: **da questo
+     * telefono e' definitivo**, e sull'altro e' una richiesta che la sua app
+     * puo' onorare o no. Presentarla come cancellazione garantita sarebbe la
+     * bugia piu' facile da raccontare qui, e la piu' dannosa: qualcuno
+     * potrebbe contarci per qualcosa di serio.
+     */
+    private fun chiediDiBruciare(peer: Peer) {
+        val nome = peer.label ?: getString(R.string.cipher_unnamed_peer)
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.cipher_burn_title, nome))
+            .setMessage(R.string.cipher_burn_warning)
+            // Come per "dimentica": l'azione distruttiva sul pulsante negativo,
+            // perche' dove cade il pollice deve esserci cio' che non fa niente.
+            .setNegativeButton(R.string.cipher_burn) { _, _ -> brucia(peer) }
+            .setPositiveButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun brucia(peer: Peer) {
+        val richiesta = CipherCore.nativeBurnConversation(peer.key, System.currentTimeMillis() / 1000)
+        // Su disco SUBITO: da questo lato il rogo e' gia' avvenuto in memoria,
+        // e un processo che muore adesso lascerebbe le chiavi al loro posto.
+        CipherIdentity.persistKeyring(this)
+        if (richiesta == null) {
+            toast(R.string.cipher_unavailable)
+            render()
+            return
+        }
+        // La richiesta va consegnata a mano, come tutto il resto: qui non c'e'
+        // nessun canale verso l'altra persona, e inventarne uno significherebbe
+        // dare alla tastiera l'accesso a internet.
+        copiaNegliAppunti(richiesta)
+        toast(R.string.cipher_burn_done)
+        render()
+    }
+
+    /**
+     * Il blob di rogo negli appunti, da incollare nella chat.
+     *
+     * Non e' testo in chiaro — e' un blob cifrato come tutti gli altri — quindi
+     * qui non serve il trattamento riservato ai plaintext.
+     */
+    private fun copiaNegliAppunti(blob: String) {
+        val clip = android.content.ClipData.newPlainText(null, blob)
+        (getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager)
+            .setPrimaryClip(clip)
     }
 
     /**
@@ -231,6 +283,13 @@ class ContactsActivity : Activity() {
         val input = EditText(this).apply {
             setText(peer.label.orEmpty())
             setSingleLine()
+            // Il nome vecchio va SELEZIONATO, non solo mostrato. `setText`
+            // lascia il cursore a inizio campo: chi scrive per rinominare si
+            // ritrova il nome nuovo incollato PRIMA del vecchio ("GiuliaMarco")
+            // e i cancellini non cancellano niente, perche' non c'e' niente a
+            // sinistra. Sembra che la rinomina non funzioni, e invece non era
+            // mai partita. Selezionando tutto, la prima lettera sostituisce.
+            setSelection(0, text.length)
         }
         AlertDialog.Builder(this)
             .setTitle(R.string.cipher_assign_label)

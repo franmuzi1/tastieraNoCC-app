@@ -161,6 +161,10 @@ class DecryptActivity : Activity() {
         }
 
         when (result.kind) {
+            // Un rogo non ha testo: si dice cosa e' successo e si chiude.
+            CipherCore.KIND_BURNED -> showNotice(
+                getString(R.string.cipher_burned_incoming, senderLine(result))
+            )
             CipherCore.KIND_MESSAGE -> showMessage(result)
             CipherCore.KIND_OWN_MESSAGE -> showMessage(result, mio = true)
             CipherCore.KIND_IDENTITY_CARD -> showIdentityCard(result)
@@ -492,9 +496,11 @@ class DecryptActivity : Activity() {
         setContentView(root)
     }
 
-    private fun showNotice(resId: Int) {
+    private fun showNotice(resId: Int) = showNotice(getString(resId))
+
+    private fun showNotice(testo: String) {
         val root = screen()
-        root.addView(body(getString(resId)))
+        root.addView(body(testo))
         root.addView(closeButton())
         setContentView(root)
     }
