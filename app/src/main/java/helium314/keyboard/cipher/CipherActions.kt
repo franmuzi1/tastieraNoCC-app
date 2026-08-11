@@ -144,7 +144,12 @@ object CipherActions {
         // `performEditorAction` dice solo che la richiesta e' partita, non che
         // l'app abbia spedito: non c'e' modo di saperlo, e prometterlo sarebbe
         // peggio che tacere.
-        if (!sent) toast(ime, R.string.cipher_send_unavailable)
+        // Una volta **per app**: dipende da come quell'app ha fatto il campo,
+        // e chi passa a un'altra chat deve poterlo sapere di nuovo.
+        if (!sent) {
+            val pacchetto = info.packageName?.toString().orEmpty()
+            avvisoUnaVolta(ime, "invio_$pacchetto", R.string.cipher_send_unavailable)
+        }
         return sent
     }
 
@@ -203,7 +208,7 @@ object CipherActions {
         // prende la sequenza massima di caratteri dell'alfabeto che segue —
         // quindi una card in mezzo ad altro resta leggibile.
         ic.commitText(card, 1)
-        toast(ime, R.string.cipher_card_inserted)
+        avvisoUnaVolta(ime, "card", R.string.cipher_card_inserted)
     }
 
     /**
@@ -261,7 +266,13 @@ object CipherActions {
         prefs.edit().putBoolean(CipherSettings.PREF_COMPOSE_MODE, wanted).apply()
         CipherCompose.reload(ime)
         KeyboardSwitcher.getInstance().setThemeNeedsReload()
-        toast(ime, if (wanted) R.string.cipher_compose_on else R.string.cipher_compose_off)
+        // La riga che compare o sparisce e' gia' la risposta: la spiegazione
+        // serve solo la prima volta.
+        avvisoUnaVolta(
+            ime,
+            if (wanted) "riga_accesa" else "riga_spenta",
+            if (wanted) R.string.cipher_compose_on else R.string.cipher_compose_off,
+        )
     }
 
     /**
@@ -351,7 +362,7 @@ object CipherActions {
         // Dopo la consegna, come per il blob: svuotare prima significherebbe
         // perdere il testo se la consegna fallisse.
         CipherCompose.clear()
-        if (!deliver(ime, ic)) toast(ime, R.string.cipher_sent_plain)
+        if (!deliver(ime, ic)) avvisoUnaVolta(ime, "chiaro", R.string.cipher_sent_plain)
     }
 
     /**
@@ -626,6 +637,28 @@ object CipherActions {
      * risolto il problema per se'; qui si riusa la sua soluzione invece di
      * inventarne una seconda.
      */
+    /**
+     * Avvisi che **spiegano come funziona una cosa**: si mostrano la prima
+     * volta e poi mai piu'.
+     *
+     * Ripetere una spiegazione a chi l'ha gia' letta non e' un servizio, e' un
+     * ostacolo che compare sopra quello che sta facendo. Restano invece sempre
+     * visibili gli avvisi che dicono che qualcosa **non** e' successo — quelli
+     * non sono istruzioni, sono l'esito di questo tentativo, e non saperlo
+     * significherebbe credere di aver mandato un messaggio che non e' partito.
+     *
+     * La chiave e' una stringa scelta a mano e non l'id della risorsa: gli id
+     * cambiano a ogni compilazione, quindi un utente si ritroverebbe gli
+     * avvisi daccapo a ogni aggiornamento.
+     */
+    private fun avvisoUnaVolta(ime: InputMethodService, chiave: String, resId: Int) {
+        val prefs = ime.prefs()
+        val pref = "cipher_visto_$chiave"
+        if (prefs.getBoolean(pref, false)) return
+        prefs.edit().putBoolean(pref, true).apply()
+        toast(ime, resId)
+    }
+
     private fun toast(ime: InputMethodService, resId: Int) {
         KeyboardSwitcher.getInstance().showToast(ime.getString(resId), true)
     }
