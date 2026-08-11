@@ -38,15 +38,32 @@ internal data class Peer(
  * Ogni lettura e' preceduta dal controllo che i byte ci siano: il blob arriva
  * da un file su disco, e un file troncato non deve diventare un
  * `IndexOutOfBounds` dentro la UI.
+ *
+ * ## Questo e' un SECONDO lettore del formato di storage
+ *
+ * `nativeListPeers` non costruisce un formato suo: restituisce lo stesso blob
+ * che il core esporta per la persistenza. Comodo, ma significa che un
+ * cambiamento di quel formato arriva qui **senza che niente lo segnali**, e si
+ * manifesta come "Cifratura non disponibile" nella schermata contatti — cioe'
+ * come un guasto che sembra della crypto e invece e' del parser. E' gia'
+ * successo con la versione 2.
+ *
+ * Da qui due regole:
+ *
+ * - si accettano **tutte** le versioni note, non una sola;
+ * - si legge fino ai peer e **si ignora la coda**. Cosa ci sia dopo (dalla 2:
+ *   la catena di forward secrecy) non riguarda la UI, e pretendere che il blob
+ *   finisca dopo l'ultimo peer trasformerebbe ogni aggiunta futura in questo
+ *   stesso guasto.
  */
 internal object PeerList {
 
-    private const val VERSION: Byte = 1
+    private val VERSIONI_NOTE = byteArrayOf(1, 2)
     private const val KEY_LEN = 32
 
     fun parse(blob: ByteArray): List<Peer>? {
         if (blob.size < 5) return null
-        if (blob[0] != VERSION) return null
+        if (!VERSIONI_NOTE.contains(blob[0])) return null
 
         var offset = 1
         val count = readInt(blob, offset) ?: return null

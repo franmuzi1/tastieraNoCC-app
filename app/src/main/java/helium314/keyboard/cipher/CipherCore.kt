@@ -194,20 +194,28 @@ object CipherCore {
      */
     external fun nativeLooksLikeOurBlob(text: String): Boolean
 
-    /** Ritorna il blob cifrato, o null se per quell'app non c'e' un destinatario. */
     /**
-     * @param ephemeral forward secrecy: con `true` la chiave nell'intestazione
-     *   e' usa-e-getta e la tua non viaggia in chiaro, quindi chi domani se ne
-     *   impossessasse non riaprirebbe i messaggi gia' mandati. Un messaggio
-     *   cosi' **non lo apre una versione precedente**, e chi riceve deve avere
-     *   il mittente fra i contatti: la scelta sta nel chiamante perche' il core
-     *   non sa che versione abbia il destinatario.
+     * Ritorna il blob cifrato, o null se per quell'app non c'e' un
+     * destinatario.
+     *
+     * **Con `forwardSecrecy` non e' piu' un'operazione di sola lettura:**
+     * genera una chiave temporanea nuova e la mette nel keyring. Chi chiama
+     * deve persistere subito, altrimenti la risposta dell'altro arrivera'
+     * cifrata verso una chiave che il processo si e' portato nella tomba.
+     *
+     * @param forwardSecrecy con `true` la chiave nell'intestazione e'
+     *   usa-e-getta e la tua non viaggia in chiaro, quindi chi domani se ne
+     *   impossessasse non riaprirebbe i messaggi gia' mandati — e non li
+     *   riapri piu' nemmeno tu. Un messaggio cosi' **non lo apre una versione
+     *   precedente**, e chi riceve deve avere il mittente fra i contatti: la
+     *   scelta sta nel chiamante perche' il core non sa che versione abbia il
+     *   destinatario.
      */
     external fun nativeEncryptForApp(
         appPackage: String,
         plaintext: ByteArray,
         nowUnix: Long,
-        ephemeral: Boolean,
+        forwardSecrecy: Boolean,
     ): String?
 
     external fun nativeSetCurrentPeer(appPackage: String, peer: ByteArray): Int

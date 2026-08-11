@@ -129,6 +129,12 @@ object CipherActions {
             chiediDestinatario(ime)
             return
         }
+        // Su disco SUBITO, prima che il blob esca. Con la forward secrecy
+        // accesa cifrare non e' piu' un'operazione di sola lettura: genera una
+        // chiave temporanea nuova, e se il processo muore prima che sia
+        // salvata la risposta dell'altro arriva cifrata verso una chiave che
+        // non esiste piu'. Il costo e' una scrittura per messaggio inviato.
+        CipherIdentity.persistKeyring(ime)
         if (composed != null) {
             // Il campo dell'app e' vuoto per costruzione: qui non si sostituisce
             // niente, si consegna. E il buffer si svuota solo DOPO che il blob
