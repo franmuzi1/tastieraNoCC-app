@@ -94,7 +94,10 @@ object CipherFiles {
         val source = describe(context, uri)
         val content = readAll(context.contentResolver, uri, maxBytes(context)) ?: return null
         val blob = try {
-            CipherCore.nativeEncryptFile(peer, source.name, source.mime, content, nowUnix)
+            CipherCore.nativeEncryptFile(
+                peer, source.name, source.mime, content, nowUnix,
+                CipherSettings.isForwardSecrecy(context),
+            )
         } finally {
             // Il chiaro non resta in heap piu' del necessario. Non e' una
             // garanzia — la GC puo' averne gia' fatto copie — ma e' la stessa
@@ -102,6 +105,10 @@ object CipherFiles {
             content.fill(0)
         }
         if (blob == null) return null
+        // La chiave temporanea appena generata su disco, prima che l'allegato
+        // esca: senza, la risposta arriverebbe cifrata verso una chiave che il
+        // processo si e' portato nella tomba.
+        CipherIdentity.persistKeyring(context)
 
         val file = writeShared(context, blob) ?: return null
         val shared = FileProvider.getUriForFile(context, authority(context), file)

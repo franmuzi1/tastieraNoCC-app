@@ -243,6 +243,11 @@ object CipherCore {
      *
      * Ritorna i byte dell'allegato, o null se il peer non e' nel keyring o la
      * cifratura fallisce. Il chiamante azzera `content` appena consegnato.
+     *
+     * Con `forwardSecrecy` **modifica il keyring** come [nativeEncryptForApp]:
+     * chi chiama deve persistere subito. Un allegato senza catena e' un buco
+     * piu' grosso di un messaggio senza — una foto vale piu' di una riga di
+     * testo, e resta sul telefono di chi la riceve.
      */
     external fun nativeEncryptFile(
         peer: ByteArray,
@@ -250,6 +255,7 @@ object CipherCore {
         mime: String,
         content: ByteArray,
         nowUnix: Long,
+        forwardSecrecy: Boolean,
     ): ByteArray?
 
     /**
