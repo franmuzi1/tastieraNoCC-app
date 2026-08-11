@@ -607,21 +607,51 @@ si possono nemmeno piu' legare fra loro guardando il traffico. Dentro la chat
 non cambia niente — la piattaforma sa gia' chi scrive dal tuo account — ma un
 blob che gira inoltrato, citato o archiviato non porta piu' la tua firma.
 
-**Cosa non copre:** chi ottiene la chiave del *destinatario* apre tutto lo
-stesso, perche' entrambi gli scambi passano di li'. Per quello serve una chiave
-temporanea anche dal lato di chi riceve, ed e' un lavoro a parte.
+### La catena, cioe' la meta' che mancava
 
-**Due conseguenze da conoscere,** ed e' il motivo per cui l'interruttore esiste:
+Quanto sopra da' meta' della proprieta': chi ottiene la chiave del
+*destinatario* riaprirebbe tutto lo stesso, perche' entrambi gli scambi passano
+di li'. Serve una chiave temporanea **anche dal lato di chi riceve**, ed e' cio'
+che fa la catena.
+
+Ogni messaggio ne porta una nuova, **dentro** il cifrato — non
+nell'intestazione: in chiaro sarebbe un identificatore che cambia ogni volta ma
+lega fra loro i due capi di una conversazione, cioe' proprio la correlazione che
+la chiave usa-e-getta toglie. Chi risponde usa quella, e dal secondo messaggio
+in poi nessuna delle due chiavi stabili basta piu' ad aprire niente.
+
+Il primo messaggio non puo' essere cosi' — una chiave dell'altro non ce l'hai
+ancora — quindi ripiega sullo schema di sopra, **portando comunque la propria**.
+E' cio' che fa partire la catena: senza, non partirebbe mai.
+
+**Il gesto che produce la forward secrecy e' buttare, non cifrare.** Leggendo
+una risposta si buttano le chiavi temporanee piu' vecchie di quella usata.
+Finche' esistono, i messaggi che le usavano si riaprono; da quando non
+esistono, no. Se ne tengono tre per contatto, non una: mandi due messaggi di
+fila, l'altro apre il secondo, e il primo deve restare apribile.
+
+**Vale anche per gli allegati.** Un file senza catena sarebbe un buco piu'
+grosso di un messaggio senza: una foto vale piu' di una riga di testo, e resta
+sul telefono di chi la riceve. Usa lo stesso stato dei messaggi — e' la stessa
+conversazione con la stessa persona.
+
+**Tre conseguenze da conoscere,** ed e' il motivo per cui l'interruttore esiste:
 
 1. un messaggio cosi' **non lo apre una versione precedente**;
 2. chi riceve deve avere il mittente **gia' fra i contatti**. Senza la chiave in
    chiaro lo riconosce provando i propri contatti uno per uno, e uno
    sconosciuto non e' fra quelli. Lo scambio delle presentazioni era gia' il
-   primo passo consigliato; ora e' necessario.
+   primo passo consigliato; ora e' necessario;
+3. **i messaggi si aprono una volta sola.** Niente cronologia: riaprire una
+   conversazione vecchia non e' possibile, nemmeno esportando la chat dall'app
+   di messaggistica. E' il prezzo della proprieta', non un difetto — e chi lo
+   trova troppo caro spegne l'interruttore.
 
-Provato sull'emulatore: messaggio cifrato con l'interruttore acceso, poi
-riaperto — mittente riconosciuto per tentativi, con il fingerprint giusto,
-benche' la sua chiave non fosse nell'intestazione.
+Provato sul dispositivo: primo messaggio con la sola chiave usa-e-getta,
+decifrato — mittente riconosciuto per tentativi, con il fingerprint giusto,
+benche' la sua chiave non fosse nell'intestazione — e secondo messaggio che usa
+gia' la catena. Da riga di comando, con due identita' separate su disco: un
+messaggio gia' letto non si riapre dopo che la catena e' avanzata.
 
 ## Invio automatico
 
