@@ -2,6 +2,7 @@ package helium314.keyboard.cipher
 
 import android.content.Intent
 import android.inputmethodservice.InputMethodService
+import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
@@ -136,21 +137,39 @@ object CipherActions {
         if (!CipherSettings.isAutoSend(ime)) return false
         val info = ime.currentInputEditorInfo ?: return false
         val action = InputTypeUtils.getImeOptionsActionIdFromEditorInfo(info)
-        val sent = when {
+        val perAzione = when {
             action == InputTypeUtils.IME_ACTION_CUSTOM_LABEL -> ic.performEditorAction(info.actionId)
             action != EditorInfo.IME_ACTION_NONE -> ic.performEditorAction(action)
             else -> false
         }
-        // `performEditorAction` dice solo che la richiesta e' partita, non che
-        // l'app abbia spedito: non c'e' modo di saperlo, e prometterlo sarebbe
-        // peggio che tacere.
-        // Una volta **per app**: dipende da come quell'app ha fatto il campo,
-        // e chi passa a un'altra chat deve poterlo sapere di nuovo.
-        if (!sent) {
+        if (perAzione) return true
+
+        // Ripiego: il tasto invio vero.
+        //
+        // Serve per le chat, che sono il caso che conta. Un campo di
+        // messaggistica e' multiriga e **non dichiara nessuna azione**: quando
+        // l'utente accende "invia con invio", l'app non cambia cio' che
+        // dichiara, intercetta il tasto. `performEditorAction` cade nel vuoto e
+        // l'invio automatico sembrava rotto — lo era, in Telegram.
+        //
+        // L'avevo escluso temendo che in un campo multiriga inserisse un a capo
+        // dentro il messaggio appena consegnato. Succede, se l'invio con invio
+        // e' spento: ma un a capo **in coda** al blob non lo rovina, perche' il
+        // riconoscimento tollera spazi e contesto — e' scritto in CLAUDE.md ed
+        // e' provato dai test del formato. Il costo del ripiego e' quindi una
+        // riga vuota in fondo al campo; il costo di non averlo era una funzione
+        // che non funziona dove serve.
+        val premuto = ic.sendKeyEvent(
+            KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER)
+        ) && ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+        // `sendKeyEvent` dice solo che l'evento e' partito, non che l'app abbia
+        // spedito: non c'e' modo di saperlo, e prometterlo sarebbe peggio che
+        // tacere.
+        if (!premuto) {
             val pacchetto = info.packageName?.toString().orEmpty()
             avvisoUnaVolta(ime, "invio_$pacchetto", R.string.cipher_send_unavailable)
         }
-        return sent
+        return premuto
     }
 
     /**
