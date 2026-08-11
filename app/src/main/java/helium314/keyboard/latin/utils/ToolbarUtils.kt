@@ -187,7 +187,12 @@ val defaultToolbarPref by lazy {
     // profilo di toolbar salvato se li vede aggiunti da `upgradeToolbarPref`,
     // che pero' aggiunge le voci nuove come spente — e va bene cosi': quelle
     // preferenze sono scelte dell'utente, non nostre da sovrascrivere.
-    val default = listOf(ENCRYPT, DECRYPT, SEND_PLAIN, COMPOSE, SETTINGS, VOICE, CLIPBOARD, UNDO, REDO, SELECT_WORD, COPY, PASTE, LEFT, RIGHT)
+    // CLIPBOARD subito dopo i tasti di cifratura, cioe' dentro la parte che si
+    // vede senza espandere. Mettendo i nostri quattro in testa lo avevamo
+    // spinto oltre il bordo: la lista degli appunti c'era e funzionava, ma per
+    // arrivarci bisognava sapere che esiste una freccia che apre il resto —
+    // e chi non lo sa conclude che la tastiera non abbia la cronologia.
+    val default = listOf(ENCRYPT, DECRYPT, SEND_PLAIN, COMPOSE, CLIPBOARD, SETTINGS, VOICE, UNDO, REDO, SELECT_WORD, COPY, PASTE, LEFT, RIGHT)
     val others = entries.filterNot { it in default || it == CLOSE_HISTORY }
     default.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
@@ -200,7 +205,14 @@ val defaultPinnedToolbarPref by lazy {
     // Costa due posti alla striscia dei suggerimenti, ed e' un prezzo pagato
     // volentieri: attivi ma nascosti dietro una freccia significa che chi
     // installa non li trova, e una funzione che non si trova non esiste.
-    val pinned = listOf(ENCRYPT, DECRYPT, SEND_PLAIN, COMPOSE)
+    //
+    // CLIPBOARD e' fissato con loro: la lista degli appunti c'era gia' e
+    // funzionava, ma stava oltre il bordo, e per arrivarci bisognava sapere
+    // che la freccia apre altro. Chi non lo sa conclude che la tastiera non
+    // abbia la cronologia — ed e' successo. Fissarlo qui e' l'unico modo per
+    // farlo comparire senza espandere: l'ordine della barra, da solo, non
+    // decide cosa si vede accanto ai suggerimenti.
+    val pinned = listOf(ENCRYPT, DECRYPT, SEND_PLAIN, COMPOSE, CLIPBOARD)
     val others = entries.filterNot { it in pinned || it == CLOSE_HISTORY }
     pinned.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
