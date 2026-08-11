@@ -24,19 +24,47 @@
         finiva per coprire la casella di testo dell'app. Il testo piu' lungo
         scorre, e lo scorrimento insegue il cursore.
     -->
-    <helium314.keyboard.cipher.CipherComposeView
-        android:id="@+id/cipher_compose_row"
+    <LinearLayout
+        android:id="@+id/cipher_compose_bar"
         android:layout_width="match_parent"
         android:layout_height="@dimen/cipher_compose_row_height"
-        android:visibility="gone"
-        android:gravity="center_vertical"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:paddingTop="4dp"
-        android:paddingBottom="4dp"
-        android:textSize="16sp"
-        android:hint="@string/cipher_compose_hint"
-        android:textDirection="locale" />
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <helium314.keyboard.cipher.CipherComposeView
+            android:id="@+id/cipher_compose_row"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:textSize="16sp"
+            android:hint="@string/cipher_compose_hint"
+            android:textDirection="locale" />
+
+        <!--
+            Per chi si sta cifrando. Toccandolo si cambia.
+
+            Sta qui e non altrove perche' e' l'unica informazione che l'utente
+            non ha modo di conoscere prima di premere il lucchetto: la tastiera
+            non sa con chi stai parlando, quindi il destinatario e' una scelta
+            sua, e una scelta invisibile e' una scelta che sorprende.
+        -->
+        <TextView
+            android:id="@+id/cipher_recipient"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical|end"
+            android:paddingStart="8dp"
+            android:paddingEnd="12dp"
+            android:maxWidth="160dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textSize="14sp" />
+    </LinearLayout>
 
     <include
         android:id="@+id/strip_container"

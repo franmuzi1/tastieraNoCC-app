@@ -213,6 +213,13 @@ object CipherCore {
     external fun nativeHasCurrentPeer(appPackage: String): Boolean
 
     /**
+     * Nome del destinatario per questa app: l'etichetta, o il fingerprint se
+     * non ne ha una. `null` se non c'e' nessun destinatario — informazione, non
+     * errore: la tastiera la mostra come tale.
+     */
+    external fun nativeCurrentPeerName(appPackage: String): String?
+
+    /**
      * Cifra un file per un peer **scelto esplicitamente**: qui non c'e' un'app
      * di provenienza da cui dedurre il destinatario, e indovinarlo sarebbe il
      * modo per mandare una foto alla persona sbagliata.
@@ -250,6 +257,17 @@ object CipherCore {
     external fun nativeConfirmKeyChange(oldPeer: ByteArray, newPeer: ByteArray, nowUnix: Long): Int
 
     external fun nativeMarkVerified(peer: ByteArray): Int
+
+    /**
+     * Dimentica un peer, e smette di usarlo come destinatario.
+     *
+     * Chi chiama deve aver **gia' avvertito l'utente**: si perde il pin, e il
+     * prossimo messaggio da quella persona ricompare come mittente mai visto e
+     * viene rifissato in silenzio. E' indistinguibile da qualcuno che si
+     * spaccia per lei, cioe' si riapre la finestra che il pin serviva a
+     * chiudere.
+     */
+    external fun nativeForgetPeer(peer: ByteArray): Int
 
     /**
      * Keyring serializzato, da cifrare e persistere. Non contiene segreti —

@@ -5,6 +5,7 @@ import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Intent
+import android.net.Uri
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
@@ -33,6 +34,11 @@ import java.util.Date
  */
 class DecryptActivity : Activity() {
 
+    private companion object {
+        /** Richiesta del selettore "dove salvo". */
+        const val RICHIESTA_SALVA = 1
+    }
+
     /**
      * Il package dell'app da cui arriva il testo, risolto UNA volta per
      * intent.
@@ -44,6 +50,10 @@ class DecryptActivity : Activity() {
      * seconda volta.
      */
     private var appDiProvenienza: String = ""
+
+    /** Contenuto decifrato, in attesa che l'utente decida se salvarlo. */
+    private var fileInAttesa: ByteArray? = null
+    private var nomeInAttesa: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Prima di qualunque cosa che possa finire sullo schermo.
@@ -75,6 +85,16 @@ class DecryptActivity : Activity() {
 
     private fun handle(intent: Intent) {
         appDiProvenienza = resolveCallerPackage()
+
+        // Un allegato arriva come flusso, non come testo. Si guarda prima: se
+        // c'e' uno stream, quello e' il contenuto, e cercare del testo
+        // nell'intent porterebbe al massimo al nome del file.
+        val stream = extractStream(intent)
+        if (stream != null) {
+            handleFile(stream)
+            return
+        }
+
         val incoming = extractText(intent)
         if (incoming == null) {
             finish()
@@ -136,6 +156,47 @@ class DecryptActivity : Activity() {
             CipherCore.KIND_IDENTITY_CARD -> showIdentityCard(result)
             else -> showNotice(R.string.cipher_unavailable)
         }
+    }
+
+    private fun extractStream(intent: Intent): Uri? = when (intent.action) {
+        Intent.ACTION_SEND -> @Suppress("DEPRECATION") intent.getParcelableExtra(Intent.EXTRA_STREAM)
+        Intent.ACTION_VIEW -> intent.data
+        else -> null
+    }
+
+    /**
+     * Apre un allegato cifrato.
+     *
+     * Il chiaro **non** torna all'app che ce l'ha mandato, come per i
+     * messaggi: si mostra qui, in una finestra `FLAG_SECURE`, e da qui esce
+     * solo se l'utente lo salva apposta.
+     */
+    private fun handleFile(uri: Uri) {
+        when (val state = CipherIdentity.ensureReady(this)) {
+            CipherState.Ready -> Unit
+            CipherState.Locked -> return showNotice(R.string.cipher_locked)
+            is CipherState.Unreadable -> return showUnreadable(state.part)
+            is CipherState.Unavailable -> return showNotice(R.string.cipher_unavailable)
+        }
+
+        val result = CipherCore.IncomingResult()
+        val code = CipherFiles.decrypt(this, uri, System.currentTimeMillis() / 1000, result)
+        when (code) {
+            CipherCore.OK -> Unit
+            CipherCore.UNSUPPORTED_VERSION -> return showNotice(R.string.cipher_version_too_new)
+            CipherCore.TIER_UNSUPPORTED -> return showNotice(R.string.cipher_tier_unsupported)
+            CipherCore.CRYPTO -> return showNotice(R.string.cipher_cannot_decrypt)
+            // Un file qualunque che non e' nostro finisce qui, ed e' l'esito
+            // piu' comune: il filtro dell'intent prende tutti gli
+            // `application/octet-stream`, perche' e' l'unica cosa su cui puo'
+            // discriminare.
+            else -> return showNotice(R.string.cipher_not_our_blob)
+        }
+
+        // Un mittente mai visto e' stato appena fissato: il keyring va scritto,
+        // altrimenti il pin vive solo in memoria.
+        CipherIdentity.persistKeyring(this)
+        showFile(result)
     }
 
     /**
@@ -278,6 +339,97 @@ class DecryptActivity : Activity() {
      * comparire un contatto. `ContactsActivity` non e' nel launcher, quindi
      * senza un aggancio come questo si arriverebbe solo dalle impostazioni.
      */
+    /**
+     * Mostra un allegato decifrato.
+     *
+     * Il contenuto resta in memoria e in questa finestra: **non** viene scritto
+     * da nessuna parte finche' l'utente non lo salva apposta. Un file decifrato
+     * lasciato in Download e' un file che finisce nella galleria e nel backup
+     * cloud — cioe' proprio dove la cifratura serviva a non farlo arrivare.
+     */
+    private fun showFile(result: CipherCore.IncomingResult) {
+        val content = result.fileContent
+        val name = result.fileName.orEmpty()
+        if (content == null) {
+            showNotice(R.string.cipher_cannot_decrypt)
+            return
+        }
+        fileInAttesa = content
+        nomeInAttesa = name
+
+        val root = screen()
+        root.addView(header(senderLine(result), result.verified == 1))
+        root.addView(caption(getString(R.string.cipher_composed_at, formatTimestamp(result.sentAtUnix))))
+        root.addView(body(getString(R.string.cipher_file_detail, name, content.size / 1024)))
+
+        // Le immagini si guardano qui dentro, sotto FLAG_SECURE. Il tipo lo
+        // dichiara chi ha mandato il file e non fa fede: se il contenuto non e'
+        // un'immagine, decodificarlo fallisce e si resta alla sola riga di
+        // descrizione.
+        if (result.fileMime.orEmpty().startsWith("image/")) {
+            val bitmap = runCatching {
+                android.graphics.BitmapFactory.decodeByteArray(content, 0, content.size)
+            }.getOrNull()
+            if (bitmap != null) {
+                root.addView(android.widget.ImageView(this).apply {
+                    setImageBitmap(bitmap)
+                    adjustViewBounds = true
+                })
+            }
+        }
+
+        root.addView(Button(this).apply {
+            setText(R.string.cipher_file_save)
+            setOnClickListener { chiediDoveSalvare(name) }
+        })
+        root.addView(contactsButton())
+        root.addView(closeButton())
+        setContentView(root)
+    }
+
+    private fun chiediDoveSalvare(name: String) {
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            type = "application/octet-stream"
+            // Il nome arriva da chi ha mandato il file: autenticato, non
+            // credibile. Si tiene solo l'ultimo segmento, cosi' un nome con
+            // `../` o un separatore non puo' proporre un percorso.
+            putExtra(Intent.EXTRA_TITLE, name.substringAfterLast('/').ifEmpty { "allegato" })
+            addCategory(Intent.CATEGORY_OPENABLE)
+        }
+        if (runCatching { startActivityForResult(intent, RICHIESTA_SALVA) }.isFailure) {
+            Toast.makeText(this, R.string.cipher_unavailable, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        val uri = data?.data
+        if (requestCode != RICHIESTA_SALVA || resultCode != RESULT_OK || uri == null) return
+        val content = fileInAttesa ?: return
+        val scritto = runCatching {
+            contentResolver.openOutputStream(uri)?.use { it.write(content) } != null
+        }.getOrDefault(false)
+        Toast.makeText(
+            this,
+            if (scritto) R.string.cipher_file_saved else R.string.cipher_unavailable,
+            Toast.LENGTH_LONG,
+        ).show()
+    }
+
+    /**
+     * Il chiaro non sopravvive alla finestra che lo mostrava.
+     *
+     * Non e' una garanzia forte — la GC puo' averne gia' fatto copie, e la
+     * `Bitmap` decodificata resta finche' non viene raccolta — ma e' la stessa
+     * regola del resto del progetto: azzerare cio' che si puo' azzerare.
+     */
+    override fun onDestroy() {
+        fileInAttesa?.fill(0)
+        fileInAttesa = null
+        nomeInAttesa = null
+        super.onDestroy()
+    }
+
     private fun contactsButton(): View = Button(this).apply {
         setText(R.string.cipher_contacts)
         setOnClickListener {

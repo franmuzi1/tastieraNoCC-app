@@ -32,6 +32,14 @@ import java.util.Date
 class ContactsActivity : Activity() {
 
     /** Viva solo fra la richiesta della passphrase e il ritorno del selettore. */
+    /**
+     * A chi va il file scelto nel selettore che sta per aprirsi.
+     *
+     * Vive fra due Activity, quindi puo' essere azzerato da una ricreazione:
+     * in quel caso non si cifra niente e non si indovina nessun destinatario.
+     */
+    private var destinatarioFile: ByteArray? = null
+
     private var passphraseInAttesa: ByteArray? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -102,7 +110,7 @@ class ContactsActivity : Activity() {
             setTypeface(typeface, Typeface.BOLD)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
         })
-        addView(fingerprintView(fingerprintOf(peer)))
+        addView(fingerprintView(fingerprintOf(peer), selectable = false))
         addView(caption(getString(R.string.cipher_first_seen, formatDate(peer.firstSeenUnix))))
     }
 
@@ -112,13 +120,111 @@ class ContactsActivity : Activity() {
 
     private fun openPeer(peer: Peer) {
         val name = peer.label ?: getString(R.string.cipher_unnamed_peer)
-        AlertDialog.Builder(this)
+        // Vista propria invece di setMessage + setItems: un AlertDialog usa la
+        // stessa area per il messaggio e per l'elenco, quindi impostarli
+        // entrambi fa sparire le azioni — dialogo con il solo fingerprint e
+        // nessun modo di fare niente. Verificato sul dispositivo.
+        val contenuto = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 24, 48, 0)
+            addView(caption(getString(R.string.cipher_peer_detail, fingerprintOf(peer))))
+        }
+        val dialog = AlertDialog.Builder(this)
             .setTitle(name)
-            .setMessage(getString(R.string.cipher_peer_detail, fingerprintOf(peer)))
-            .setPositiveButton(R.string.cipher_assign_label) { _, _ -> askLabel(peer) }
-            .setNeutralButton(R.string.cipher_mark_verified) { _, _ -> markVerified(peer) }
+            .setView(contenuto)
             .setNegativeButton(android.R.string.cancel, null)
+            .create()
+        fun azione(testo: Int, quando: () -> Unit) {
+            contenuto.addView(Button(this).apply {
+                setText(testo)
+                setOnClickListener {
+                    dialog.dismiss()
+                    quando()
+                }
+            })
+        }
+        azione(R.string.cipher_assign_label) { askLabel(peer) }
+        azione(R.string.cipher_mark_verified) { markVerified(peer) }
+        azione(R.string.cipher_file_send) { inviaFile(peer) }
+        azione(R.string.cipher_forget) { chiediDiDimenticare(peer) }
+        dialog.show()
+    }
+
+    /**
+     * Dimentica un contatto, dopo conferma.
+     *
+     * La conferma non e' cortesia. Cancellare un contatto **perde il pin**: il
+     * prossimo messaggio da quella persona ricomparira' come mittente mai
+     * visto e verra' rifissato in silenzio — che e' esattamente cio' che si
+     * vedrebbe se qualcuno si stesse spacciando per lei. Chi lo fa deve
+     * saperlo prima, non scoprirlo dopo.
+     */
+    private fun chiediDiDimenticare(peer: Peer) {
+        val nome = peer.label ?: getString(R.string.cipher_unnamed_peer)
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.cipher_forget_title, nome))
+            .setMessage(R.string.cipher_forget_warning)
+            // L'azione distruttiva sul pulsante NEGATIVO, come per il conflitto
+            // di chiave e per il reset: il posto dove cade il pollice dev'essere
+            // quello che non cambia niente.
+            .setNegativeButton(R.string.cipher_forget) { _, _ -> dimentica(peer) }
+            .setPositiveButton(android.R.string.cancel, null)
             .show()
+    }
+
+    private fun dimentica(peer: Peer) {
+        if (CipherCore.nativeForgetPeer(peer.key) != CipherCore.OK) {
+            toast(R.string.cipher_unavailable)
+            return
+        }
+        // Su disco subito: un keyring non persistito farebbe ricomparire il
+        // contatto al riavvio, e l'utente crederebbe che il pulsante non
+        // funzioni.
+        CipherIdentity.persistKeyring(this)
+        toast(R.string.cipher_forgotten)
+        render()
+    }
+
+    /**
+     * Manda un file cifrato a questo contatto.
+     *
+     * Il destinatario si sceglie **qui**, esplicitamente (decisione G4): questo
+     * percorso parte da una schermata e non dalla tastiera, quindi non esiste
+     * l'app di provenienza da cui dedurlo — e un file mandato alla persona
+     * sbagliata non si ritira.
+     */
+    private fun inviaFile(peer: Peer) {
+        destinatarioFile = peer.key
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            type = "*/*"
+            addCategory(Intent.CATEGORY_OPENABLE)
+        }
+        if (runCatching { startActivityForResult(intent, RICHIESTA_FILE) }.isFailure) {
+            destinatarioFile = null
+            toast(R.string.cipher_unavailable)
+        }
+    }
+
+    private fun cifraEInvia(uri: Uri) {
+        val peer = destinatarioFile ?: return
+        destinatarioFile = null
+        val sorgente = CipherFiles.describe(this, uri)
+        val massimo = CipherFiles.maxBytes(this)
+        // Il limite si dice PRIMA di cifrare. Scoprirlo dopo significherebbe
+        // far aspettare l'utente per poi fallire, e su un telefono con poca
+        // memoria fallire uccidendo il processo.
+        if (sorgente.size > massimo) {
+            toast(getString(R.string.cipher_file_too_big, massimo / (1024 * 1024)))
+            return
+        }
+        val intent = CipherFiles.shareIntent(this, peer, uri, System.currentTimeMillis() / 1000)
+        if (intent == null) {
+            toast(getString(R.string.cipher_file_too_big, massimo / (1024 * 1024)))
+            return
+        }
+        runCatching {
+            startActivity(Intent.createChooser(intent, getString(R.string.cipher_file_send)))
+        }.onFailure { toast(R.string.cipher_unavailable) }
     }
 
     private fun askLabel(peer: Peer) {
@@ -345,6 +451,7 @@ class ContactsActivity : Activity() {
         when (requestCode) {
             RICHIESTA_ESPORTA -> esegui(uri, esporta = true)
             RICHIESTA_IMPORTA -> esegui(uri, esporta = false)
+            RICHIESTA_FILE -> cifraEInvia(uri)
         }
     }
 
@@ -505,12 +612,24 @@ class ContactsActivity : Activity() {
      * leggono a voce o confrontano a schermo, e un font proporzionale rende
      * quel confronto piu' difficile di quanto serva.
      */
-    private fun fingerprintView(text: String): View = TextView(this).apply {
-        this.text = text
-        typeface = Typeface.MONOSPACE
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-        setTextIsSelectable(true)
-    }
+    /**
+     * @param selectable un testo selezionabile **consuma il tocco**, e dentro
+     * una riga cliccabile questo significa che il tocco non arriva alla riga.
+     * Nell'elenco dei contatti il fingerprint occupa quasi tutta la riga:
+     * lasciarlo selezionabile rendeva la riga apribile solo toccando il nome,
+     * cioe' una striscia sottile in cima. Verificato sul dispositivo — sembrava
+     * che i contatti non si aprissero affatto.
+     *
+     * Selezionabile resta dove serve davvero: nella scheda del contatto e nella
+     * propria identita', dove il codice si copia per confrontarlo.
+     */
+    private fun fingerprintView(text: String, selectable: Boolean = true): View =
+        TextView(this).apply {
+            this.text = text
+            typeface = Typeface.MONOSPACE
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            setTextIsSelectable(selectable)
+        }
 
     private fun body(text: String): View = TextView(this).apply {
         this.text = text
@@ -527,11 +646,16 @@ class ContactsActivity : Activity() {
         Toast.makeText(this, resId, Toast.LENGTH_SHORT).show()
     }
 
+    private fun toast(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     private companion object {
         const val RICHIESTA_ESPORTA = 1
         const val RICHIESTA_IMPORTA = 2
+        const val RICHIESTA_FILE = 3
     }
 
 }

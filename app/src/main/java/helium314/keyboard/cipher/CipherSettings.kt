@@ -58,6 +58,26 @@ object CipherSettings {
 
     fun isAutoSend(context: Context): Boolean = isAutoSend(context.prefs())
 
+    /**
+     * Aprire da soli il messaggio appena copiato.
+     *
+     * Il momento in cui si copia e' l'**unico** aggancio automatico che una
+     * tastiera abbia: la chat non la vede, e leggere gli appunti di propria
+     * iniziativa a ogni sessione di digitazione la renderebbe un'app che spia
+     * gli appunti. Qui invece il testo e' gia' stato letto per la cronologia,
+     * quindi il controllo e' gratis.
+     *
+     * *Conseguenza dichiarata:* **con la cronologia appunti disattivata questo
+     * non scatta.** E' il prezzo di non leggere di nascosto.
+     */
+    const val PREF_AUTO_OPEN = "cipher_auto_open"
+    const val DEFAULT_AUTO_OPEN = true
+
+    fun isAutoOpen(prefs: SharedPreferences): Boolean =
+        isEnabled(prefs) && prefs.getBoolean(PREF_AUTO_OPEN, DEFAULT_AUTO_OPEN)
+
+    fun isAutoOpen(context: Context): Boolean = isAutoOpen(context.prefs())
+
     fun isEnabled(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(PREF_ENABLED, DEFAULT_ENABLED)
 

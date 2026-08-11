@@ -77,6 +77,13 @@
     <string name="cipher_file_saved" tools:ignore="MissingTranslation">Salvato. Da qui in poi e\' un file come gli altri: entra nella galleria e nei backup.</string>
     <string name="cipher_pick_recipient" tools:ignore="MissingTranslation">A chi stai scrivendo?</string>
     <string name="cipher_pick_no_contacts" tools:ignore="MissingTranslation">Nessun contatto ancora. Fatti mandare la presentazione di qualcuno, oppure mandagli la tua: tieni premuto il lucchetto chiuso e invia.</string>
+    <string name="cipher_no_recipient_short" tools:ignore="MissingTranslation">→ a chi?</string>
+    <string name="cipher_auto_open" tools:ignore="MissingTranslation">Apri da solo i messaggi copiati</string>
+    <string name="cipher_auto_open_summary" tools:ignore="MissingTranslation">Quando copi un messaggio cifrato, la tastiera lo apre senza che tu prema niente. Funziona solo con la cronologia appunti attiva: e\' li\' che il testo viene gia\' letto, e leggerlo di nostra iniziativa farebbe della tastiera un\'app che spia gli appunti.</string>
+    <string name="cipher_forget" tools:ignore="MissingTranslation">Dimentica questo contatto</string>
+    <string name="cipher_forget_title" tools:ignore="MissingTranslation">Dimenticare %1$s?</string>
+    <string name="cipher_forget_warning" tools:ignore="MissingTranslation">Perdi il collegamento fra questa chiave e questa persona. Il prossimo messaggio che ti manda ricomparira\' come mittente mai visto e verra\' memorizzato di nuovo senza dire niente: e\' la stessa cosa che vedresti se qualcuno si stesse spacciando per lei. Si perde anche «ho confrontato di persona».</string>
+    <string name="cipher_forgotten" tools:ignore="MissingTranslation">Contatto dimenticato</string>
     <string name="cipher_compose_hint" tools:ignore="MissingTranslation">Scrivi qui: l\'app non lo vede</string>
     <!--
         Il campo non si e' lasciato sostituire: parte del chiaro e' rimasta

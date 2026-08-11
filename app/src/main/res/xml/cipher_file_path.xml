@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Solo la cartella da cui si condividono gli allegati cifrati.
+
+    Volutamente stretta: un FileProvider che esponesse `cacheDir` intero
+    darebbe a chiunque riceva un permesso URI la possibilita' di leggere anche
+    il resto della cache. Qui dentro c'e' solo ciphertext, ed e' l'unica cosa
+    che deve uscire.
+-->
+<paths>
+    <cache-path name="cipher-share" path="cipher-share/" />
+</paths>

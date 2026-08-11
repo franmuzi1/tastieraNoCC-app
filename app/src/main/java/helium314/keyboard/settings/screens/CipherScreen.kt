@@ -47,6 +47,7 @@ fun CipherScreen(
         // Solo con la riga attiva: senza, l'invio automatico non ha un momento
         // in cui scattare.
         if (enabled && CipherSettings.isComposeMode(prefs)) CipherSettings.PREF_AUTO_SEND else null,
+        if (enabled) CipherSettings.PREF_AUTO_OPEN else null,
         if (enabled) SettingsWithoutKey.CIPHER_CONTACTS else null,
     )
     SearchSettingsScreen(
@@ -84,6 +85,12 @@ fun createCipherSettings(context: Context) = listOf(
         R.string.cipher_auto_send, R.string.cipher_auto_send_summary
     ) {
         SwitchPreference(it, CipherSettings.DEFAULT_AUTO_SEND)
+    },
+    Setting(
+        context, CipherSettings.PREF_AUTO_OPEN,
+        R.string.cipher_auto_open, R.string.cipher_auto_open_summary
+    ) {
+        SwitchPreference(it, CipherSettings.DEFAULT_AUTO_OPEN)
     },
     Setting(context, SettingsWithoutKey.CIPHER_CONTACTS, R.string.cipher_contacts) {
         // Un'Activity e non una destinazione Compose: ContactsActivity ha

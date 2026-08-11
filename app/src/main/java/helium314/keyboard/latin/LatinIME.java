@@ -769,7 +769,7 @@ public class LatinIME extends InputMethodService implements
         // tema, rotazione o modalita', quindi la riga va riagganciata qui e non
         // tenuta da parte.
         CipherCompose.INSTANCE.reload(this);
-        CipherCompose.INSTANCE.bind(view);
+        CipherCompose.INSTANCE.bind(this, view);
     }
 
     /**

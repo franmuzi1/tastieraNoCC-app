@@ -1,12 +1,14 @@
 package helium314.keyboard.cipher
 
 import android.content.Context
+import android.inputmethodservice.InputMethodService
 import android.text.Editable
 import android.text.InputType
 import android.text.Selection
 import android.text.SpannableStringBuilder
 import android.view.KeyEvent
 import android.view.View
+import android.widget.TextView
 import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
@@ -67,6 +69,16 @@ object CipherCompose {
 
     private var connection: CipherConnection? = null
     private var row: CipherComposeView? = null
+    private var barra: View? = null
+    private var destinatario: TextView? = null
+
+    /**
+     * Il servizio, per poter aprire la scelta del destinatario dal tocco sul
+     * nome. Non si ricava dalla vista: dentro la finestra di un IME il contesto
+     * e' un wrapper con il tema, non il servizio, e il controllo falliva in
+     * silenzio — il nome si toccava e non succedeva niente.
+     */
+    private var servizio: InputMethodService? = null
 
     /**
      * Sospesa per il campo corrente. Vedi [onInputStarted]: su una password la
@@ -103,7 +115,7 @@ object CipherCompose {
      * allegare e quello del microfono.
      */
     fun rowHeight(): Int {
-        val view = row ?: return 0
+        val view = barra ?: return 0
         return if (view.isVisible) view.height else 0
     }
 
@@ -160,6 +172,7 @@ object CipherCompose {
         }
         owner = app
         updateRow()
+        updateRecipient(app)
     }
 
     /**
@@ -168,18 +181,28 @@ object CipherCompose {
      * rotazione o modalita', e un riferimento tenuto oltre punterebbe a una
      * vista non piu' attaccata a niente.
      */
-    fun bind(view: View) {
+    fun bind(ime: InputMethodService, view: View) {
+        servizio = ime
         val found: CipherComposeView? = view.findViewById(R.id.cipher_compose_row)
         row = found
+        barra = view.findViewById(R.id.cipher_compose_bar)
+        destinatario = view.findViewById(R.id.cipher_recipient)
+        // Toccare il nome cambia destinatario: e' il posto dove l'utente sta
+        // gia' guardando quando si chiede "ma a chi lo sto mandando?".
+        destinatario?.setOnClickListener {
+            servizio?.let { ime -> CipherActions.chiediDestinatarioOra(ime) }
+        }
         if (found == null) return
         if (connection == null) connection = CipherConnection(view) { updateRow() }
 
         val colors = Settings.getValues().mColors
+        barra?.let { colors.setBackground(it, ColorType.STRIP_BACKGROUND) }
         colors.setBackground(found, ColorType.STRIP_BACKGROUND)
         found.setTextColor(colors.get(ColorType.KEY_TEXT))
         found.setHintTextColor(colors.get(ColorType.KEY_HINT_TEXT))
         found.setCaretColor(colors.get(ColorType.KEY_TEXT))
         updateRow()
+        updateRecipient(owner)
     }
 
     /**
@@ -204,8 +227,35 @@ object CipherCompose {
 
     fun isEmptyBuffer(): Boolean = connection?.buffer?.isEmpty() != false
 
+    /**
+     * Aggiorna il nome del destinatario mostrato accanto alla riga.
+     *
+     * Si interroga il core a ogni giro invece di tenerne una copia: cambia
+     * quando si decifra un messaggio, quando lo si sceglie a mano, e quando il
+     * servizio riparte. Una copia in memoria sarebbe l'ennesimo stato da
+     * mantenere allineato, e sbagliarlo qui significherebbe mostrare un nome
+     * mentre si cifra per un altro.
+     */
+    fun updateRecipient(appPackage: String) {
+        val view = destinatario ?: return
+        val nome = if (CipherCore.available && appPackage.isNotEmpty()) {
+            CipherCore.nativeCurrentPeerName(appPackage)
+        } else {
+            null
+        }
+        val colori = Settings.getValues().mColors
+        view.text = when {
+            nome != null -> "→ $nome"
+            else -> view.context.getString(R.string.cipher_no_recipient_short)
+        }
+        view.setTextColor(
+            colori.get(if (nome != null) ColorType.KEY_TEXT else ColorType.KEY_HINT_TEXT)
+        )
+    }
+
     private fun updateRow() {
         val view = row ?: return
+        barra?.isVisible = enabled && !suppressed
         view.isVisible = enabled && !suppressed
         if (!enabled || suppressed) return
         val buffer = connection?.buffer

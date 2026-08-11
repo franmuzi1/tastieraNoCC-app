@@ -265,12 +265,49 @@ object CipherActions {
     }
 
     /**
+     * Il messaggio appena copiato e' uno dei nostri: aprilo.
+     *
+     * Chiamata da `ClipboardHistoryManager` quando arriva un elemento nuovo,
+     * cioe' nel solo momento in cui una tastiera puo' accorgersi di qualcosa
+     * senza andarselo a cercare. Il testo li' e' gia' stato letto per la
+     * cronologia: nessun secondo accesso agli appunti, nessun toast di sistema.
+     *
+     * Il riconoscimento passa dal core (`nativeLooksLikeOurBlob`): guarda solo
+     * il sentinel e la lunghezza minima, non decifra e non tocca il keyring.
+     * Scrivere quel controllo qui sarebbe una seconda fonte di verita' sul
+     * formato.
+     */
+    fun autoDecrypt(ime: InputMethodService, testo: CharSequence) {
+        if (!CipherSettings.isAutoOpen(ime)) return
+        val contenuto = testo.toString()
+        if (!CipherCore.available || !CipherCore.nativeLooksLikeOurBlob(contenuto)) return
+        // Solo a tastiera visibile. Far comparire una schermata mentre l'utente
+        // sta facendo altro e' un'irruzione, e non e' quello che ha chiesto
+        // copiando.
+        if (!ime.isInputViewShown) return
+        val intent = Intent(ime, DecryptActivity::class.java).apply {
+            action = Intent.ACTION_SEND
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, contenuto)
+            putExtra(
+                CipherHandoff.extraName(),
+                CipherHandoff.issue(ime.currentInputEditorInfo?.packageName.orEmpty()),
+            )
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        runCatching { ime.startActivity(intent) }
+    }
+
+    /**
      * Apre la scelta del destinatario per l'app in cui si sta scrivendo.
      *
      * Il package viaggia nel gettone di [CipherHandoff], non come extra
      * qualunque: gli extra li scrive chiunque, e attribuire la scelta all'app
      * sbagliata dirotterebbe per chi si cifra.
      */
+    /** Come [chiediDestinatario], ma chiamabile da fuori: dal nome nella riga. */
+    fun chiediDestinatarioOra(ime: InputMethodService) = chiediDestinatario(ime)
+
     private fun chiediDestinatario(ime: InputMethodService) {
         val pacchetto = ime.currentInputEditorInfo?.packageName.orEmpty()
         if (pacchetto.isEmpty()) {

@@ -18,6 +18,7 @@ import androidx.core.view.inputmethod.InputContentInfoCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import helium314.keyboard.keyboard.KeyboardTypeface
+import helium314.keyboard.cipher.CipherActions
 import helium314.keyboard.cipher.CipherClipboard
 import helium314.keyboard.compat.ClipboardManagerCompat
 import helium314.keyboard.event.Event
@@ -93,6 +94,9 @@ class ClipboardHistoryManager(
             // non costa un secondo accesso agli appunti — che su Android 12+
             // farebbe comparire il toast di sistema a ogni cambio di clip.
             CipherClipboard.noteClipboardContent(content)
+            // ...e se e' uno dei nostri, si apre da solo: copiare e' il gesto
+            // con cui l'utente ha gia' detto che vuole leggerlo.
+            CipherActions.autoDecrypt(latinIME, content)
             clipboardDao?.addClip(timeStamp, false, content.toString())
         } else if (maySaveFromUri(clipItem.uri, latinIME)) {
             clipboardDao?.addClipUri(timeStamp, false, clipItem.uri, description, latinIME)
