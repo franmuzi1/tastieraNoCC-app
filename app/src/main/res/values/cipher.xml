@@ -123,7 +123,10 @@
         varianti: distinguere le cause e\' un canale che aiuta chi attacca, ed
         e\' il motivo per cui il core restituisce un errore opaco.
     -->
-    <string name="cipher_cannot_decrypt" tools:ignore="MissingTranslation">Impossibile decifrare questo messaggio</string>
+    <string name="cipher_cannot_decrypt" tools:ignore="MissingTranslation">Non si apre. Puo\' essere diretto a qualcun altro, oppure gia\' aperto una volta: con la forward secrecy accesa un messaggio si apre una volta sola, e la sua chiave non torna.</string>
+    <string name="cipher_own_message_to" tools:ignore="MissingTranslation">A %1$s</string>
+    <string name="cipher_own_message_note" tools:ignore="MissingTranslation">L\'hai scritto tu. Si riapre perche\' la forward secrecy era spenta: con quella accesa non sarebbe possibile, nemmeno per te.</string>
+    <string name="cipher_own_message_no_peer" tools:ignore="MissingTranslation">L\'hai scritto tu, ma non si trova piu\' a chi era diretto: quel contatto non e\' piu\' nella tua lista.</string>
     <string name="cipher_unknown_sender" tools:ignore="MissingTranslation">Mittente sconosciuto</string>
     <string name="cipher_sender_verified" tools:ignore="MissingTranslation">%1$s ✓</string>
     <string name="cipher_composed_at" tools:ignore="MissingTranslation">Scritto il %1$s (secondo il mittente)</string>

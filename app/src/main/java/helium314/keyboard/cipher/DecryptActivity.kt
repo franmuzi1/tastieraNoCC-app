@@ -130,6 +130,10 @@ class DecryptActivity : Activity() {
             // messaggi diversi.
             CipherCore.CRYPTO, CipherCore.FORMAT, CipherCore.DECODE ->
                 return showNotice(R.string.cipher_cannot_decrypt)
+            // L'abbiamo scritto noi ma non si trova piu' a chi: e' un esito
+            // normale, non un guasto, e dirlo com'e' evita di far cercare un
+            // problema che non c'e'.
+            CipherCore.OWN_MESSAGE -> return showNotice(R.string.cipher_own_message_no_peer)
             CipherCore.OK -> Unit
             else -> return showNotice(R.string.cipher_unavailable)
         }
@@ -146,13 +150,19 @@ class DecryptActivity : Activity() {
         // dominante. Quella scelta vive in memoria dentro il core, quindi qui
         // va anche scritta su disco, altrimenti il primo riavvio del servizio
         // la cancella.
-        val decryptedFrom = result.senderKey
-        if (result.kind == CipherCore.KIND_MESSAGE && decryptedFrom != null) {
-            CipherRecipients.remember(this, appDiProvenienza, decryptedFrom)
+        // Vale anche per un messaggio nostro: chi rilegge cio' che ha mandato a
+        // Marco sta guardando la conversazione con Marco, e li' la chiave da
+        // usare e' la stessa.
+        val letturaDa = result.senderKey
+        if (letturaDa != null &&
+            (result.kind == CipherCore.KIND_MESSAGE || result.kind == CipherCore.KIND_OWN_MESSAGE)
+        ) {
+            CipherRecipients.remember(this, appDiProvenienza, letturaDa)
         }
 
         when (result.kind) {
             CipherCore.KIND_MESSAGE -> showMessage(result)
+            CipherCore.KIND_OWN_MESSAGE -> showMessage(result, mio = true)
             CipherCore.KIND_IDENTITY_CARD -> showIdentityCard(result)
             else -> showNotice(R.string.cipher_unavailable)
         }
@@ -247,7 +257,12 @@ class DecryptActivity : Activity() {
     // Schermate
     // ========================================================================
 
-    private fun showMessage(result: CipherCore.IncomingResult) {
+    /**
+     * @param mio quando il messaggio l'abbiamo scritto noi: allora la persona
+     *   mostrata e' il **destinatario**, e chiamarla "mittente" sarebbe
+     *   semplicemente falso.
+     */
+    private fun showMessage(result: CipherCore.IncomingResult, mio: Boolean = false) {
         val bytes = result.plaintext
         if (bytes == null) {
             showNotice(R.string.cipher_cannot_decrypt)
@@ -264,7 +279,17 @@ class DecryptActivity : Activity() {
         }
 
         val root = screen()
-        root.addView(header(senderLine(result), result.verified == 1))
+        val chi = senderLine(result)
+        root.addView(
+            header(
+                if (mio) getString(R.string.cipher_own_message_to, chi) else chi,
+                // Il segno di "confrontato di persona" non si mostra su un
+                // messaggio nostro: li' non c'e' nessuna identita' da
+                // verificare, l'abbiamo scritto noi.
+                !mio && result.verified == 1,
+            )
+        )
+        if (mio) root.addView(caption(getString(R.string.cipher_own_message_note)))
         root.addView(caption(getString(R.string.cipher_composed_at, formatTimestamp(result.sentAtUnix))))
         root.addView(body(testo))
         root.addView(copyButton(testo))

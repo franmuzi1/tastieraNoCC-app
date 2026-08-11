@@ -56,12 +56,27 @@ object CipherCore {
     const val KEYRING = 8
     /** Sessione non inizializzata, errore JNI, o panic intercettato in Rust. */
     const val INTERNAL = 9
+    /**
+     * L'abbiamo scritto noi, ma il destinatario non e' piu' fra i contatti.
+     * Esito NORMALE: senza forward secrecy un proprio messaggio si riapre, e
+     * questo codice arriva solo quando non si trova piu' a chi era diretto.
+     */
+    const val OWN_MESSAGE = 10
 
     // Valori del campo `kind` di [IncomingResult] dopo nativeHandleIncomingText.
     const val KIND_MESSAGE = 0
     const val KIND_IDENTITY_CARD = 1
     /** Allegato cifrato: vedi [nativeDecryptFile]. */
     const val KIND_FILE = 2
+    /**
+     * Un messaggio nostro, riaperto. `senderKey`, `senderLabel` e
+     * `senderFingerprint` sono quelli del **destinatario**: qui non c'e' un
+     * mittente da mostrare, e la UI deve dire "a" e non "da".
+     *
+     * Esiste solo senza forward secrecy: con la catena accesa la chiave usata
+     * per cifrare non esiste piu' e non c'e' niente da riaprire.
+     */
+    const val KIND_OWN_MESSAGE = 3
 
     // Valori del campo `kind` dopo nativeAssignLabel.
     const val LABEL_ASSIGNED = 0
