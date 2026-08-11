@@ -37,6 +37,8 @@
         possibile, quindi qui si chiede.
     -->
     <string name="cipher_no_recipient" tools:ignore="MissingTranslation">Scegli prima un destinatario per questa app</string>
+    <string name="cipher_message_too_long" tools:ignore="MissingTranslation">Messaggio troppo lungo per questa chat</string>
+    <string name="cipher_message_too_long_detail" tools:ignore="MissingTranslation">Il testo cifrato supera il limite di 4096 caratteri di Telegram: togli circa %1$d caratteri, oppure mandalo in due messaggi.</string>
     <string name="cipher_text_too_long" tools:ignore="MissingTranslation">Testo troppo lungo per essere cifrato</string>
     <!-- Riga di composizione: il chiaro resta nella tastiera fino al lucchetto. -->
     <string name="cipher_settings_category" tools:ignore="MissingTranslation">Cifratura</string>

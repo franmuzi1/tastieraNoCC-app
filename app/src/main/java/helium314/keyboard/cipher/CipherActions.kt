@@ -35,6 +35,31 @@ object CipherActions {
     private const val MAX_FIELD_CHARS = 8192
 
     /**
+     * Quanto puo' essere lungo il blob perche' una chat lo accetti.
+     *
+     * Telegram si ferma a 4096 caratteri per messaggio, ed e' il piu' stretto
+     * fra quelli che contano (WhatsApp arriva a 65536). Sopra quella soglia il
+     * messaggio non parte, oppure l'app lo spezza — e **un blob spezzato non si
+     * decifra piu'**: la meta' che arriva non e' un messaggio piu' corto, e'
+     * spazzatura.
+     *
+     * Si controlla PRIMA di sostituire il campo. Accorgersene dopo vorrebbe
+     * dire aver gia' cancellato il testo dell'utente per rimpiazzarlo con
+     * qualcosa che non si puo' mandare.
+     */
+    private const val MAX_BLOB_CHARS = 4096
+
+    /**
+     * Il blob cresce di circa 1,6 volte rispetto al testo, piu' un'ottantina di
+     * byte di involucro. Misurato: 1000 caratteri diventano 1738, 2400 ne
+     * diventano 3978, 2500 sforano.
+     */
+    private const val OVERHEAD_BYTES = 84
+
+    /** `kc/1/` — vedi il sentinel nel core. */
+    private const val SENTINEL_LEN = 5
+
+    /**
      * Sostituisce il contenuto del campo con il blob cifrato.
      *
      * Il destinatario NON si indovina: lo decide il core in base all'app
@@ -71,6 +96,20 @@ object CipherActions {
         // non azzerabile: la garanzia del core si ferma al confine con
         // InputConnection, che parla CharSequence. L'array lo azzeriamo
         // comunque — e' la copia che vive piu' a lungo.
+        // Il limite si dice prima di cifrare, con quanto tagliare: dopo, il
+        // campo sarebbe gia' stato svuotato per far posto a un blob che la
+        // chat rifiuta.
+        val stimato = stimaBlob(field.text)
+        if (stimato > MAX_BLOB_CHARS) {
+            val daTogliere = ((stimato - MAX_BLOB_CHARS) * 5 / 8).coerceAtLeast(1)
+            toast(ime, R.string.cipher_message_too_long)
+            KeyboardSwitcher.getInstance().showToast(
+                ime.getString(R.string.cipher_message_too_long_detail, daTogliere),
+                false,
+            )
+            return
+        }
+
         val plaintext = field.text.toByteArray()
         val blob = try {
             CipherCore.nativeEncryptForApp(
@@ -292,6 +331,19 @@ object CipherActions {
             if (wanted) "riga_accesa" else "riga_spenta",
             if (wanted) R.string.cipher_compose_on else R.string.cipher_compose_off,
         )
+    }
+
+    /**
+     * Quanto sara' lungo il blob per questo testo, prima di produrlo.
+     *
+     * Si stima invece di cifrare e misurare: cifrare per poi scoprire che non
+     * si puo' mandare significherebbe aver gia' consumato il nonce e, peggio,
+     * aver gia' toccato il campo. La stima e' esatta a meno di un carattere,
+     * perche' z-base-32 e' deterministico: otto caratteri ogni cinque byte.
+     */
+    private fun stimaBlob(testo: String): Int {
+        val byte = testo.toByteArray().size + OVERHEAD_BYTES
+        return SENTINEL_LEN + (byte * 8 + 4) / 5
     }
 
     /**
