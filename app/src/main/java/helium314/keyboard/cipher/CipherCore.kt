@@ -77,6 +77,8 @@ object CipherCore {
      * per cifrare non esiste piu' e non c'e' niente da riaprire.
      */
     const val KIND_OWN_MESSAGE = 3
+    /** Un allegato nostro, riaperto. Come [KIND_OWN_MESSAGE]: il peer e' il destinatario. */
+    const val KIND_OWN_FILE = 4
 
     // Valori del campo `kind` dopo nativeAssignLabel.
     const val LABEL_ASSIGNED = 0

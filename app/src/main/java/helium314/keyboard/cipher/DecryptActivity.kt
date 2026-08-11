@@ -196,6 +196,7 @@ class DecryptActivity : Activity() {
             CipherCore.UNSUPPORTED_VERSION -> return showNotice(R.string.cipher_version_too_new)
             CipherCore.TIER_UNSUPPORTED -> return showNotice(R.string.cipher_tier_unsupported)
             CipherCore.CRYPTO -> return showNotice(R.string.cipher_cannot_decrypt)
+            CipherCore.OWN_MESSAGE -> return showNotice(R.string.cipher_own_message_no_peer)
             // Un file qualunque che non e' nostro finisce qui, ed e' l'esito
             // piu' comune: il filtro dell'intent prende tutti gli
             // `application/octet-stream`, perche' e' l'unica cosa su cui puo'
@@ -206,7 +207,7 @@ class DecryptActivity : Activity() {
         // Un mittente mai visto e' stato appena fissato: il keyring va scritto,
         // altrimenti il pin vive solo in memoria.
         CipherIdentity.persistKeyring(this)
-        showFile(result)
+        showFile(result, mio = result.kind == CipherCore.KIND_OWN_FILE)
     }
 
     /**
@@ -372,7 +373,8 @@ class DecryptActivity : Activity() {
      * lasciato in Download e' un file che finisce nella galleria e nel backup
      * cloud — cioe' proprio dove la cifratura serviva a non farlo arrivare.
      */
-    private fun showFile(result: CipherCore.IncomingResult) {
+    /** @param mio come in [showMessage]: allora la persona mostrata e' il destinatario. */
+    private fun showFile(result: CipherCore.IncomingResult, mio: Boolean = false) {
         val content = result.fileContent
         val name = result.fileName.orEmpty()
         if (content == null) {
@@ -383,7 +385,14 @@ class DecryptActivity : Activity() {
         nomeInAttesa = name
 
         val root = screen()
-        root.addView(header(senderLine(result), result.verified == 1))
+        val chi = senderLine(result)
+        root.addView(
+            header(
+                if (mio) getString(R.string.cipher_own_message_to, chi) else chi,
+                !mio && result.verified == 1,
+            )
+        )
+        if (mio) root.addView(caption(getString(R.string.cipher_own_message_note)))
         root.addView(caption(getString(R.string.cipher_composed_at, formatTimestamp(result.sentAtUnix))))
         root.addView(body(getString(R.string.cipher_file_detail, name, content.size / 1024)))
 
