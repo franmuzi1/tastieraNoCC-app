@@ -1,5 +1,6 @@
 package helium314.keyboard.cipher
 
+import android.content.ClipboardManager
 import android.content.Context
 import android.inputmethodservice.InputMethodService
 import android.text.Editable
@@ -278,11 +279,66 @@ object CipherCompose {
         connection.finishComposingText()
         Selection.setSelection(buffer, a, b)
         updateRow()
-        // In differita, come farebbe il sistema. Per un campo vero
-        // `onUpdateSelection` non arriva mai dentro la chiamata che ha spostato
-        // il cursore, ma dopo: "seleziona tutto" arriva qui **da dentro**
-        // HeliBoard, e richiamarlo subito lo farebbe rientrare in se' stesso
-        // mentre sta ancora leggendo il testo.
+        avvisaDelloSpostamento(vecchioInizio, vecchiaFine)
+    }
+
+    /**
+     * Incolla dentro la riga, invece di lasciar partire il finto CTRL+V.
+     *
+     * Il tasto incolla di HeliBoard non consegna testo: manda un evento CTRL+V
+     * sperando che il campo dell'app lo interpreti. Qui il campo e' un buffer
+     * nostro, quindi quell'evento non produceva niente — il tasto sembrava
+     * rotto. Incollare **dentro** la riga e' sicuro: e' testo che entra, il
+     * contrario del copia che lo porta fuori.
+     *
+     * Leggere gli appunti qui non tradisce la regola di non spiarli: e' il gesto
+     * esplicito dell'utente, non una lettura di nostra iniziativa.
+     *
+     * @return vero se il tasto e' stato gestito qui, falso se deve seguire la
+     * strada normale verso l'app.
+     */
+    fun incolla(context: Context): Boolean {
+        // La connessione **in uso**, non quella che esiste: su un campo password
+        // la riga e' sospesa e chi scrive e' di nuovo l'app, quindi incollare
+        // qui dentro metterebbe il testo in un buffer che nessuno vede e
+        // toglierebbe all'utente il suo incolla.
+        val connection = connection() as? CipherConnection ?: return false
+        val appunti = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        // `toString`: nel buffer si tiene testo semplice, gli span verrebbero
+        // dietro senza servire a niente.
+        val testo = appunti?.primaryClip
+            ?.takeIf { it.itemCount > 0 }
+            ?.getItemAt(0)
+            ?.coerceToText(context)
+            ?.toString()
+        // Appunti vuoti: si gestisce lo stesso, e non si fa niente. Lasciar
+        // proseguire manderebbe il CTRL+V all'app, che incollerebbe nel proprio
+        // campo cio' che l'utente voleva qui.
+        if (testo.isNullOrEmpty()) return true
+        val buffer = connection.buffer
+        val vecchioInizio = Selection.getSelectionStart(buffer)
+        val vecchiaFine = Selection.getSelectionEnd(buffer)
+        // `commitText` sostituisce la selezione, come ci si aspetta da un
+        // incolla, e passa dalla connessione perche' e' li' che vive
+        // l'aggiornamento della riga.
+        connection.commitText(testo, 1)
+        avvisaDelloSpostamento(vecchioInizio, vecchiaFine)
+        return true
+    }
+
+    /**
+     * Dice a HeliBoard dov'e' finito il cursore.
+     *
+     * In differita, come farebbe il sistema. Per un campo vero
+     * `onUpdateSelection` non arriva mai dentro la chiamata che ha spostato il
+     * cursore, ma dopo: "seleziona tutto" e "incolla" arrivano qui **da dentro**
+     * HeliBoard, e richiamarlo subito lo farebbe rientrare in se' stesso mentre
+     * sta ancora leggendo il testo.
+     */
+    private fun avvisaDelloSpostamento(vecchioInizio: Int, vecchiaFine: Int) {
+        val buffer = connection?.buffer ?: return
+        val a = Selection.getSelectionStart(buffer).coerceAtLeast(0)
+        val b = Selection.getSelectionEnd(buffer).coerceAtLeast(a)
         val avvisa = Runnable { servizio?.onUpdateSelection(vecchioInizio, vecchiaFine, a, b, -1, -1) }
         if (row?.post(avvisa) != true) avvisa.run()
     }

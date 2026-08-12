@@ -2707,6 +2707,10 @@ public final class InputLogic {
     }
 
     private void paste(String packageName) {
+        // Nella riga di composizione il finto CTRL+V qui sotto non produce
+        // niente: il campo e' un buffer nostro, e nessuno interpreta quel tasto.
+        // Il testo va messo dentro a mano, altrimenti l'incolla sembra rotto.
+        if (CipherCompose.INSTANCE.incolla(mLatinIME)) return;
         sendDownUpKeyEventWithMetaState(KeyEvent.KEYCODE_V, KeyEvent.META_CTRL_ON);
         // looks like there are more apps that don't care about KeyEvent.KEYCODE_PASTE but work with CTRL+V
         // so let's try using CRTL+V and hope there are no apps that require different things
