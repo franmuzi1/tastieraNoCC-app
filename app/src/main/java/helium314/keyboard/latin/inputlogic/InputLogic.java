@@ -24,6 +24,7 @@ import android.view.inputmethod.EditorInfo;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import helium314.keyboard.cipher.CipherCompose;
 import helium314.keyboard.event.Event;
 import helium314.keyboard.event.InputTransaction;
 import helium314.keyboard.keyboard.Keyboard;
@@ -38,6 +39,7 @@ import helium314.keyboard.latin.dictionary.DictionaryFactory;
 import helium314.keyboard.latin.LastComposedWord;
 import helium314.keyboard.latin.LatinIME;
 import helium314.keyboard.latin.NgramContext;
+import helium314.keyboard.latin.R;
 import helium314.keyboard.latin.RichInputConnection;
 import helium314.keyboard.latin.SingleDictionaryFacilitator;
 import helium314.keyboard.latin.Suggest;
@@ -795,15 +797,18 @@ public final class InputLogic {
                 mConnection.selectWord(sv.mSpacingAndPunctuations, currentKeyboardScript);
                 break;
             case KeyCode.CLIPBOARD_COPY:
+                if (rifiutaCopiaDelChiaro()) break;
                 mConnection.copyText(true);
                 break;
             case KeyCode.CLIPBOARD_COPY_ALL:
+                if (rifiutaCopiaDelChiaro()) break;
                 mConnection.copyText(false);
                 break;
             case KeyCode.CLIPBOARD_CLEAR_HISTORY:
                 mLatinIME.getClipboardHistoryManager().clearHistory();
                 break;
             case KeyCode.CLIPBOARD_CUT:
+                if (rifiutaCopiaDelChiaro()) break;
                 if (mConnection.hasSelection()) {
                     mConnection.copyText(true);
                     // fake delete keypress to remove the text
@@ -1258,6 +1263,32 @@ public final class InputLogic {
         }
 
         inputTransaction.requireShiftUpdate(InputTransaction.SHIFT_UPDATE_NOW);
+    }
+
+    /**
+     * Copia e taglia NON escono dalla riga di composizione.
+     *
+     * Li' dentro c'e' testo in chiaro che non e' ancora stato cifrato, e la
+     * clipboard e' leggibile dall'app che ha il fuoco — cioe' proprio l'app di
+     * chat da cui il chiaro deve restare fuori. Copiarcelo lo consegnerebbe a
+     * lei, e in piu' finirebbe nella cronologia appunti della tastiera, che sta
+     * su disco. Sarebbe il buco che la riga di composizione esiste per chiudere.
+     *
+     * Incollare **dentro** la riga resta permesso: quello e' testo che entra.
+     *
+     * Finora non serviva perche' non c'era modo di selezionare niente: e' la
+     * selezione ad aver reso raggiungibile questa strada.
+     *
+     * Si spegne da Impostazioni → Cifratura: il divieto costa qualcosa a chi
+     * sposta testo fra due campi, e quella e' una scelta dell'utente.
+     *
+     * @return vero se il tasto non deve fare nulla.
+     */
+    private boolean rifiutaCopiaDelChiaro() {
+        if (!CipherCompose.INSTANCE.copiaDelChiaroVietata()) return false;
+        KeyboardSwitcher.getInstance().showToast(
+                mLatinIME.getString(R.string.cipher_no_copy_plain), true);
+        return true;
     }
 
     /**

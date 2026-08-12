@@ -47,6 +47,9 @@ fun CipherScreen(
         // Solo con la riga attiva: senza, l'invio automatico non ha un momento
         // in cui scattare.
         if (enabled && CipherSettings.isComposeMode(prefs)) CipherSettings.PREF_AUTO_SEND else null,
+        // Stessa ragione: senza la riga il chiaro sta gia' nel campo dell'app, e
+        // un divieto di copiarlo non proteggerebbe niente.
+        if (enabled && CipherSettings.isComposeMode(prefs)) CipherSettings.PREF_BLOCK_COPY else null,
         if (enabled) CipherSettings.PREF_AUTO_OPEN else null,
         if (enabled) CipherSettings.PREF_FORWARD_SECRECY else null,
         if (enabled) SettingsWithoutKey.CIPHER_CONTACTS else null,
@@ -86,6 +89,12 @@ fun createCipherSettings(context: Context) = listOf(
         R.string.cipher_auto_send, R.string.cipher_auto_send_summary
     ) {
         SwitchPreference(it, CipherSettings.DEFAULT_AUTO_SEND)
+    },
+    Setting(
+        context, CipherSettings.PREF_BLOCK_COPY,
+        R.string.cipher_block_copy, R.string.cipher_block_copy_summary
+    ) {
+        SwitchPreference(it, CipherSettings.DEFAULT_BLOCK_COPY)
     },
     Setting(
         context, CipherSettings.PREF_AUTO_OPEN,

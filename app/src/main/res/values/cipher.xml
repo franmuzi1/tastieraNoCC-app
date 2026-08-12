@@ -80,6 +80,18 @@
     <string name="cipher_pick_recipient" tools:ignore="MissingTranslation">A chi stai scrivendo?</string>
     <string name="cipher_pick_no_contacts" tools:ignore="MissingTranslation">Nessun contatto ancora. Fatti mandare la presentazione di qualcuno, oppure mandagli la tua: tieni premuto il lucchetto chiuso e invia.</string>
     <string name="cipher_no_recipient_short" tools:ignore="MissingTranslation">→ a chi?</string>
+    <!--
+        Copia e taglia dalla riga di composizione. Il messaggio dice il motivo,
+        non solo il divieto: chi preme copia sta facendo una cosa ragionevole, e
+        un "non si puo\'" senza spiegazione sembra un guasto.
+    -->
+    <string name="cipher_no_copy_plain" tools:ignore="MissingTranslation">Non si copia il chiaro: dagli appunti lo leggerebbe l\'app di chat. Cifra prima.</string>
+    <!--
+        Il riassunto dice il motivo e il prezzo, come gli altri interruttori: chi
+        lo spegne deve sapere cosa apre, non solo cosa guadagna.
+    -->
+    <string name="cipher_block_copy" tools:ignore="MissingTranslation">Non copiare il testo in chiaro</string>
+    <string name="cipher_block_copy_summary" tools:ignore="MissingTranslation">Copia e taglia non funzionano finche\' stai scrivendo nella riga della tastiera. Il testo negli appunti lo puo\' leggere l\'app di chat che ha il fuoco, e resta nella cronologia appunti sul telefono: sarebbe lo stesso buco che scrivere dentro la tastiera serve a chiudere. Spegnendolo puoi copiare, ma quello che copi esce dalla tastiera.</string>
     <string name="cipher_auto_open" tools:ignore="MissingTranslation">Apri da solo i messaggi copiati</string>
     <string name="cipher_auto_open_summary" tools:ignore="MissingTranslation">Quando copi un messaggio cifrato, la tastiera lo apre senza che tu prema niente. Funziona solo con la cronologia appunti attiva: e\' li\' che il testo viene gia\' letto, e leggerlo di nostra iniziativa farebbe della tastiera un\'app che spia gli appunti.</string>
     <string name="cipher_forward_secrecy" tools:ignore="MissingTranslation">Forward secrecy</string>

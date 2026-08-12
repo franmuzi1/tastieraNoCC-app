@@ -113,6 +113,31 @@ object CipherSettings {
 
     fun isForwardSecrecy(context: Context): Boolean = isForwardSecrecy(context.prefs())
 
+    /**
+     * Copia e taglia dalla riga di composizione.
+     *
+     * **Bloccati di default.** Negli appunti il chiaro e' leggibile dall'app che
+     * ha il fuoco — cioe' proprio l'app di chat da cui la riga di composizione
+     * esiste per tenerlo lontano — e finisce anche nella cronologia appunti
+     * della tastiera, che sta su disco. Copiarlo disfa in un tocco cio' che la
+     * riga fa.
+     *
+     * Esiste comunque l'interruttore perche' il divieto ha un costo reale:
+     * spostare del testo fra due campi, o riprendere una frase scritta a meta',
+     * diventa impossibile senza riscriverla. Chi ha quel bisogno e sa cosa
+     * comporta puo' riaprirlo.
+     *
+     * Vale **solo** dentro la riga di composizione: senza, il chiaro sta gia'
+     * nel campo dell'app e non c'e' niente da proteggere.
+     */
+    const val PREF_BLOCK_COPY = "cipher_block_copy"
+    const val DEFAULT_BLOCK_COPY = true
+
+    fun isBlockCopy(prefs: SharedPreferences): Boolean =
+        isComposeMode(prefs) && prefs.getBoolean(PREF_BLOCK_COPY, DEFAULT_BLOCK_COPY)
+
+    fun isBlockCopy(context: Context): Boolean = isBlockCopy(context.prefs())
+
     fun isEnabled(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(PREF_ENABLED, DEFAULT_ENABLED)
 

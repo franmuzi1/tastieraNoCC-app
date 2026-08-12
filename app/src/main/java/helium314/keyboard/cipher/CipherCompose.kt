@@ -86,8 +86,15 @@ object CipherCompose {
      */
     private var suppressed = false
 
+    /** Vedi [CipherSettings.PREF_BLOCK_COPY]. */
+    private var bloccaCopia = CipherSettings.DEFAULT_BLOCK_COPY
+
     fun reload(context: Context) {
         self = context.packageName
+        // Fuori dall'uscita anticipata qui sotto: quella confronta la sola
+        // modalita' composizione, e cambiare il solo interruttore del copia non
+        // la muove — la preferenza nuova non verrebbe mai riletta.
+        bloccaCopia = CipherSettings.isBlockCopy(context)
         val wanted = CipherSettings.isComposeMode(context)
         if (wanted == enabled) return
         enabled = wanted
@@ -227,6 +234,20 @@ object CipherCompose {
     }
 
     fun isEmptyBuffer(): Boolean = connection?.buffer?.isEmpty() != false
+
+    /**
+     * Copiare adesso porterebbe fuori del chiaro, e l'utente ha chiesto di non
+     * poterlo fare.
+     *
+     * Tre condizioni, tutte necessarie. Il buffer deve avere qualcosa, e
+     * soprattutto deve essere **lui** a ricevere le battute: su un campo
+     * password la riga e' sospesa e la tastiera scrive di nuovo nel campo
+     * dell'app, quindi cio' che si copierebbe e' roba dell'app — guardare
+     * [isEnabled] invece della connessione vera bloccherebbe il copia dove non
+     * c'e' niente da proteggere.
+     */
+    fun copiaDelChiaroVietata(): Boolean =
+        bloccaCopia && connection() != null && !isEmptyBuffer()
 
     /**
      * Il dito ha spostato il cursore o selezionato un pezzo di testo.
