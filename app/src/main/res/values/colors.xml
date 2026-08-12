@@ -73,4 +73,10 @@
 
     <!-- Scrollbar color -->
     <color name="toolbar_scrollbar">#66808080</color>
+
+    <!--
+        Sfondo dell'icona adattiva: il blu scuro del disegno, preso da li'
+        perche' si vede attaccato al tondo negli angoli delle maschere squadrate.
+    -->
+    <color name="ic_launcher_background">#101C33</color>
 </resources>

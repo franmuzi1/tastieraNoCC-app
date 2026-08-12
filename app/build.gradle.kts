@@ -118,7 +118,7 @@ android {
             }
             variant.outputs.forEach { output ->
                 if (output is com.android.build.api.variant.impl.VariantOutputImpl) {
-                    output.outputFileName = "HeliBoard_${defaultConfig.versionName}-${variant.buildType}.apk"
+                    output.outputFileName = "MusyBoard_${defaultConfig.versionName}-${variant.buildType}.apk"
                 }
             }
         }

@@ -101,8 +101,8 @@
     <string name="enable_clipboard_history_summary">Indien gedeaktiveerd, sal knipbord sleutel plak as dit inhoud het</string>
     <string name="clipboard_history_retention_time">Geskiedenis behou tyd</string>
     <string name="key_borders">Sleutelgrense</string>
-    <string name="spell_checker_service_name">HeliBoard Spell Checker</string>
-    <string name="android_spell_checker_settings">HeliBoard Spell Checker Settings</string>
+    <string name="spell_checker_service_name">MusyBoard Spell Checker</string>
+    <string name="android_spell_checker_settings">MusyBoard Spell Checker Settings</string>
     <string name="number_row">Nommers ry</string>
     <string name="number_row_summary">Wys altyd die nommers ry</string>
     <string name="show_hints">Wys sleutel wenke</string>
