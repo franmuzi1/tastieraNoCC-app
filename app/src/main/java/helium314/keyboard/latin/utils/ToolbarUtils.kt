@@ -267,30 +267,36 @@ fun getPinnedToolbarKeys(prefs: SharedPreferences) =
  * sono scelte dell'utente: chi disattiva la cifratura e poi la riattiva deve
  * ritrovare la barra com'era, non ricostruirla.
  *
- * `SEND_PLAIN` compare solo in modalita' composizione. Senza quella riga il
- * testo e' gia' nel campo dell'app, quindi "consegna in chiaro" non avrebbe
- * niente da consegnare: sarebbe un tasto che non fa mai niente.
+ * **Senza la riga di composizione resta il solo `COMPOSE`**, e la tastiera e'
+ * HeliBoard con in piu' quell'interruttore. I lucchetti spariscono, e non per
+ * ordine: senza la riga, "cifra" prende cio' che c'e' nel campo dell'app e lo
+ * manda al destinatario **ricordato per quell'app**, scelto da solo. Un tasto
+ * che cifra per una persona che non hai indicato in quel momento e' il
+ * fallimento peggiore che questo sistema possa produrre, e nasconderlo dietro
+ * un tocco solo lo rendeva facile. Con la riga accesa il destinatario e'
+ * scritto accanto a cio' che stai scrivendo, e la stessa scorciatoia diventa
+ * leggibile.
  *
- * E quando quella modalita' e' accesa il tasto viene **aggiunto** se la
- * preferenza salvata non lo nomina affatto. Non e' una forzatura: le
- * preferenze esistenti non vengono sovrascritte dai default, quindi senza
- * questo chi aggiorna accenderebbe la modalita' e non troverebbe la via
- * d'uscita per mandare un messaggio in chiaro — cioe' spegnerebbe la modalita'
- * e non la riaccenderebbe piu'. Un tasto messo a `false` dall'utente resta a
- * `false`: quella e' una scelta, e il nome nella preferenza la registra.
+ * *Conseguenza da conoscere:* sparisce anche **"decifra"**. Con la riga spenta
+ * un messaggio in arrivo si apre dall'apertura automatica alla copia, dal menu
+ * di selezione del testo o dallo share sheet — non dalla toolbar.
+ *
+ * E quando la modalita' e' accesa i tasti vengono **aggiunti** se la preferenza
+ * salvata non li nomina affatto. Non e' una forzatura: le preferenze esistenti
+ * non vengono sovrascritte dai default, quindi senza questo chi aggiorna
+ * accenderebbe la modalita' e non troverebbe piu' i lucchetti — cioe' avrebbe
+ * una riga di composizione senza il tasto per cifrare. Un tasto messo a `false`
+ * dall'utente resta a `false`: quella e' una scelta, e il nome nella preferenza
+ * la registra.
  */
 private fun withCipherKeys(prefs: SharedPreferences, pref: String, default: String): List<ToolbarKey> {
     val keys = getEnabledToolbarKeys(prefs, pref, default)
     if (!CipherSettings.isEnabled(prefs)) return keys.filterNot { it in cipherKeys }
-    // COMPOSE resta anche a modalita' spenta: e' l'interruttore, cioe' il modo
-    // per riaccenderla. SEND_PLAIN no — senza la riga il testo e' gia' nel
-    // campo dell'app e non ci sarebbe niente da consegnare.
-    val wanted = if (CipherSettings.isComposeMode(prefs)) {
-        listOf(COMPOSE, SEND_PLAIN)
-    } else {
-        listOf(COMPOSE)
-    }
-    val result = keys.filterNot { it == SEND_PLAIN && !CipherSettings.isComposeMode(prefs) }
+    val composizione = CipherSettings.isComposeMode(prefs)
+    // COMPOSE resta anche a modalita' spenta: e' l'interruttore, cioe' l'unico
+    // modo per riaccenderla. Tutto il resto della cifratura vive dentro la riga.
+    val wanted = if (composizione) listOf(ENCRYPT, DECRYPT, COMPOSE, SEND_PLAIN) else listOf(COMPOSE)
+    val result = keys.filterNot { !composizione && it in cipherKeys && it != COMPOSE }
         .toMutableList()
     // Aggiunti se la preferenza salvata non li nomina affatto: le preferenze
     // esistenti non vengono sovrascritte dai default, quindi senza questo chi

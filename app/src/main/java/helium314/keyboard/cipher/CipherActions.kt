@@ -321,8 +321,9 @@ object CipherActions {
      * la cambia nessuno.
      *
      * `setThemeNeedsReload` e non `reloadKeyboard`: i tasti della striscia si
-     * costruiscono una volta sola, e questo tocco ne fa comparire o sparire uno
-     * (`SEND_PLAIN`) oltre a cambiare l'altezza della tastiera.
+     * costruiscono una volta sola, e questo tocco fa comparire o sparire tutta
+     * la cifratura — lucchetti compresi — oltre a cambiare l'altezza della
+     * tastiera.
      */
     fun toggleCompose(ime: InputMethodService) {
         if (!CipherSettings.isEnabled(ime)) return

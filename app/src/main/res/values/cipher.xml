@@ -66,7 +66,12 @@
     <!-- Nome del tasto per TalkBack: deve chiamarsi come la voce dell'enum. -->
     <string name="compose" tools:ignore="MissingTranslation">Scrivi dentro la tastiera</string>
     <string name="cipher_compose_on" tools:ignore="MissingTranslation">Ora scrivi dentro la tastiera: l\'app vedra\' solo il messaggio cifrato</string>
-    <string name="cipher_compose_off" tools:ignore="MissingTranslation">Ora scrivi nel campo dell\'app, come una tastiera normale</string>
+    <!--
+        Spegnendo la riga spariscono anche i lucchetti, e va detto qui: chi non
+        li ritrova pensa a un guasto e li cerca nelle impostazioni della
+        toolbar, dove ci sono ancora.
+    -->
+    <string name="cipher_compose_off" tools:ignore="MissingTranslation">Ora scrivi nel campo dell\'app, come una tastiera normale. Niente cifratura finche\' non la riaccendi da qui.</string>
     <string name="cipher_auto_send" tools:ignore="MissingTranslation">Invia subito</string>
     <string name="cipher_auto_send_summary" tools:ignore="MissingTranslation">Dopo aver cifrato, chiede all\'app di spedire il messaggio: un tocco invece di due. Funziona solo dove il campo di scrittura ha un\'azione di invio — in Telegram va acceso «Invia con Invio» nelle impostazioni delle chat.</string>
     <string name="cipher_send_unavailable" tools:ignore="MissingTranslation">Messaggio pronto nel campo: questa app non lascia spedire dalla tastiera, premi tu invio</string>
