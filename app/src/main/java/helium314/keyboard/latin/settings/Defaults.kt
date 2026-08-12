@@ -54,7 +54,10 @@ object Defaults {
     const val PREF_CUSTOM_ICON_NAMES = ""
     const val PREF_TOOLBAR_CUSTOM_KEY_CODES = ""
     const val PREF_AUTO_CAP = true
-    const val PREF_VIBRATE_ON = false
+    // keyboard-cipher: acceso, al contrario di upstream. Vale per le
+    // installazioni NUOVE — chi ha gia' un profilo tiene la propria scelta,
+    // perche' una preferenza salvata non viene sovrascritta da un default.
+    const val PREF_VIBRATE_ON = true
     const val PREF_VIBRATE_IN_DND_MODE = false
     const val PREF_SOUND_ON = false
     const val PREF_SUGGEST_EMOJIS = true

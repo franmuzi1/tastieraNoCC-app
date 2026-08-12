@@ -298,7 +298,10 @@ object CipherActions {
         // ricade quando la riga e' vuota — e adottare un istante prima glielo
         // toglierebbe di sotto: il tasto decifra smetteva di funzionare del
         // tutto, perche' trovava il campo vuoto.
-        if (primaryCode <= KeyCode.CIPHER_ENCRYPT && primaryCode >= KeyCode.CIPHER_TOGGLE_COMPOSE) {
+        // L'estremo basso e' l'ULTIMO codice della cifratura, non il primo
+        // aggiunto: aggiungendone uno nuovo senza spostarlo, quel tasto
+        // resterebbe fuori dall'intervallo e tornerebbe ad adottare il campo.
+        if (primaryCode <= KeyCode.CIPHER_ENCRYPT && primaryCode >= KeyCode.CIPHER_GALLERY) {
             return
         }
         if (!CipherSettings.isEnabled(ime)) return
@@ -397,6 +400,45 @@ object CipherActions {
      */
     /** Come [chiediDestinatario], ma chiamabile da fuori: dal nome nella riga. */
     fun chiediDestinatarioOra(ime: InputMethodService) = chiediDestinatario(ime)
+
+    /**
+     * Manda un file cifrato, dalla tastiera.
+     *
+     * Il tasto **non sceglie il destinatario**: apre l'elenco dei contatti, e
+     * la persona la indica l'utente (decisione G4). Il destinatario ricordato
+     * per l'app qui non si usa nemmeno quando c'e' — un file mandato alla
+     * persona sbagliata non si ritira, e a differenza di un messaggio resta sul
+     * telefono di chi lo riceve.
+     *
+     * Un'Activity e non un pannello della tastiera: serve il selettore di
+     * documenti del sistema, che un IME non puo' aprire per conto proprio, e
+     * serve `FLAG_SECURE` sulle impronte.
+     */
+    fun allegato(ime: InputMethodService) {
+        if (!CipherSettings.isEnabled(ime)) return
+        runCatching { ime.startActivity(ContactsActivity.intentAllegato(ime, soloMedia = false)) }
+            .onFailure { toast(ime, R.string.cipher_unavailable) }
+    }
+
+    /**
+     * Come [allegato], ma il selettore parte gia' filtrato su immagini e video.
+     *
+     * Due tasti e non uno con la pressione lunga: mandare una foto e mandare un
+     * documento sono i due gesti piu' frequenti qui dentro, e nascondere il
+     * primo dietro un gesto che va scoperto significa che non lo usa nessuno.
+     */
+    fun galleria(ime: InputMethodService) {
+        if (!CipherSettings.isEnabled(ime)) return
+        runCatching { ime.startActivity(ContactsActivity.intentAllegato(ime, soloMedia = true)) }
+            .onFailure { toast(ime, R.string.cipher_unavailable) }
+    }
+
+    /** Apre l'elenco dei contatti cifrati. */
+    fun contatti(ime: InputMethodService) {
+        if (!CipherSettings.isEnabled(ime)) return
+        runCatching { ime.startActivity(ContactsActivity.intent(ime)) }
+            .onFailure { toast(ime, R.string.cipher_unavailable) }
+    }
 
     private fun chiediDestinatario(ime: InputMethodService) {
         val pacchetto = ime.currentInputEditorInfo?.packageName.orEmpty()

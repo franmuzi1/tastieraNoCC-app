@@ -1,0 +1,17 @@
+<!--
+    Rubrica. Icona del tasto che apre i contatti cifrati.
+
+    Una sola persona e non un gruppo: qui dentro c'e' l'elenco delle chiavi
+    fissate, e il gesto piu' frequente e' cercare **una** persona — per darle un
+    nome, confrontarne l'impronta o mandarle un file.
+    icon from pictogrammers.com (Material Design Icons, "account-box-outline")
+    SPDX-License-Identifier: Apache-2.0
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="24dp"
+    android:width="24dp"
+    android:viewportHeight="24"
+    android:viewportWidth="24" >
+  <path android:fillColor="#FFF"
+      android:pathData="M5,3C3.89,3 3,3.89 3,5V19C3,20.11 3.89,21 5,21H19C20.11,21 21,20.11 21,19V5C21,3.89 20.11,3 19,3H5M5,5H19V19H5V5M12,7C10.62,7 9.5,8.12 9.5,9.5C9.5,10.88 10.62,12 12,12C13.38,12 14.5,10.88 14.5,9.5C14.5,8.12 13.38,7 12,7M12,9C12.28,9 12.5,9.22 12.5,9.5C12.5,9.78 12.28,10 12,10C11.72,10 11.5,9.78 11.5,9.5C11.5,9.22 11.72,9 12,9M7,17V15.75C7,14.23 9.31,13.5 12,13.5C14.69,13.5 17,14.23 17,15.75V17H7Z"/>
+</vector>

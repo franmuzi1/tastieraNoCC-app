@@ -126,6 +126,9 @@ fun getCodeForToolbarKey(key: ToolbarKey) = Settings.getInstance().getCustomTool
     DECRYPT -> KeyCode.CIPHER_DECRYPT
     SEND_PLAIN -> KeyCode.CIPHER_SEND_PLAIN
     COMPOSE -> KeyCode.CIPHER_TOGGLE_COMPOSE
+    ATTACH -> KeyCode.CIPHER_ATTACH
+    CONTACTS -> KeyCode.CIPHER_CONTACTS
+    GALLERY -> KeyCode.CIPHER_GALLERY
 }
 
 fun getCodeForToolbarKeyLongClick(key: ToolbarKey) = Settings.getInstance().getCustomToolbarLongpressCode(key) ?: when (key) {
@@ -168,7 +171,7 @@ enum class ToolbarKey {
     // keyboard-cipher. In coda di proposito: l'ordine dell'enum e' l'ordine in
     // cui i tasti compaiono nel personalizzatore, e aggiungere in mezzo
     // sposterebbe quelli di HeliBoard senza motivo.
-    ENCRYPT, DECRYPT, SEND_PLAIN, COMPOSE
+    ENCRYPT, DECRYPT, SEND_PLAIN, COMPOSE, ATTACH, CONTACTS, GALLERY
 }
 
 enum class ToolbarMode {
@@ -192,7 +195,7 @@ val defaultToolbarPref by lazy {
     // spinto oltre il bordo: la lista degli appunti c'era e funzionava, ma per
     // arrivarci bisognava sapere che esiste una freccia che apre il resto —
     // e chi non lo sa conclude che la tastiera non abbia la cronologia.
-    val default = listOf(ENCRYPT, DECRYPT, SEND_PLAIN, COMPOSE, CLIPBOARD, SETTINGS, VOICE, UNDO, REDO, SELECT_WORD, COPY, PASTE, LEFT, RIGHT)
+    val default = listOf(ENCRYPT, DECRYPT, GALLERY, ATTACH, CONTACTS, SEND_PLAIN, COMPOSE, EMOJI, CLIPBOARD, SETTINGS, VOICE, UNDO, REDO, SELECT_WORD, COPY, PASTE, LEFT, RIGHT)
     val others = entries.filterNot { it in default || it == CLOSE_HISTORY }
     default.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
@@ -212,7 +215,7 @@ val defaultPinnedToolbarPref by lazy {
     // abbia la cronologia — ed e' successo. Fissarlo qui e' l'unico modo per
     // farlo comparire senza espandere: l'ordine della barra, da solo, non
     // decide cosa si vede accanto ai suggerimenti.
-    val pinned = listOf(ENCRYPT, DECRYPT, SEND_PLAIN, COMPOSE, CLIPBOARD)
+    val pinned = listOf(ENCRYPT, DECRYPT, GALLERY, ATTACH, CONTACTS, SEND_PLAIN, COMPOSE, EMOJI, CLIPBOARD)
     val others = entries.filterNot { it in pinned || it == CLOSE_HISTORY }
     pinned.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
@@ -295,7 +298,8 @@ private fun withCipherKeys(prefs: SharedPreferences, pref: String, default: Stri
     val composizione = CipherSettings.isComposeMode(prefs)
     // COMPOSE resta anche a modalita' spenta: e' l'interruttore, cioe' l'unico
     // modo per riaccenderla. Tutto il resto della cifratura vive dentro la riga.
-    val wanted = if (composizione) listOf(ENCRYPT, DECRYPT, COMPOSE, SEND_PLAIN) else listOf(COMPOSE)
+    val wanted = if (composizione) listOf(ENCRYPT, DECRYPT, COMPOSE, SEND_PLAIN, ATTACH, GALLERY, CONTACTS)
+        else listOf(COMPOSE)
     val result = keys.filterNot { !composizione && it in cipherKeys && it != COMPOSE }
         .toMutableList()
     // Aggiunti se la preferenza salvata non li nomina affatto: le preferenze
@@ -312,7 +316,7 @@ private fun withCipherKeys(prefs: SharedPreferences, pref: String, default: Stri
     return result
 }
 
-private val cipherKeys = setOf(ENCRYPT, DECRYPT, SEND_PLAIN, COMPOSE)
+private val cipherKeys = setOf(ENCRYPT, DECRYPT, SEND_PLAIN, COMPOSE, ATTACH, CONTACTS, GALLERY)
 
 fun getEnabledClipboardToolbarKeys(prefs: SharedPreferences) = getEnabledToolbarKeys(prefs, Settings.PREF_CLIPBOARD_TOOLBAR_KEYS, defaultClipboardToolbarPref)
 

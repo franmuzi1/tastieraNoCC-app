@@ -161,6 +161,9 @@ class KeyboardIconsSet private constructor() {
                     ToolbarKey.COMPOSE -> R.drawable.ic_cipher_compose
                     ToolbarKey.ENCRYPT -> R.drawable.ic_cipher_encrypt
                     ToolbarKey.DECRYPT -> R.drawable.ic_cipher_decrypt
+                    ToolbarKey.ATTACH -> R.drawable.ic_cipher_attach
+                    ToolbarKey.CONTACTS -> R.drawable.ic_cipher_contacts
+                    ToolbarKey.GALLERY -> R.drawable.ic_cipher_gallery
                 })
             }
         } }
@@ -229,6 +232,9 @@ class KeyboardIconsSet private constructor() {
                     ToolbarKey.COMPOSE -> R.drawable.ic_cipher_compose
                     ToolbarKey.ENCRYPT -> R.drawable.ic_cipher_encrypt
                     ToolbarKey.DECRYPT -> R.drawable.ic_cipher_decrypt
+                    ToolbarKey.ATTACH -> R.drawable.ic_cipher_attach
+                    ToolbarKey.CONTACTS -> R.drawable.ic_cipher_contacts
+                    ToolbarKey.GALLERY -> R.drawable.ic_cipher_gallery
                 })
             }
         } }
@@ -297,6 +303,9 @@ class KeyboardIconsSet private constructor() {
                     ToolbarKey.COMPOSE -> R.drawable.ic_cipher_compose
                     ToolbarKey.ENCRYPT -> R.drawable.ic_cipher_encrypt
                     ToolbarKey.DECRYPT -> R.drawable.ic_cipher_decrypt
+                    ToolbarKey.ATTACH -> R.drawable.ic_cipher_attach
+                    ToolbarKey.CONTACTS -> R.drawable.ic_cipher_contacts
+                    ToolbarKey.GALLERY -> R.drawable.ic_cipher_gallery
                 })
             }
         } }

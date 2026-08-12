@@ -1,0 +1,17 @@
+<!--
+    Fotografia con montagne. Icona del tasto che apre galleria e video.
+
+    Distinta dalla graffetta apposta: la graffetta apre tutto, questa parte gia'
+    filtrata su immagini e video. Sono due gesti diversi — "mando un documento"
+    e "mando una foto" — e chi cerca la seconda non pensa a una graffetta.
+    icon from pictogrammers.com (Material Design Icons, "image-multiple-outline")
+    SPDX-License-Identifier: Apache-2.0
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:height="24dp"
+    android:width="24dp"
+    android:viewportHeight="24"
+    android:viewportWidth="24" >
+  <path android:fillColor="#FFF"
+      android:pathData="M21,17V3H7V17H21M21,1A2,2 0 0,1 23,3V17A2,2 0 0,1 21,19H7C5.89,19 5,18.1 5,17V3A2,2 0 0,1 7,1H21M3,5V21H19V23H3A2,2 0 0,1 1,21V5H3M15.96,10.29L13.21,13.83L11.25,11.47L8.5,15H19.5L15.96,10.29Z"/>
+</vector>

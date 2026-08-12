@@ -27,6 +27,9 @@
     -->
     <string name="encrypt" tools:ignore="MissingTranslation">Cifra</string>
     <string name="decrypt" tools:ignore="MissingTranslation">Decifra</string>
+    <string name="attach" tools:ignore="MissingTranslation">Manda un file cifrato</string>
+    <string name="gallery" tools:ignore="MissingTranslation">Manda una foto o un video cifrati</string>
+    <string name="contacts" tools:ignore="MissingTranslation">Contatti cifrati</string>
 
     <!-- Messaggi dei due gesti. Vedi CipherActions. -->
     <string name="cipher_nothing_to_encrypt" tools:ignore="MissingTranslation">Niente da cifrare</string>
@@ -77,6 +80,12 @@
     <string name="cipher_send_unavailable" tools:ignore="MissingTranslation">Messaggio pronto nel campo: questa app non lascia spedire dalla tastiera, premi tu invio</string>
     <!-- File cifrati (decisione G). -->
     <string name="cipher_file_send" tools:ignore="MissingTranslation">Manda un file cifrato</string>
+    <!--
+        Titolo dell\'elenco quando ci si arriva dal tasto allegato. Dice che si
+        sta scegliendo una PERSONA, non aprendo la rubrica: il file viene dopo.
+    -->
+    <string name="cipher_file_pick_recipient" tools:ignore="MissingTranslation">A chi mandi il file?</string>
+    <string name="cipher_media_pick_recipient" tools:ignore="MissingTranslation">A chi mandi la foto?</string>
     <string name="cipher_file_too_big" tools:ignore="MissingTranslation">File troppo grande: su questo telefono il limite e\' %1$d MB</string>
     <string name="cipher_file_detail" tools:ignore="MissingTranslation">%1$s — %2$d KB</string>
     <string name="cipher_file_received" tools:ignore="MissingTranslation">File cifrato</string>

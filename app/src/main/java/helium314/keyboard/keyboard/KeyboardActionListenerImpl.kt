@@ -144,6 +144,9 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
             KeyCode.CIPHER_IDENTITY_CARD -> return CipherActions.insertIdentityCard(latinIME)
             KeyCode.CIPHER_SEND_PLAIN -> return CipherActions.sendPlain(latinIME)
             KeyCode.CIPHER_TOGGLE_COMPOSE -> return CipherActions.toggleCompose(latinIME)
+            KeyCode.CIPHER_ATTACH -> return CipherActions.allegato(latinIME)
+            KeyCode.CIPHER_CONTACTS -> return CipherActions.contatti(latinIME)
+            KeyCode.CIPHER_GALLERY -> return CipherActions.galleria(latinIME)
             KeyCode.BACKGROUND_GATHERING_TEMP_OFF -> {
                 GestureDataGatheringSettings.tempDisableBackgroundGathering(latinIME.prefs())
                 BackgroundGatheringCache.clear()

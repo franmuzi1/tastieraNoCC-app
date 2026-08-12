@@ -110,6 +110,25 @@ class ContactsActivity : ComponentActivity() {
 
     private var dialogo by mutableStateOf<Dialogo>(Dialogo.Nessuno)
 
+    /**
+     * Si e' arrivati qui dal tasto "allegato" della tastiera.
+     *
+     * La schermata resta la stessa — l'elenco dei contatti — perche' il
+     * destinatario di un file si sceglie **sempre a mano** (decisione G4) e
+     * questo e' il posto dove le persone stanno gia'. Cambia solo cosa fa il
+     * tocco.
+     */
+    private val perAllegato: Boolean by lazy { intent?.getBooleanExtra(EXTRA_ALLEGATO, false) == true }
+
+    /**
+     * Il selettore parte gia' su immagini e video.
+     *
+     * E' un filtro di comodita', non una restrizione: il contenitore cifrato
+     * porta qualunque byte, e il tipo dichiarato dal mittente vale quanto la
+     * sua parola. Serve solo a far trovare le foto dove uno le cerca.
+     */
+    private val soloMedia: Boolean by lazy { intent?.getBooleanExtra(EXTRA_SOLO_MEDIA, false) == true }
+
     private val selettoreEsporta =
         registerForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
             if (uri == null) azzeraPassphrase() else esporta(uri)
@@ -184,6 +203,20 @@ class ContactsActivity : ComponentActivity() {
         val impronta = remember(revisione) { CipherCore.nativeMyFingerprint().orEmpty() }
         val peers = remember(revisione) { CipherCore.nativeListPeers()?.let { PeerList.parse(it) } }
 
+        if (perAllegato) {
+            // Solo l'elenco: chi sta mandando un file non ha niente da fare con
+            // la propria identita', il QR o i backup, e mostrarli qui allunga
+            // la strada verso l'unica cosa che serve — la persona.
+            Titolo(
+                stringResource(
+                    if (soloMedia) R.string.cipher_media_pick_recipient
+                    else R.string.cipher_file_pick_recipient
+                )
+            )
+            Riquadro { ElencoContatti(peers) }
+            return
+        }
+
         Titolo(stringResource(R.string.cipher_my_identity))
         Riquadro {
             Column(Modifier.padding(horizontal = 12.dp, vertical = 12.dp)) {
@@ -206,14 +239,17 @@ class ContactsActivity : ComponentActivity() {
         }
 
         Titolo(stringResource(R.string.cipher_contacts))
-        Riquadro {
-            when {
-                peers == null -> Vuoto(stringResource(R.string.cipher_unavailable))
-                peers.isEmpty() -> Vuoto(stringResource(R.string.cipher_no_contacts))
-                else -> peers.forEachIndexed { indice, peer ->
-                    if (indice > 0) Divisore()
-                    RigaContatto(peer)
-                }
+        Riquadro { ElencoContatti(peers) }
+    }
+
+    @Composable
+    private fun ElencoContatti(peers: List<Peer>?) {
+        when {
+            peers == null -> Vuoto(stringResource(R.string.cipher_unavailable))
+            peers.isEmpty() -> Vuoto(stringResource(R.string.cipher_no_contacts))
+            else -> peers.forEachIndexed { indice, peer ->
+                if (indice > 0) Divisore()
+                RigaContatto(peer)
             }
         }
     }
@@ -225,7 +261,14 @@ class ContactsActivity : ComponentActivity() {
             nome = if (peer.verified) stringResource(R.string.cipher_sender_verified, nome) else nome,
             impronta = fingerprintOf(peer),
             visto = stringResource(R.string.cipher_first_seen, formatDate(peer.firstSeenUnix)),
-        ) { dialogo = Dialogo.Scheda(peer) }
+        ) {
+            // Arrivando dal tasto "allegato" il tocco sceglie **il
+            // destinatario del file**, non apre la scheda: chi ha premuto la
+            // graffetta ha gia' detto cosa vuole fare, e fargli attraversare
+            // un menu per ripeterlo e' un passaggio in piu' su un'azione che
+            // ne ha gia' due (contatto, poi file).
+            if (perAllegato) inviaFile(peer) else dialogo = Dialogo.Scheda(peer)
+        }
     }
 
     // ========================================================================
@@ -687,7 +730,8 @@ class ContactsActivity : ComponentActivity() {
     private fun inviaFile(peer: Peer) {
         dialogo = Dialogo.Nessuno
         destinatarioFile = peer.key
-        if (runCatching { selettoreFile.launch(arrayOf("*/*")) }.isFailure) {
+        val tipi = if (soloMedia) arrayOf("image/*", "video/*") else arrayOf("*/*")
+        if (runCatching { selettoreFile.launch(tipi) }.isFailure) {
             destinatarioFile = null
             toast(R.string.cipher_unavailable)
         }
@@ -881,6 +925,30 @@ class ContactsActivity : ComponentActivity() {
         ) : Dialogo
 
         class ConfermaImport(val blob: ByteArray, val pass: ByteArray) : Dialogo
+    }
+
+    companion object {
+        private const val EXTRA_ALLEGATO = "cipher_allegato"
+        private const val EXTRA_SOLO_MEDIA = "cipher_solo_media"
+
+        /**
+         * La schermata in modalita' "scegli a chi mandare il file".
+         *
+         * Un extra e non un'Activity nuova: e' lo stesso elenco, con lo stesso
+         * `FLAG_SECURE` e lo stesso keyring, e duplicarlo significherebbe due
+         * posti da tenere allineati per una differenza che sta in una riga.
+         */
+        fun intentAllegato(context: android.content.Context, soloMedia: Boolean): Intent =
+            Intent(context, ContactsActivity::class.java).apply {
+                putExtra(EXTRA_ALLEGATO, true)
+                putExtra(EXTRA_SOLO_MEDIA, soloMedia)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+        fun intent(context: android.content.Context): Intent =
+            Intent(context, ContactsActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
     }
 }
 
