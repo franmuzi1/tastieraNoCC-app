@@ -194,6 +194,7 @@ object CipherCompose {
         }
         if (found == null) return
         if (connection == null) connection = CipherConnection(view) { updateRow() }
+        found.onSelezione = { inizio, fine -> spostaSelezione(inizio, fine) }
 
         val colors = Settings.getValues().mColors
         barra?.let { colors.setBackground(it, ColorType.STRIP_BACKGROUND) }
@@ -226,6 +227,44 @@ object CipherCompose {
     }
 
     fun isEmptyBuffer(): Boolean = connection?.buffer?.isEmpty() != false
+
+    /**
+     * Il dito ha spostato il cursore o selezionato un pezzo di testo.
+     *
+     * Il passaggio che conta non e' spostare la selezione — quello e' una riga —
+     * ma **dirlo a HeliBoard**. Per un campo vero e' il sistema a chiamare
+     * `onUpdateSelection` quando il cursore si muove da solo, e da li' la
+     * tastiera capisce che la parola che stava componendo non e' piu' quella e
+     * che adesso c'e' del testo selezionato. Qui il sistema non c'e': il buffer
+     * e' nostro, e nessuno la chiamerebbe.
+     *
+     * E' anche cio' che fa funzionare il cancella. HeliBoard cancella una
+     * selezione intera solo se sa che esiste, e lo sa da quella chiamata: senza,
+     * il tasto continuerebbe a togliere un carattere per volta con mezza frase
+     * evidenziata a schermo — cioe' esattamente il problema per cui la selezione
+     * e' stata aggiunta.
+     */
+    private fun spostaSelezione(inizio: Int, fine: Int) {
+        val connection = connection ?: return
+        val buffer = connection.buffer
+        val vecchioInizio = Selection.getSelectionStart(buffer)
+        val vecchiaFine = Selection.getSelectionEnd(buffer)
+        val a = inizio.coerceIn(0, buffer.length)
+        val b = fine.coerceIn(a, buffer.length)
+        // La parola in composizione finisce qui: il cursore se n'e' andato
+        // altrove, e lasciarla aperta significherebbe che la prossima battuta
+        // riscrive testo che sta da un'altra parte.
+        connection.finishComposingText()
+        Selection.setSelection(buffer, a, b)
+        updateRow()
+        // In differita, come farebbe il sistema. Per un campo vero
+        // `onUpdateSelection` non arriva mai dentro la chiamata che ha spostato
+        // il cursore, ma dopo: "seleziona tutto" arriva qui **da dentro**
+        // HeliBoard, e richiamarlo subito lo farebbe rientrare in se' stesso
+        // mentre sta ancora leggendo il testo.
+        val avvisa = Runnable { servizio?.onUpdateSelection(vecchioInizio, vecchiaFine, a, b, -1, -1) }
+        if (row?.post(avvisa) != true) avvisa.run()
+    }
 
     /**
      * Aggiorna il nome del destinatario mostrato accanto alla riga.
@@ -348,7 +387,22 @@ object CipherCompose {
          */
         override fun performEditorAction(editorAction: Int): Boolean = true
 
-        override fun performContextMenuAction(id: Int): Boolean = true
+        /**
+         * Il menu contestuale, che qui arriva da un tasto della toolbar.
+         *
+         * Si onora **solo** "seleziona tutto": e' la scorciatoia per buttare via
+         * quello che si stava scrivendo senza tenere premuto cancella, ed e'
+         * sulla toolbar da sempre — semplicemente, in questa modalita' non
+         * faceva niente.
+         *
+         * Il resto continua a non fare nulla e a rispondere `true`: un `false`
+         * invita chi chiama a cercare un'altra strada, e l'unica altra strada
+         * disponibile porta all'app.
+         */
+        override fun performContextMenuAction(id: Int): Boolean {
+            if (id == android.R.id.selectAll) spostaSelezione(0, buffer.length)
+            return true
+        }
 
         override fun commitCompletion(text: android.view.inputmethod.CompletionInfo?): Boolean = true
 

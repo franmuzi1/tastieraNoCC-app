@@ -4,7 +4,10 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.util.AttributeSet
+import android.view.MotionEvent
+import android.view.ViewConfiguration
 import android.widget.TextView
+import kotlin.math.abs
 
 /**
  * La riga di composizione, con il cursore disegnato a mano.
@@ -32,6 +35,17 @@ import android.widget.TextView
  * Digitando il caret torna **acceso e la fase riparte**: se non lo facesse,
  * potrebbe risultare spento proprio nell'istante in cui si guarda dove si sta
  * scrivendo.
+ *
+ * ## Il tocco
+ *
+ * Tocco = cursore li'. Trascinamento = selezione. Pressione lunga = la parola
+ * sotto il dito. Sono i tre gesti di qualunque campo di testo, e qui vanno
+ * scritti a mano per lo stesso motivo del cursore: un `TextView` senza fuoco
+ * non li fa da solo.
+ *
+ * Senza, l'unico modo di cancellare una frase era premere cancella tante volte
+ * o tenerlo premuto — perche' il cursore si sposta di un carattere per volta e
+ * non c'e' niente che si possa prendere in blocco.
  */
 class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(context, attrs) {
 
@@ -42,6 +56,49 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
     private var selectionEnd = 0
 
     private var caretOn = true
+
+    /**
+     * Dove il dito ha toccato per primo: la selezione si estende **da li'**, e
+     * non dal punto in cui si trova adesso.
+     */
+    private var ancora = 0
+
+    private var trascinando = false
+
+    private var xIniziale = 0f
+    private var yIniziale = 0f
+
+    /** Vero dalla pressione lunga fino al rilascio: il tocco ha gia' fatto. */
+    private var giaSelezionato = false
+
+    /**
+     * La parola presa dalla pressione lunga.
+     *
+     * Continuando a tenere premuto arrivano altri `ACTION_MOVE` sullo stesso
+     * punto, e senza questi due la selezione si richiudeva a cursore mezzo
+     * istante dopo essersi aperta: la parola si vedeva sparire da sola. Da qui
+     * in poi il trascinamento **allarga** — sotto la parola non si scende.
+     */
+    private var parolaInizio = -1
+    private var parolaFine = -1
+
+    /**
+     * Chi ascolta la selezione. La vista non tocca il buffer: dice dove il dito
+     * ha messo il cursore, e chi possiede il testo decide. Il buffer e' l'unica
+     * fonte di verita' su dove finisce il prossimo carattere, e due posti che
+     * lo scrivono sarebbero due verita'.
+     */
+    var onSelezione: ((Int, Int) -> Unit)? = null
+
+    private val pressioneLunga = Runnable {
+        val (inizio, fine) = parolaIntorno(ancora)
+        if (fine > inizio) {
+            giaSelezionato = true
+            parolaInizio = inizio
+            parolaFine = fine
+            onSelezione?.invoke(inizio, fine)
+        }
+    }
 
     private val blink = object : Runnable {
         override fun run() {
@@ -75,6 +132,101 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
         invalidate()
     }
 
+    /**
+     * I tre gesti.
+     *
+     * Si consuma **tutto** dal primo tocco in poi: se si lasciasse passare
+     * qualcosa, il resto della sequenza andrebbe a chi sta sotto, e un
+     * trascinamento comincerebbe qui per finire altrove.
+     *
+     * `requestDisallowInterceptTouchEvent` perche' la riga sta dentro la
+     * striscia dei suggerimenti, che i movimenti orizzontali li intercetta per
+     * scorrere: senza, il trascinamento per selezionare glielo verrebbe portato
+     * via a meta'.
+     */
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (text.isNullOrEmpty()) return super.onTouchEvent(event)
+        val offset = offsetDelTocco(event)
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                parent?.requestDisallowInterceptTouchEvent(true)
+                ancora = offset
+                trascinando = false
+                giaSelezionato = false
+                parolaInizio = -1
+                parolaFine = -1
+                xIniziale = event.x
+                yIniziale = event.y
+                postDelayed(pressioneLunga, ViewConfiguration.getLongPressTimeout().toLong())
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (!trascinando && !giaSelezionato) {
+                    val slop = ViewConfiguration.get(context).scaledTouchSlop
+                    if (abs(event.x - xIniziale) > slop || abs(event.y - yIniziale) > slop) {
+                        trascinando = true
+                        removeCallbacks(pressioneLunga)
+                    }
+                }
+                when {
+                    giaSelezionato -> {
+                        onSelezione?.invoke(minOf(parolaInizio, offset), maxOf(parolaFine, offset))
+                        portaInVista(offset)
+                    }
+                    trascinando -> {
+                        onSelezione?.invoke(minOf(ancora, offset), maxOf(ancora, offset))
+                        portaInVista(offset)
+                    }
+                }
+                return true
+            }
+            MotionEvent.ACTION_UP -> {
+                removeCallbacks(pressioneLunga)
+                // Un tocco secco che non ha ne' trascinato ne' selezionato una
+                // parola vuol dire una cosa sola: il cursore va li'.
+                if (!trascinando && !giaSelezionato) onSelezione?.invoke(offset, offset)
+                trascinando = false
+                giaSelezionato = false
+                return true
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                removeCallbacks(pressioneLunga)
+                trascinando = false
+                giaSelezionato = false
+                return true
+            }
+        }
+        return super.onTouchEvent(event)
+    }
+
+    private fun offsetDelTocco(event: MotionEvent): Int {
+        val posizione = getOffsetForPosition(event.x, event.y)
+        return if (posizione < 0) text.length else posizione.coerceIn(0, text.length)
+    }
+
+    /**
+     * La parola intorno a un punto, per la pressione lunga.
+     *
+     * "Parola" qui e' la sequenza di lettere e cifre: non serve la stessa
+     * definizione che usa il correttore, serve quella che chi guarda si aspetta
+     * di veder evidenziare. Su uno spazio o un segno di punteggiatura non
+     * seleziona niente, e il gesto resta un tocco.
+     */
+    private fun parolaIntorno(posizione: Int): Pair<Int, Int> {
+        val testo = text ?: return 0 to 0
+        if (testo.isEmpty()) return 0 to 0
+        // Toccando fra due caratteri conta quello a sinistra, come fa il
+        // cursore: e' quello che il dito ha appena superato.
+        val dentro = (if (posizione >= testo.length) testo.length - 1 else posizione)
+            .coerceAtLeast(0)
+        if (!testo[dentro].isLetterOrDigit()) return 0 to 0
+        var inizio = dentro
+        while (inizio > 0 && testo[inizio - 1].isLetterOrDigit()) inizio--
+        var fine = dentro
+        while (fine < testo.length && testo[fine].isLetterOrDigit()) fine++
+        return inizio to fine
+    }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         restartBlink()
@@ -104,10 +256,12 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
      * guardando **li'**, e inseguire la fine del testo lo porterebbe via
      * proprio dal punto che gli interessa.
      */
-    private fun scrollToCaret() {
+    private fun scrollToCaret() = portaInVista(selectionEnd)
+
+    private fun portaInVista(posizione: Int) {
         post {
             val l = layout ?: return@post
-            val line = l.getLineForOffset(selectionEnd)
+            val line = l.getLineForOffset(posizione.coerceIn(0, text.length))
             val visible = height - totalPaddingTop - totalPaddingBottom
             if (visible <= 0) return@post
             val top = l.getLineTop(line)
