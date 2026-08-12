@@ -76,7 +76,11 @@
         distinguere nella lista degli IME, dove compaiono uno accanto all'altro.
     -->
     <string name="english_ime_name" translatable="false">MusyBoard</string>
-    <!-- App slogan-->
-    <string name="app_slogan" translatable="false">100% FOSS keyboard, based on AOSP.</string>
+    <!--
+        App slogan. Dice cosa fa e su cosa e' costruito, in quest'ordine: chi
+        apre l'About vuole sapere prima che app sta usando, e subito dopo da
+        dove viene. La riga sotto, "Basato su HeliBoard", porta a loro.
+    -->
+    <string name="app_slogan" translatable="false">Cifra il testo dentro la tastiera. Fork di HeliBoard, software libero.</string>
 
 </resources>

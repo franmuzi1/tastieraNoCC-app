@@ -1,16 +1,24 @@
-# Tastiera cifrata
+# MusyBoard
 
-Fork di [HeliBoard](https://github.com/HeliBorg/HeliBoard) che cifra il testo
-**dentro la tastiera**, prima che entri nell'app di chat.
+**Fork di [HeliBoard](https://github.com/HeliBorg/HeliBoard)** che cifra il
+testo **dentro la tastiera**, prima che entri nell'app di chat.
 
 Il chiaro non arriva mai all'applicazione: quando premi "cifra", nel campo di
 testo compare già il messaggio cifrato. L'app di chat, il suo server, i backup
 in cloud e qualunque analisi automatica lato piattaforma vedono soltanto quello.
 
-> **Non è HeliBoard.** È un fork indipendente, non approvato né sostenuto da
-> chi sviluppa HeliBoard. Non segnalare a loro i problemi di questa versione, e
-> non aspettarti che ne sappiano qualcosa. Il codice della tastiera è il loro,
-> ottimo lavoro; gli errori della parte cifrata sono di questo fork.
+> **La tastiera è di HeliBoard, non mia.** Layout, correzione, digitazione a
+> gesti, temi, dizionari, emoji, appunti: tutto ciò che rende utilizzabile una
+> tastiera è lavoro loro, e qui è arrivato invariato. MusyBoard aggiunge un
+> solo pezzo — la cifratura — sopra il loro.
+>
+> È un fork indipendente, **non approvato né sostenuto** da chi sviluppa
+> HeliBoard. Non segnalare a loro i problemi di questa versione, e non
+> aspettarti che ne sappiano qualcosa: i difetti della parte cifrata sono di
+> questo fork.
+>
+> Il README originale è conservato in
+> [`README-HeliBoard.md`](README-HeliBoard.md).
 
 > **Scritto con assistenza di un LLM.** Il progetto originale chiede
 > esplicitamente di non usare LLM per i contributi *a loro*: per questo qui non
@@ -122,7 +130,8 @@ mancante.
 ## Installazione
 
 L'APK è nelle [release](../../releases). Convive con HeliBoard: ha un nome di
-pacchetto diverso e non lo sostituisce.
+pacchetto diverso e non lo sostituisce — nell'elenco delle tastiere di sistema
+compaiono affiancati, distinti per nome e icona.
 
 1. installa l'APK;
 2. Impostazioni → Sistema → Lingue e immissione → Tastiera su schermo → attiva
@@ -196,5 +205,6 @@ Primitive: X25519, XChaCha20-Poly1305, HKDF-SHA256.
 
 ## Licenza
 
-GPL-3.0, come HeliBoard. Il README originale del progetto è conservato in
-[`README-HeliBoard.md`](README-HeliBoard.md).
+GPL-3.0, come HeliBoard — da cui questo fork discende e di cui eredita il
+copyright su tutto ciò che non è la parte cifrata. Il README originale del
+progetto è conservato in [`README-HeliBoard.md`](README-HeliBoard.md).

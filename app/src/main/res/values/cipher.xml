@@ -86,6 +86,14 @@
     <string name="cipher_pick_no_contacts" tools:ignore="MissingTranslation">Nessun contatto ancora. Fatti mandare la presentazione di qualcuno, oppure mandagli la tua: tieni premuto il lucchetto chiuso e invia.</string>
     <string name="cipher_no_recipient_short" tools:ignore="MissingTranslation">→ a chi?</string>
     <!--
+        Attribuzione, nell\'About. Non e\' cortesia: la tastiera vera e propria —
+        layout, correzione, gesti, temi, dizionari — e\' lavoro di HeliBoard, e
+        qui sopra c\'e\' solo la cifratura. Va detto dove si legge, non in fondo
+        a un file.
+    -->
+    <string name="about_upstream" tools:ignore="MissingTranslation">Basato su HeliBoard</string>
+    <string name="about_upstream_description" tools:ignore="MissingTranslation">La tastiera e\' loro: layout, correzione, gesti, temi, dizionari. Questo fork ci aggiunge la cifratura. Non e\' approvato ne\' sostenuto da chi sviluppa HeliBoard, e i problemi di questa versione non vanno segnalati a loro.</string>
+    <!--
         Copia e taglia dalla riga di composizione. Il messaggio dice il motivo,
         non solo il divieto: chi preme copia sta facendo una cosa ragionevole, e
         un "non si puo\'" senza spiegazione sembra un guasto.

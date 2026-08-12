@@ -58,6 +58,10 @@ fun AboutScreen(
         SettingsWithoutKey.GITHUB_WIKI,
         SettingsWithoutKey.COMMUNITY_LINKS,
         SettingsWithoutKey.GITHUB,
+        // keyboard-cipher: subito sotto "vedi su GitHub", cosi' che i due link
+        // si leggano insieme — questo e' il codice del fork, quello e' il
+        // progetto su cui e' costruito.
+        SettingsWithoutKey.UPSTREAM,
         SettingsWithoutKey.SAVE_LOG,
     )
     SearchSettingsScreen(
@@ -161,6 +165,31 @@ fun createAboutSettings(context: Context) = listOf(
         )
      },
     Setting(context, SettingsWithoutKey.GITHUB, R.string.about_github_link) {
+        val ctx = LocalContext.current
+        Preference(
+            name = it.title,
+            description = it.description,
+            onClick = {
+                val intent = Intent()
+                // Il fork, non il progetto a monte: e' il codice che si sta
+                // usando, ed e' li' che vanno segnalati i suoi difetti.
+                intent.data = Links.PROJECT_GITHUB.toUri()
+                intent.action = Intent.ACTION_VIEW
+                ctx.startActivity(intent)
+            },
+            icon = R.drawable.ic_settings_about_github
+        )
+    },
+    /**
+     * keyboard-cipher: da dove viene la tastiera.
+     *
+     * Sta nell'About e non in una nota a fondo pagina perche' e' la prima cosa
+     * vera su questa app: la tastiera — layout, correzione, gesti, temi,
+     * dizionari — e' lavoro di HeliBoard. Qui sopra c'e' la cifratura, e basta.
+     * Chi apre l'About deve poterlo leggere senza cercarlo, e con un tocco
+     * arrivare a loro.
+     */
+    Setting(context, SettingsWithoutKey.UPSTREAM, R.string.about_upstream, R.string.about_upstream_description) {
         val ctx = LocalContext.current
         Preference(
             name = it.title,

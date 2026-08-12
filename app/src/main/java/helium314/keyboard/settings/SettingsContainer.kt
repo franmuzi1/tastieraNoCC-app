@@ -87,4 +87,5 @@ object SettingsWithoutKey {
     const val CUSTOM_EMOJI_FONT = "custom_emoji_font"
     // keyboard-cipher
     const val CIPHER_CONTACTS = "cipher_contacts"
+    const val UPSTREAM = "upstream"
 }

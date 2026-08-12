@@ -1,8 +1,10 @@
-# keyboard-cipher — integrazione nel fork
+# keyboard-cipher — integrazione in MusyBoard
 
-Fork di [HeliBoard](https://github.com/HeliBorg/HeliBoard) che cifra il testo
-**dentro la tastiera**, prima che entri nell'app di chat. L'app di chat, il suo
-server e qualunque scanning lato piattaforma vedono solo ciphertext.
+MusyBoard è un fork di [HeliBoard](https://github.com/HeliBorg/HeliBoard) che
+cifra il testo **dentro la tastiera**, prima che entri nell'app di chat. L'app
+di chat, il suo server e qualunque scanning lato piattaforma vedono solo
+ciphertext. La tastiera in sé — layout, correzione, gesti, temi, dizionari — è
+di HeliBoard: qui sotto si descrive solo ciò che il fork aggiunge.
 
 Il core crypto sta in un repo separato (`keyboard-cipher-core` + il ponte
 `keyboard-cipher-jni`) e non è incluso qui: questo repo contiene solo il lato
