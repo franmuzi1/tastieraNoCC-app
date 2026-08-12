@@ -220,6 +220,10 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
   Stessi attributi di DecryptActivity e per gli stessi motivi: mostra
   fingerprint, quindi FLAG_SECURE e niente miniatura nei Recenti. NON esportata:
   ci si arriva solo dalla tastiera, con il gettone che dice da quale app.
+
+  Finestra trasparente e non tema di dialogo: il riquadro se lo disegna il
+  dialogo Compose, lo stesso della scheda contatto. Con un tema di dialogo
+  sotto ne comparirebbe un secondo intorno al primo.
 -->
 <activity
     android:name="helium314.keyboard.cipher.RecipientActivity"
@@ -228,7 +232,7 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
     android:excludeFromRecents="true"
     android:taskAffinity=""
     android:launchMode="singleTask"
-    android:theme="@style/Theme.Cipher.Dialog" />
+    android:theme="@style/TransparentActivityTheme" />
 
 <!--
   Gestione contatti, fingerprint e conflitti di chiave.
