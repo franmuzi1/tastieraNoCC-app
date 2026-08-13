@@ -195,7 +195,7 @@ val defaultToolbarPref by lazy {
     // spinto oltre il bordo: la lista degli appunti c'era e funzionava, ma per
     // arrivarci bisognava sapere che esiste una freccia che apre il resto —
     // e chi non lo sa conclude che la tastiera non abbia la cronologia.
-    val default = listOf(ENCRYPT, DECRYPT, GALLERY, ATTACH, CONTACTS, SEND_PLAIN, COMPOSE, CLIPBOARD, SETTINGS, VOICE, UNDO, REDO, SELECT_WORD, COPY, PASTE, LEFT, RIGHT)
+    val default = listOf(COMPOSE, CLIPBOARD, ATTACH, GALLERY, CONTACTS, DECRYPT, ENCRYPT, SEND_PLAIN, SETTINGS, VOICE, UNDO, REDO, SELECT_WORD, COPY, PASTE, LEFT, RIGHT)
     val others = entries.filterNot { it in default || it == CLOSE_HISTORY }
     default.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
@@ -215,7 +215,14 @@ val defaultPinnedToolbarPref by lazy {
     // abbia la cronologia — ed e' successo. Fissarlo qui e' l'unico modo per
     // farlo comparire senza espandere: l'ordine della barra, da solo, non
     // decide cosa si vede accanto ai suggerimenti.
-    val pinned = listOf(ENCRYPT, DECRYPT, GALLERY, ATTACH, CONTACTS, SEND_PLAIN, COMPOSE, CLIPBOARD)
+    // L'ordine e' letto DA DESTRA, cioe' da dove sta il pollice: consegna in
+    // chiaro, cifra, decifra, contatti, immagine, allega, appunti. La striscia
+    // si disegna da sinistra, quindi la lista e' quella all'incontrario.
+    //
+    // COMPOSE resta in fondo a sinistra: e' l'interruttore che porta fuori da
+    // qui, non un'azione sul messaggio, e sta lontano da cio' che si preme di
+    // continuo.
+    val pinned = listOf(COMPOSE, CLIPBOARD, ATTACH, GALLERY, CONTACTS, DECRYPT, ENCRYPT, SEND_PLAIN)
     val others = entries.filterNot { it in pinned || it == CLOSE_HISTORY }
     pinned.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
@@ -298,7 +305,7 @@ private fun withCipherKeys(prefs: SharedPreferences, pref: String, default: Stri
     val composizione = CipherSettings.isComposeMode(prefs)
     // COMPOSE resta anche a modalita' spenta: e' l'interruttore, cioe' l'unico
     // modo per riaccenderla. Tutto il resto della cifratura vive dentro la riga.
-    val wanted = if (composizione) listOf(ENCRYPT, DECRYPT, COMPOSE, SEND_PLAIN, ATTACH, GALLERY, CONTACTS)
+    val wanted = if (composizione) listOf(COMPOSE, ATTACH, GALLERY, CONTACTS, DECRYPT, ENCRYPT, SEND_PLAIN)
         else listOf(COMPOSE)
     val result = keys.filterNot { !composizione && it in cipherKeys && it != COMPOSE }
         .toMutableList()

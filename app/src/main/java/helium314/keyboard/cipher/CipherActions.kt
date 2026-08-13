@@ -11,6 +11,7 @@ import helium314.keyboard.keyboard.KeyboardSwitcher
 import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
 import helium314.keyboard.latin.LatinIME
 import helium314.keyboard.latin.R
+import helium314.keyboard.latin.common.Constants
 import helium314.keyboard.latin.utils.InputTypeUtils
 import helium314.keyboard.latin.utils.prefs
 
@@ -302,6 +303,23 @@ object CipherActions {
         // aggiunto: aggiungendone uno nuovo senza spostarlo, quel tasto
         // resterebbe fuori dall'intervallo e tornerebbe ad adottare il campo.
         if (primaryCode <= KeyCode.CIPHER_ENCRYPT && primaryCode >= KeyCode.CIPHER_GALLERY) {
+            return
+        }
+        // MAI sull'invio. E' il tasto con cui si SPEDISCE cio' che sta nel
+        // campo, quindi adottare li' vuol dire portarselo via un istante prima
+        // che parta: si preme la freccia, il messaggio sparisce dal campo e
+        // ricompare nella riga della tastiera, e non si e' spedito niente. E'
+        // il caso di chi ha appena premuto "consegna in chiaro" e vuole
+        // mandarlo — cioe' il gesto immediatamente successivo, ogni volta.
+        //
+        // Il resto continua ad adottare, cancellazione compresa: correggere un
+        // refuso in cio' che si e' appena consegnato e' la ragione per cui
+        // l'adozione esiste.
+        if (primaryCode == Constants.CODE_ENTER ||
+            primaryCode == KeyCode.SHIFT_ENTER ||
+            primaryCode == KeyCode.ACTION_NEXT ||
+            primaryCode == KeyCode.ACTION_PREVIOUS
+        ) {
             return
         }
         if (!CipherSettings.isEnabled(ime)) return
