@@ -268,13 +268,9 @@
     <string name="cipher_reset_identity_confirm" tools:ignore="MissingTranslation">Butta via e ricomincia</string>
 
     <!--
-        Tema dell'Activity che mostra il testo decifrato.
-
-        Parent del framework e non della libreria di supporto: questa Activity
-        deve poter comparire sopra qualunque app senza trascinarsi dietro
-        dipendenze, e piu' e' semplice meno superficie ha.
+        Il tema di dialogo che avvolgeva le schermate del chiaro non c'e' piu':
+        il riquadro se lo disegna il dialogo Compose, e quelle Activity usano
+        una finestra trasparente. Tenerlo qui come risorsa morta avrebbe fatto
+        credere a chi legge che esistano due strade.
     -->
-    <style name="Theme.Cipher.Dialog" parent="@android:style/Theme.Material.Light.Dialog">
-        <item name="android:windowCloseOnTouchOutside">false</item>
-    </style>
 </resources>
