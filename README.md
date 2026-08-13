@@ -36,15 +36,19 @@ Cosa è stato verificato, e come:
 
 | | |
 |---|---|
-| core crittografico | 71 test, analisi statica severa, ~48 milioni di input di fuzzing |
+| core crittografico | 104 test, analisi statica severa, ~187 milioni di input di fuzzing |
 | ciclo completo | osservato su emulatore Android 6, 12 e 14 |
 | percorsi d'errore | blob corrotto, troncato, versione futura, testo non cifrato |
 | cambio chiave di un contatto | tutti e tre gli esiti |
 | backup e ripristino dell'identità | salvataggio, cancellazione dei dati, ripristino, passphrase sbagliata |
+| allegati, giro completo | file cifrato dalla tastiera e riaperto dall'altra parte, e viceversa: contenuto identico byte per byte, nome originale recuperato da dentro il cifrato |
+
+Il giro completo degli allegati è stato fatto una volta sola, e quella volta ha
+trovato un difetto: il salvataggio scriveva un file vuoto. È corretto e
+riverificato — ma è il promemoria di quanto vale il codice non ancora eseguito.
 
 Cosa **non** è stato fatto:
 
-- **mai eseguito su un telefono vero**, solo su emulatore;
 - **nessun audit indipendente**;
 - **il formato dei messaggi non è congelato**: una versione futura potrebbe non
   leggere i messaggi di oggi;
@@ -82,11 +86,14 @@ del messaggio cifrato, che viene rilevata.
 - **la ripubblicazione di un vecchio messaggio.** Un messaggio cifrato resta
   valido per sempre e rispedirlo funziona. È mitigato mostrando la data di
   composizione, che sta dentro il cifrato: non lo impedisce, lo rende visibile;
-- **la compromissione futura delle chiavi.** Un archivio conservato oggi più le
-  chiavi ottenute domani permette di leggere all'indietro. È il rischio che la
-  conservazione in blocco fa maturare col tempo, ed è la ragione per cui nel
-  formato è previsto un livello con *forward secrecy* — previsto, non ancora
-  implementato.
+- **la compromissione futura delle chiavi — non più, con la forward secrecy
+  accesa.** Un archivio conservato oggi più le chiavi ottenute domani permette
+  di leggere all'indietro: è il rischio che la conservazione in blocco fa
+  maturare col tempo. Con la catena attiva — è l'impostazione predefinita — le
+  chiavi stabili non bastano più ad aprire nulla dal secondo messaggio in poi,
+  allegati compresi. Il prezzo, dichiarato nell'interruttore: **un messaggio si
+  apre una volta sola**, e non lo riapri nemmeno tu. Resta scoperto ciò che si
+  manda con l'interruttore spento.
 
 ---
 
@@ -109,6 +116,24 @@ Se un giorno la chiave di un contatto cambia, il sistema **non decide da solo**:
 mostra i due codici affiancati, spiega le due letture possibili — ha
 reinstallato l'app, oppure qualcuno si sta interponendo — e non modifica niente
 finché non sei tu a confermare.
+
+**Forward secrecy**, accesa di default: ogni messaggio porta una chiave nuova, e
+leggere una risposta butta le vecchie. Chi domani prendesse il telefono e la
+chiave stabile non riaprirebbe quello che hai già mandato. Il prezzo è dichiarato
+e non aggirabile: un messaggio si apre **una volta sola**, nemmeno per te, e non
+esiste cronologia. Si spegne per riavere i messaggi rileggibili.
+
+**Bruciare una conversazione**, dalla scheda del contatto e solo a forward
+secrecy spenta: da questo telefono le chiavi spariscono ed è definitivo,
+all'altra persona viene copiata negli appunti una richiesta da incollarle in
+chat. Se la sua app la onora, cancella anche lei — ma **non è imponibile**, e la
+piattaforma ha comunque il proprio cifrato.
+
+**Allegati**: si scelgono dalla tastiera con i tasti immagine e graffetta,
+oppure dalla scheda del contatto. Il file esce cifrato come documento — i
+documenti le chat non li ricomprimono — e il nome originale viaggia dentro il
+cifrato, non fuori. Chi riceve lo passa all'app e lo vede in una finestra che
+blocca gli screenshot; sul telefono finisce solo se lo salva apposta.
 
 Dettagli tecnici: [`CIPHER.md`](CIPHER.md). Decisioni di progetto e loro
 motivazioni: `CLAUDE.md` nel repository del core.
@@ -135,17 +160,25 @@ compaiono affiancati, distinti per nome e icona.
 
 1. installa l'APK;
 2. Impostazioni → Sistema → Lingue e immissione → Tastiera su schermo → attiva
-   questa tastiera, poi selezionala;
-I due lucchetti sono già lì, a destra della striscia dei suggerimenti: non
-serve configurare niente.
+   questa tastiera, poi selezionala.
+
+Accanto ai suggerimenti trovi l'interruttore della **modalità cifrata** e la
+lista degli appunti. Accendendo la modalità compaiono gli altri tasti, letti da
+destra: consegna in chiaro, cifra, decifra, contatti, immagine, allega.
+
+I tasti della cifratura esistono **solo con la modalità accesa**, ed è
+deliberato: senza, "cifra" prenderebbe il testo dal campo dell'app e lo
+manderebbe al destinatario ricordato per quell'app, scelto da solo. Con la
+modalità accesa il destinatario è scritto accanto a ciò che stai scrivendo.
 
 Tutto il resto sta in **impostazioni della tastiera → Cifratura**: interruttore
-generale, modalità di scrittura e contatti.
+generale, modalità di scrittura, blocco della copia del chiaro, apertura
+automatica, forward secrecy e contatti.
 
-Se hai già usato questa tastiera prima della versione 0.1.2 i lucchetti non
-compaiono — le preferenze salvate non vengono sovrascritte, sono tue. Si
-attivano da impostazioni della tastiera → Toolbar, oppure cancellando i dati
-dell'app (che però **distrugge l'identità**: fai prima un backup).
+Se hai già usato questa tastiera prima, i tasti nuovi non compaiono da soli —
+le preferenze salvate non vengono sovrascritte, sono tue. Si attivano da
+impostazioni della tastiera → Toolbar, oppure reinstallando da zero (che però
+**distrugge l'identità**: fai prima un backup).
 
 ### Dove si scrive il messaggio
 
@@ -156,15 +189,25 @@ Due modi, si sceglie in Cifratura → *Scrivi dentro la tastiera*.
 - **acceso**: scrivi in una riga della tastiera e l'app riceve **solo** il
   messaggio cifrato, quando premi il lucchetto. Il campo dell'app resta vuoto
   fino a quel momento, quindi non può salvare bozze del chiaro né annunciare
-  che stai scrivendo. In questa modalità compare un terzo tasto,
-  l'aeroplanino: consegna il testo **in chiaro**, per quando il destinatario
-  non ha questa tastiera.
+  che stai scrivendo. È la modalità in cui esistono i tasti della cifratura,
+  compreso l'aeroplanino che consegna il testo **in chiaro**, per quando il
+  destinatario non ha questa tastiera.
 
-> **Attenzione al prossimo aggiornamento.** Le build da 0.1.0 a 0.1.3 sono
-> firmate con una chiave di debug; dalla prossima si passa a una chiave di
-> release, e Android non installa un APK con firma diversa sopra uno esistente.
-> Servira' disinstallare, e disinstallare **cancella la tua identita'**. Prima
-> di farlo: Contatti → salva il backup, e dopo l'installazione ripristinalo.
+  Nella riga si seleziona come in qualunque campo: tocco per il cursore,
+  pressione lunga per la parola, trascinamento per un pezzo. **Copia e taglia
+  invece non funzionano** finché c'è del chiaro: dagli appunti lo leggerebbe
+  l'app di chat che ha il fuoco, e resterebbe nella cronologia appunti sul
+  telefono. Si può riaprire da Cifratura, sapendo cosa si apre.
+
+> **Attenzione al passaggio a una build firmata.** Gli APK pubblicati finora
+> sono build di **debug**: firmate con la chiave di debug di Android e con il
+> flag `debuggable`, quindi chi ha in mano il telefono sbloccato con il debug
+> USB attivo può leggerne i dati. Non cambia cosa vede la piattaforma di chat,
+> che continua a vedere solo cifrato.
+>
+> La build di release ha un nome di pacchetto diverso: si installerà **accanto**
+> a questa, non al suo posto, e l'identità non si porta dietro da sola. Prima
+> di passare: Contatti → salva il backup, e ripristinalo nella nuova.
 
 Serve **Android 6.0** o superiore per la cifratura. Sotto, la tastiera funziona
 normalmente e i tasti dicono che la cifratura non è disponibile.
@@ -180,7 +223,13 @@ un'alternativa non puoi più scrivere nemmeno per ripararla.
 | lucchetto chiuso | cifra il campo per il destinatario corrente |
 | lucchetto aperto | decifra il campo, o gli appunti se il campo è vuoto |
 | pressione **lunga** sul lucchetto aperto | va dritto agli appunti |
-| impostazioni tastiera → Contatti | elenco, codici di verifica, nomi, QR |
+| rubrica | apre i contatti senza passare dalle impostazioni |
+| immagine / graffetta | manda un file cifrato: prima scegli la persona, poi il file |
+| impostazioni tastiera → Contatti | elenco, codici di verifica, nomi, QR, backup, rogo |
+
+Quando incolli la presentazione di qualcuno mai visto, i contatti si aprono da
+soli sul dialogo del nome: una chiave senza nome è un contatto che non si
+riconosce.
 
 Il testo decifrato compare in una finestra della tastiera che blocca screenshot
 e anteprime di sistema, e **non torna mai nell'app di chat**.

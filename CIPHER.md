@@ -19,10 +19,11 @@ blob → "decifra" → mittente, data e testo originale.
 
 | Piano | Copertura |
 |---|---|
-| core Rust + ponte JNI | 62 + 6 test, clippy pulito, ~48 M input di fuzzing |
+| core Rust + ponte JNI | 104 + 6 test, clippy pulito, ~187 M input di fuzzing |
 | percorsi felici | tutti, sul dispositivo |
 | percorsi negativi | blob corrotto, troncato, versione futura, tier ignoto, testo non nostro |
 | conflitto di etichetta | tutti e tre gli esiti |
+| allegati | giro completo in entrambe le direzioni, contro la CLI del core |
 | versioni Android | 22 (non disponibile), 23 (minimo), 34 (con e senza blocco schermo) |
 
 Cosa **non** è stato fatto: un merge da upstream con modifiche vere, e la
@@ -313,6 +314,9 @@ il file ma non lo si trova. Usare `/data/local/tmp/`.
 - **merge da upstream con modifiche vere.** Oggi non c'è niente di nuovo da
   `upstream/main`, quindi la tenuta non è provabile; misurata l'esposizione,
   vedi sotto.
+- **la build di release su dispositivo.** Ora si costruisce (vedi sotto), ma
+  esce non firmata: senza chiave non si installa, quindi non è mai stata
+  eseguita.
 
 ## Build riproducibile — misurata
 
@@ -1108,9 +1112,15 @@ non verificato spacciato per verificato no.
   Il contratto di quell'intent prevede `setResult` con un testo sostitutivo, ed
   è l'implementazione naturale — che qui consegnerebbe il chiaro proprio
   all'app di chat da cui il progetto esiste per tenerlo lontano.
-- **`FLAG_SECURE` prima di qualunque `setContentView`**, più `noHistory` ed
-  `excludeFromRecents`: senza, il sistema salva su disco uno screenshot del
-  testo decifrato per la schermata Recenti.
+- **`FLAG_SECURE` prima di qualunque contenuto**, più `excludeFromRecents`:
+  senza, il sistema salva su disco uno screenshot del testo decifrato per la
+  schermata Recenti.
+- **`noHistory` NON c'è più su `DecryptActivity`, e non va rimesso.** La
+  proprietà — uscendo, il chiaro non si ritrova tornando indietro — la fa
+  `onStop`, che chiude a mano. Il flag chiudeva la finestra anche mentre il
+  selettore "dove salvo" era davanti, e al ritorno non c'era più nessuno a
+  scrivere: l'allegato veniva salvato di **zero byte** con scritto "salvato".
+  Vedi la sezione sugli allegati.
 
 ## Licenza e rapporti con upstream
 
@@ -1121,3 +1131,131 @@ contributi, e questo codice è scritto con assistenza LLM. La cosa non tocca il
 diritto di forkare — la GPL lo garantisce — ma **non mandare niente di tutto
 questo upstream** sotto forma di PR o issue: è esattamente ciò che quel
 documento chiede di non fare.
+
+## Allegati — il giro completo, PROVATO
+
+Il percorso era scritto e mai eseguito da capo a fondo. Fatto con `kc` (la CLI
+del core) come seconda persona, così il giro attraversa Android, JNI e core
+invece di rileggere sé stesso.
+
+**Telefono → CLI.** Graffetta → elenco contatti in modalità scelta → contatto →
+selettore documenti → in cache compare `kc-<8 esadecimali>.kc`, 151 byte per 35
+di testo. `kc openfile` lo apre: mittente fissato per TOFU, nome
+`prova-allegato.txt`, tipo, data. Contenuto **identico** all'originale.
+
+**CLI → telefono.** `kc sealfile` → l'app decifra, e il selettore "dove salvo"
+propone già il nome originale, che viaggia dentro il cifrato. Il file salvato
+coincide byte per byte.
+
+### Il difetto che ha trovato: salvataggio di zero byte
+
+Alla prima esecuzione il file salvato era **vuoto**, con scritto "salvato".
+Non era la crittografia: `noHistory` sull'Activity chiude la finestra appena
+esce di scena, e il selettore "dove salvo" la fa uscire di scena. Al ritorno
+non c'era più nessuno a scrivere: il documento veniva creato dal sistema e
+restava vuoto.
+
+Corretto togliendo `noHistory` e chiudendo in `onStop`, con l'eccezione per la
+finestra in cui il selettore è davanti (`inAttesaDelSelettore`). Verificate
+tutte e due le metà: il file salvato è integro, e uscendo dalla schermata la
+finestra col chiaro sparisce comunque — zero riferimenti dopo Home.
+
+**Regola che ne esce:** un'Activity che mostra segreti e apre un selettore non
+può usare `noHistory`. La proprietà si ottiene a mano; il flag no.
+
+### Un termometro rotto
+
+La prima verifica sembrava dire che il copia non funzionasse: copiavo e
+incollavo, e non compariva niente. Falso — **incolla della toolbar è un finto
+CTRL+V**, e la riga di composizione non gestiva quell'evento. Misurando invece
+sulla cronologia appunti, il testo copiato c'era eccome. Il tasto incolla è poi
+stato fatto funzionare davvero (`CipherCompose.incolla`).
+
+## La striscia: cosa compare, e quando
+
+I tasti della cifratura esistono **solo con la riga di composizione accesa**.
+Senza quella riga la tastiera è HeliBoard più il solo interruttore per
+riaccenderla.
+
+Non è estetica: senza la riga, "cifra" prende ciò che c'è nel campo dell'app e
+lo manda al destinatario **ricordato per quell'app**, scelto da solo. Cifrare
+per una persona che non hai indicato in quel momento è il fallimento peggiore
+che questo sistema possa produrre, e stava dietro un tocco solo. Con la riga
+accesa il destinatario è scritto lì accanto mentre scrivi.
+
+*Conseguenza dichiarata:* sparisce anche "decifra". Con la riga spenta un
+messaggio in arrivo si apre dall'apertura automatica alla copia, dal menu di
+selezione del testo o dallo share sheet.
+
+L'ordine dei tasti è letto **da destra**, da dove sta il pollice: consegna in
+chiaro, cifra, decifra, contatti, immagine, allega, appunti. La striscia si
+disegna da sinistra, quindi la lista in `defaultPinnedToolbarPref` è
+all'incontrario.
+
+## Selezione, copia e incolla nella riga di composizione
+
+Nella riga valgono i tre gesti di qualunque campo: tocco per il cursore,
+pressione lunga per la parola, trascinamento per un pezzo. Vanno scritti a mano
+(`CipherComposeView.onTouchEvent`) perché un `TextView` senza fuoco non li fa, e
+la finestra di un IME il fuoco non lo prende.
+
+**Il pezzo che fa funzionare il cancella non è la selezione, è dirla a
+HeliBoard.** Per un campo vero è il sistema a chiamare `onUpdateSelection`; qui
+il buffer è nostro e nessuno la chiamerebbe. Senza quella chiamata il tasto
+cancella continuava a togliere un carattere per volta con mezza frase
+evidenziata a schermo. La chiamata è **in differita** (`row.post`): "seleziona
+tutto" arriva da dentro HeliBoard, e richiamarlo subito lo farebbe rientrare in
+sé stesso mentre sta leggendo il testo.
+
+**Copia e taglia sono bloccati** finché nella riga c'è del chiaro
+(`CipherCompose.copiaDelChiaroVietata`). Negli appunti il testo lo legge l'app
+che ha il fuoco — cioè proprio l'app di chat — e resta nella cronologia appunti
+su disco: sarebbe lo stesso buco che la riga esiste per chiudere. C'è
+l'interruttore in Impostazioni → Cifratura, perché il divieto ha un costo vero.
+
+**L'invio non adotta.** La riga si riprende il testo rimasto nel campo dell'app
+al primo tasto premuto, e l'invio era uno di quelli: si premeva la freccia e il
+messaggio tornava dentro la tastiera invece di partire — cioè sul gesto
+immediatamente successivo a "consegna in chiaro", ogni volta. Ora invio,
+shift+invio e le azioni avanti/indietro sono escluse; cancellazione e lettere
+no, perché correggere un refuso è la ragione per cui l'adozione esiste.
+
+## Le schermate: un solo aspetto, e perché non si fotografano
+
+Contatti, scelta del destinatario e testo decifrato usano gli stessi pezzi
+(`CipherUi.kt`), lo stesso tema e gli stessi dialoghi delle impostazioni. Prima
+erano tre approssimazioni diverse dello stesso elenco, costruite con viste a
+mano.
+
+Tutte e tre hanno `FLAG_SECURE`, quindi **la cattura schermo dà un'immagine
+vuota**: per guardarle esistono anteprime Compose con dati finti
+(`AnteprimaContatti`, `AnteprimaDestinatario`, `AnteprimaDecifrato`), che non
+toccano il keyring. Vanno aperte con la variante `debugNoMinify`, perché R8
+toglie ciò che nessuno chiama per nome:
+
+```
+adb shell am start -n helium314.keyboard.debug/androidx.compose.ui.tooling.PreviewActivity \
+  -e composable helium314.keyboard.cipher.CipherUiKt.AnteprimaDecifrato
+```
+
+**Una chiave mai vista porta dritti al nome.** Incollando una presentazione
+nuova si aprono i contatti con il dialogo "dai un nome" già pronto su quella
+chiave: una chiave senza nome è un contatto che non si riconosce, e "la chiave
+di Marco è cambiata" è una frase che esiste solo se Marco ha un nome.
+
+## La build di release non esisteva
+
+Mai costruita fino ad allora, e non si costruiva: `viewpager2` si tira dietro
+`fragment:1.1.0`, e con quella sul classpath `lintVitalRelease` blocca la
+variante di release — 264 errori, tutti su `registerForActivityResult`, che
+vuole almeno la 1.3.0. A runtime non sarebbe successo niente: la regola guarda
+cosa c'è compilato, non chi lo usa.
+
+Risolto alzando la dipendenza invece di zittire il controllo. Ora la release si
+costruisce: 24 MB contro i 33 della debug, senza il flag `debuggable`. Resta
+**non firmata** finché non esiste un keystore.
+
+**Da sapere prima di passarci:** la release ha `applicationId`
+`helium314.keyboard` (senza `.debug`), quindi si installa **accanto** alla
+build attuale e non al suo posto. Identità e contatti non si portano dietro da
+soli: servono esportazione e importazione del backup.
