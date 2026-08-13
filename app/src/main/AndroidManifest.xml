@@ -158,8 +158,12 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
                      l'Activity si limita a decifrare e mostrare, e non
                      restituisce mai nulla al chiamante (vedi DecryptActivity).
 
-  noHistory=true     l'Activity non resta nello stack: uscendo, il plaintext
-                     non e' raggiungibile tornando indietro.
+  NIENTE noHistory   la proprieta' — uscendo, il plaintext non e'
+                     raggiungibile tornando indietro — c'e' ancora, ma la fa
+                     `onStop` nel codice. Il flag chiudeva la finestra anche
+                     quando davanti ci mettiamo NOI il selettore "dove salvo":
+                     al ritorno non c'era piu' nessuno a scrivere, e l'allegato
+                     veniva salvato di zero byte con scritto "salvato".
 
   excludeFromRecents il sistema salva su disco uno screenshot di ogni Activity
   =true              per la schermata Recenti. Senza questo, il testo decifrato
@@ -176,7 +180,6 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
     android:name="helium314.keyboard.cipher.DecryptActivity"
     android:label="@string/cipher_decrypt_action"
     android:exported="true"
-    android:noHistory="true"
     android:excludeFromRecents="true"
     android:taskAffinity=""
     android:launchMode="singleTask"

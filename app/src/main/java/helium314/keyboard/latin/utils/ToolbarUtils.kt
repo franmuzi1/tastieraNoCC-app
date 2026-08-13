@@ -195,7 +195,7 @@ val defaultToolbarPref by lazy {
     // spinto oltre il bordo: la lista degli appunti c'era e funzionava, ma per
     // arrivarci bisognava sapere che esiste una freccia che apre il resto —
     // e chi non lo sa conclude che la tastiera non abbia la cronologia.
-    val default = listOf(ENCRYPT, DECRYPT, GALLERY, ATTACH, CONTACTS, SEND_PLAIN, COMPOSE, EMOJI, CLIPBOARD, SETTINGS, VOICE, UNDO, REDO, SELECT_WORD, COPY, PASTE, LEFT, RIGHT)
+    val default = listOf(ENCRYPT, DECRYPT, GALLERY, ATTACH, CONTACTS, SEND_PLAIN, COMPOSE, CLIPBOARD, SETTINGS, VOICE, UNDO, REDO, SELECT_WORD, COPY, PASTE, LEFT, RIGHT)
     val others = entries.filterNot { it in default || it == CLOSE_HISTORY }
     default.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
@@ -215,7 +215,7 @@ val defaultPinnedToolbarPref by lazy {
     // abbia la cronologia — ed e' successo. Fissarlo qui e' l'unico modo per
     // farlo comparire senza espandere: l'ordine della barra, da solo, non
     // decide cosa si vede accanto ai suggerimenti.
-    val pinned = listOf(ENCRYPT, DECRYPT, GALLERY, ATTACH, CONTACTS, SEND_PLAIN, COMPOSE, EMOJI, CLIPBOARD)
+    val pinned = listOf(ENCRYPT, DECRYPT, GALLERY, ATTACH, CONTACTS, SEND_PLAIN, COMPOSE, CLIPBOARD)
     val others = entries.filterNot { it in pinned || it == CLOSE_HISTORY }
     pinned.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }

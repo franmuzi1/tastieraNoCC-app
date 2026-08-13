@@ -55,6 +55,17 @@ class DecryptActivity : Activity() {
     private var fileInAttesa: ByteArray? = null
     private var nomeInAttesa: String? = null
 
+    /**
+     * Vero mentre il selettore "dove salvo" e' davanti a noi.
+     *
+     * Serve a non chiudersi in quel momento. Vedi [onStop]: questa finestra si
+     * chiude appena esce di scena, e il selettore la fa uscire di scena — cosi'
+     * il file veniva creato dal sistema e nessuno ci scriveva dentro. Un
+     * allegato salvato di zero byte, con scritto "salvato". Trovato provando il
+     * giro completo, non leggendo il codice.
+     */
+    private var inAttesaDelSelettore = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Prima di qualunque cosa che possa finire sullo schermo.
         // Blocca screenshot, registrazione schermo, e la miniatura che il
@@ -434,13 +445,16 @@ class DecryptActivity : Activity() {
             putExtra(Intent.EXTRA_TITLE, name.substringAfterLast('/').ifEmpty { "allegato" })
             addCategory(Intent.CATEGORY_OPENABLE)
         }
+        inAttesaDelSelettore = true
         if (runCatching { startActivityForResult(intent, RICHIESTA_SALVA) }.isFailure) {
+            inAttesaDelSelettore = false
             Toast.makeText(this, R.string.cipher_unavailable, Toast.LENGTH_SHORT).show()
         }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        inAttesaDelSelettore = false
         val uri = data?.data
         if (requestCode != RICHIESTA_SALVA || resultCode != RESULT_OK || uri == null) return
         val content = fileInAttesa ?: return
@@ -461,6 +475,22 @@ class DecryptActivity : Activity() {
      * `Bitmap` decodificata resta finche' non viene raccolta — ma e' la stessa
      * regola del resto del progetto: azzerare cio' che si puo' azzerare.
      */
+    /**
+     * Il chiaro non resta raggiungibile tornando indietro.
+     *
+     * Lo faceva `noHistory` nel manifest, ed era troppo: quel flag chiude la
+     * finestra **anche** quando davanti ci mettiamo noi il selettore "dove
+     * salvo", e allora al ritorno non c'e' piu' nessuno a scrivere il file.
+     * Qui la stessa proprieta' si ottiene chiudendo a mano, con l'unica
+     * eccezione che serve.
+     *
+     * `isChangingConfigurations`: una rotazione non e' un'uscita di scena.
+     */
+    override fun onStop() {
+        super.onStop()
+        if (!inAttesaDelSelettore && !isChangingConfigurations) finish()
+    }
+
     override fun onDestroy() {
         fileInAttesa?.fill(0)
         fileInAttesa = null
