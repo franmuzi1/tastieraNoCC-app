@@ -129,6 +129,16 @@ class ContactsActivity : ComponentActivity() {
      */
     private val soloMedia: Boolean by lazy { intent?.getBooleanExtra(EXTRA_SOLO_MEDIA, false) == true }
 
+    /**
+     * La chiave da nominare subito, se si arriva qui da una presentazione
+     * appena fissata.
+     *
+     * Il nome e' il gesto che serve in quel momento: una chiave senza nome e'
+     * un contatto che non si riconosce, e "la chiave di Marco e' cambiata" e'
+     * una frase che esiste solo se Marco ha un nome.
+     */
+    private val daNominare: ByteArray? by lazy { intent?.getByteArrayExtra(EXTRA_NOMINA) }
+
     private val selettoreEsporta =
         registerForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
             if (uri == null) azzeraPassphrase() else esporta(uri)
@@ -154,6 +164,7 @@ class ContactsActivity : ComponentActivity() {
         )
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        nominaSubito()
         setContent {
             Theme {
                 Surface {
@@ -161,6 +172,23 @@ class ContactsActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * Se si arriva da una presentazione appena fissata, il dialogo del nome e'
+     * gia' aperto quando la schermata compare.
+     *
+     * Il peer si cerca nell'elenco invece di costruirlo dai byte: cosi' se per
+     * qualunque ragione non e' nel keyring — un pin non persistito, una corsa
+     * fra processi — non si apre un dialogo su una chiave che non c'e'.
+     */
+    private fun nominaSubito() {
+        val chiave = daNominare ?: return
+        val peer = CipherCore.nativeListPeers()
+            ?.let { PeerList.parse(it) }
+            ?.firstOrNull { it.key.contentEquals(chiave) }
+            ?: return
+        dialogo = Dialogo.Nome(peer)
     }
 
     // ========================================================================
@@ -930,6 +958,7 @@ class ContactsActivity : ComponentActivity() {
     companion object {
         private const val EXTRA_ALLEGATO = "cipher_allegato"
         private const val EXTRA_SOLO_MEDIA = "cipher_solo_media"
+        private const val EXTRA_NOMINA = "cipher_nomina"
 
         /**
          * La schermata in modalita' "scegli a chi mandare il file".
@@ -949,125 +978,11 @@ class ContactsActivity : ComponentActivity() {
             Intent(context, ContactsActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
+
+        /** L'elenco con il dialogo "dai un nome" gia' aperto su [peer]. */
+        fun intentNomina(context: android.content.Context, peer: ByteArray): Intent =
+            intent(context).apply { putExtra(EXTRA_NOMINA, peer) }
     }
-}
-
-// ============================================================================
-// Pezzi di interfaccia
-//
-// Fuori dall'Activity, e non per ordine: cosi' non toccano il keyring, si
-// vedono nell'anteprima in fondo al file, e l'unico modo di mostrare qualcosa
-// e' che qualcuno gliela passi.
-// ============================================================================
-
-@Composable
-private fun Avviso(testo: String) {
-    Riquadro {
-        Text(
-            text = testo,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(12.dp),
-        )
-    }
-}
-
-@Composable
-private fun Titolo(testo: String) {
-    Text(
-        text = testo,
-        color = MaterialTheme.colorScheme.secondary,
-        style = MaterialTheme.typography.titleSmall,
-        modifier = Modifier.padding(start = 4.dp, top = 20.dp, bottom = 8.dp),
-    )
-}
-
-/** Il contenitore dagli angoli smussati che raccoglie una sezione. */
-@Composable
-private fun Riquadro(contenuto: @Composable () -> Unit) {
-    Surface(
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column { contenuto() }
-    }
-}
-
-/** Una riga cliccabile, con le stesse misure delle voci di impostazioni. */
-@Composable
-private fun Voce(testo: String, distruttiva: Boolean = false, quando: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { quando() }
-            .heightIn(min = 44.dp)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = testo,
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (distruttiva) MaterialTheme.colorScheme.error else Color.Unspecified,
-        )
-    }
-}
-
-/** Una riga dell'elenco: nome, impronta, quando e' comparso. */
-@Composable
-private fun Contatto(nome: String, impronta: String, visto: String, quando: () -> Unit) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clickable { quando() }
-            .padding(horizontal = 12.dp, vertical = 12.dp),
-    ) {
-        Text(text = nome, style = MaterialTheme.typography.bodyLarge)
-        // Qui l'impronta NON e' selezionabile: un testo selezionabile consuma il
-        // tocco, e occupando quasi tutta la riga renderebbe il contatto apribile
-        // solo dalla striscia sottile del nome. Verificato sul dispositivo —
-        // sembrava che i contatti non si aprissero affatto.
-        Impronta(impronta, selezionabile = false, Modifier.padding(top = 2.dp))
-        Didascalia(visto, Modifier.padding(top = 2.dp))
-    }
-}
-
-@Composable
-private fun Divisore() {
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-}
-
-@Composable
-private fun Vuoto(testo: String) {
-    Didascalia(testo, Modifier.padding(12.dp))
-}
-
-@Composable
-private fun Didascalia(testo: String, modifier: Modifier = Modifier) {
-    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant) {
-        Text(text = testo, style = MaterialTheme.typography.bodySmall, modifier = modifier)
-    }
-}
-
-/**
- * Monospaziato: sono 24 caratteri che due persone si leggono a voce o
- * confrontano a schermo, e un font proporzionale rende quel confronto piu'
- * difficile di quanto serva.
- *
- * @param selezionabile va acceso solo dove la riga non e' cliccabile: un testo
- * selezionabile consuma il tocco.
- */
-@Composable
-private fun Impronta(testo: String, selezionabile: Boolean, modifier: Modifier = Modifier) {
-    val riga = @Composable {
-        Text(
-            text = testo,
-            fontFamily = FontFamily.Monospace,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = modifier,
-        )
-    }
-    if (selezionabile) SelectionContainer { riga() } else riga()
 }
 
 /**

@@ -1,25 +1,39 @@
 package helium314.keyboard.cipher
 
-import android.app.Activity
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
-import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
 import android.text.format.DateFormat
-import android.util.TypedValue
-import android.view.Gravity
-import android.view.View
 import android.view.WindowManager
-import android.widget.Button
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import helium314.keyboard.latin.R
+import helium314.keyboard.latin.utils.Theme
+import helium314.keyboard.settings.dialogs.ThreeButtonAlertDialog
 import java.util.Date
 
 /**
@@ -32,7 +46,7 @@ import java.util.Date
  * arrivato il blob, e due implementazioni divergerebbero al primo esito
  * aggiunto.
  */
-class DecryptActivity : Activity() {
+class DecryptActivity : ComponentActivity() {
 
     private companion object {
         /** Richiesta del selettore "dove salvo". */
@@ -271,7 +285,187 @@ class DecryptActivity : Activity() {
 
     // ========================================================================
     // Schermate
+    //
+    // Le stesse dei contatti e della scelta del destinatario: un dialogo con
+    // gli angoli smussati, righe che si toccano, e i pezzi condivisi di
+    // CipherUi. Prima erano pulsanti di sistema dentro una finestra a parte, e
+    // arrivandoci dalla stessa app si vedeva.
     // ========================================================================
+
+    /** Cosa c'e' a schermo adesso. Un solo stato: due schermate insieme non esistono. */
+    private var schermo by mutableStateOf<Schermo?>(null)
+
+    private sealed interface Schermo {
+        /** Un avviso e basta: errori, esiti normali, roghi. */
+        class Avviso(val testo: String) : Schermo
+
+        class Messaggio(
+            val chi: String,
+            val mio: Boolean,
+            val quando: String,
+            val testo: String,
+        ) : Schermo
+
+        class Presentazione(
+            val gia: Boolean,
+            val impronta: String,
+            val comeDestinatario: (() -> Unit)?,
+        ) : Schermo
+
+        class Allegato(
+            val chi: String,
+            val mio: Boolean,
+            val quando: String,
+            val dettaglio: String,
+            val anteprima: Bitmap?,
+            val nome: String,
+        ) : Schermo
+
+        class NonLeggibile(val part: CipherPart) : Schermo
+    }
+
+    private fun mostra(nuovo: Schermo) {
+        schermo = nuovo
+        setContent {
+            Theme {
+                when (val corrente = schermo) {
+                    null -> Unit
+                    is Schermo.Avviso -> Dialogo { Text(corrente.testo) }
+                    is Schermo.Messaggio -> SchermoMessaggio(corrente)
+                    is Schermo.Presentazione -> SchermoPresentazione(corrente)
+                    is Schermo.Allegato -> SchermoAllegato(corrente)
+                    is Schermo.NonLeggibile -> SchermoNonLeggibile(corrente.part)
+                }
+            }
+        }
+    }
+
+    /**
+     * L'involucro di tutte le schermate.
+     *
+     * Un pulsante solo, "OK", che chiude. Le azioni — copia, contatti, salva —
+     * sono righe dentro il contenuto e non pulsanti in fondo: e' la stessa
+     * forma della scheda contatto, e quella con tre pulsanti in fila era la
+     * cosa che stonava di piu'.
+     */
+    @Composable
+    private fun Dialogo(
+        titolo: String? = null,
+        contenuto: @Composable () -> Unit,
+    ) {
+        ThreeButtonAlertDialog(
+            onDismissRequest = { finish() },
+            onConfirmed = { },
+            confirmButtonText = null,
+            cancelButtonText = stringResource(android.R.string.ok),
+            scrollContent = true,
+            reducePadding = true,
+            title = titolo?.let { { Text(it) } },
+            content = contenuto,
+        )
+    }
+
+    @Composable
+    private fun SchermoMessaggio(dati: Schermo.Messaggio) {
+        Dialogo(titolo = dati.chi) {
+            Column {
+                if (dati.mio) Didascalia(stringResource(R.string.cipher_own_message_note))
+                Didascalia(stringResource(R.string.cipher_composed_at, dati.quando))
+                Spacer(Modifier.height(10.dp))
+                // Selezionabile: capita di voler prendere un pezzo del
+                // messaggio — un indirizzo, un numero — senza copiarlo tutto.
+                SelectionContainer {
+                    Text(text = dati.testo, style = MaterialTheme.typography.bodyLarge)
+                }
+                Spacer(Modifier.height(10.dp))
+                Riquadro {
+                    Voce(stringResource(R.string.cipher_copy)) { copyPlaintext(dati.testo) }
+                    Divisore()
+                    Voce(stringResource(R.string.cipher_contacts)) { apriContatti() }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun SchermoPresentazione(dati: Schermo.Presentazione) {
+        // Nessun segno di verifica qui: quello significa "confrontato di
+        // persona" e una presentazione non lo prova. Titolo diverso se la
+        // chiave era gia' nota, perche' "Nuovo contatto" su un contatto vecchio
+        // e' semplicemente falso.
+        Dialogo(
+            titolo = stringResource(
+                if (dati.gia) R.string.cipher_card_known else R.string.cipher_card_title
+            )
+        ) {
+            Column {
+                Impronta(dati.impronta, selezionabile = false)
+                Spacer(Modifier.height(6.dp))
+                Didascalia(
+                    stringResource(
+                        if (dati.gia) R.string.cipher_card_known_hint else R.string.cipher_card_pinned
+                    )
+                )
+                Spacer(Modifier.height(10.dp))
+                Riquadro {
+                    // La presentazione NON sceglie il destinatario da sola: non
+                    // e' autenticata, quindi chiunque potrebbe mandarne una e
+                    // dirottare per chi cifri. Qui c'e' il gesto esplicito che
+                    // lo fa, e solo se sappiamo in quale app siamo.
+                    if (dati.comeDestinatario != null) {
+                        Voce(stringResource(R.string.cipher_use_as_recipient)) {
+                            dati.comeDestinatario.invoke()
+                        }
+                        Divisore()
+                    }
+                    Voce(stringResource(R.string.cipher_contacts)) { apriContatti() }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun SchermoAllegato(dati: Schermo.Allegato) {
+        Dialogo(titolo = dati.chi) {
+            Column {
+                if (dati.mio) Didascalia(stringResource(R.string.cipher_own_message_note))
+                Didascalia(stringResource(R.string.cipher_composed_at, dati.quando))
+                Spacer(Modifier.height(10.dp))
+                Text(text = dati.dettaglio, style = MaterialTheme.typography.bodyLarge)
+                if (dati.anteprima != null) {
+                    Spacer(Modifier.height(10.dp))
+                    Image(
+                        bitmap = dati.anteprima.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxWidth(),
+                        contentScale = ContentScale.FillWidth,
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                Riquadro {
+                    Voce(stringResource(R.string.cipher_file_save)) { chiediDoveSalvare(dati.nome) }
+                    Divisore()
+                    Voce(stringResource(R.string.cipher_contacts)) { apriContatti() }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun SchermoNonLeggibile(part: CipherPart) {
+        // Nessuna voce "ripara": l'unica uscita e' resetIdentity, che distrugge
+        // l'identita' e fa vedere a ogni contatto un cambio di chiave. Qui
+        // verrebbe premuta per togliersi il messaggio di torno. Sta nella UI
+        // contatti, dietro una schermata che spieghi cosa si sta buttando via.
+        Dialogo(titolo = stringResource(R.string.cipher_unreadable_title)) {
+            Text(
+                stringResource(
+                    if (part == CipherPart.IDENTITY) R.string.cipher_unreadable_identity
+                    else R.string.cipher_unreadable_keyring
+                )
+            )
+        }
+    }
 
     /**
      * @param mio quando il messaggio l'abbiamo scritto noi: allora la persona
@@ -287,99 +481,67 @@ class DecryptActivity : Activity() {
         // Il core consegna ByteArray e non String proprio per poterlo azzerare.
         // Per mostrarlo a schermo serve una CharSequence, quindi una copia non
         // azzerabile esiste comunque nella UI: la garanzia si ferma qui. Si
-        // mitiga con FLAG_SECURE, noHistory, e azzerando l'array subito.
+        // mitiga con FLAG_SECURE, la chiusura in onStop, e azzerando l'array.
         val testo = try {
             String(bytes, Charsets.UTF_8)
         } finally {
             bytes.fill(0)
         }
-
-        val root = screen()
         val chi = senderLine(result)
-        root.addView(
-            header(
-                if (mio) getString(R.string.cipher_own_message_to, chi) else chi,
+        mostra(
+            Schermo.Messaggio(
                 // Il segno di "confrontato di persona" non si mostra su un
                 // messaggio nostro: li' non c'e' nessuna identita' da
                 // verificare, l'abbiamo scritto noi.
-                !mio && result.verified == 1,
+                chi = when {
+                    mio -> getString(R.string.cipher_own_message_to, chi)
+                    result.verified == 1 -> getString(R.string.cipher_sender_verified, chi)
+                    else -> chi
+                },
+                mio = mio,
+                quando = formatTimestamp(result.sentAtUnix),
+                testo = testo,
             )
         )
-        if (mio) root.addView(caption(getString(R.string.cipher_own_message_note)))
-        root.addView(caption(getString(R.string.cipher_composed_at, formatTimestamp(result.sentAtUnix))))
-        root.addView(body(testo))
-        root.addView(copyButton(testo))
-        root.addView(contactsButton())
-        root.addView(closeButton())
-        setContentView(root)
     }
 
     private fun showIdentityCard(result: CipherCore.IncomingResult) {
-        val root = screen()
-        val gia = result.alreadyPinned == 1
-        // Nessun segno di verifica qui: quello significa "confrontato di
-        // persona" e una presentazione non lo prova. Titolo diverso se la
-        // chiave era gia' nota, perche' "Nuovo contatto" su un contatto vecchio
-        // e' semplicemente falso.
-        root.addView(
-            header(
-                getString(
-                    if (gia) R.string.cipher_card_known else R.string.cipher_card_title
-                ),
-                false,
-            )
-        )
-        root.addView(body(result.senderFingerprint.orEmpty()))
-        root.addView(
-            caption(
-                getString(
-                    if (gia) R.string.cipher_card_known_hint else R.string.cipher_card_pinned
-                )
-            )
-        )
-
-        // La presentazione NON sceglie il destinatario da sola: non e'
-        // autenticata, quindi chiunque potrebbe mandarne una e dirottare per
-        // chi cifri. Qui c'e' il gesto esplicito che lo fa, e solo se sappiamo
-        // in quale app siamo.
         val peer = result.senderKey
         val app = appDiProvenienza
-        if (peer != null && app.isNotEmpty()) {
-            root.addView(Button(this).apply {
-                setText(R.string.cipher_use_as_recipient)
-                setOnClickListener {
-                    if (CipherCore.nativeSetCurrentPeer(app, peer) == CipherCore.OK) {
-                        CipherRecipients.remember(this@DecryptActivity, app, peer)
-                        Toast.makeText(
-                            this@DecryptActivity,
-                            R.string.cipher_recipient_set,
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                        finish()
-                    } else {
-                        Toast.makeText(
-                            this@DecryptActivity,
-                            R.string.cipher_unavailable,
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                    }
-                }
-            })
+        val gia = result.alreadyPinned == 1
+
+        // Prima volta: si va dritti nei contatti a dargli un nome. E' il gesto
+        // che serve subito dopo — una chiave senza nome e' un contatto che non
+        // si riconosce, e "la chiave di Marco e' cambiata" e' una frase che
+        // esiste solo se Marco ha un nome. Mostrare la card e aspettare che
+        // l'utente trovi da solo la strada per i contatti era un passaggio in
+        // piu' proprio nel momento in cui serve meno.
+        if (!gia && peer != null) {
+            runCatching { startActivity(ContactsActivity.intentNomina(this, peer)) }
+                .onSuccess { finish(); return }
         }
 
-        root.addView(contactsButton())
-        root.addView(closeButton())
-        setContentView(scroll(root))
+        mostra(
+            Schermo.Presentazione(
+                gia = gia,
+                impronta = result.senderFingerprint.orEmpty(),
+                comeDestinatario = if (peer != null && app.isNotEmpty()) {
+                    {
+                        if (CipherCore.nativeSetCurrentPeer(app, peer) == CipherCore.OK) {
+                            CipherRecipients.remember(this, app, peer)
+                            Toast.makeText(this, R.string.cipher_recipient_set, Toast.LENGTH_SHORT).show()
+                            finish()
+                        } else {
+                            Toast.makeText(this, R.string.cipher_unavailable, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } else {
+                    null
+                },
+            )
+        )
     }
 
-    /**
-     * Ingresso alla UI contatti, che e' dove si da' un nome a questa chiave e
-     * la si conferma di persona.
-     *
-     * Sta qui perche' e' il momento in cui serve: l'utente ha appena visto
-     * comparire un contatto. `ContactsActivity` non e' nel launcher, quindi
-     * senza un aggancio come questo si arriverebbe solo dalle impostazioni.
-     */
     /**
      * Mostra un allegato decifrato.
      *
@@ -387,8 +549,9 @@ class DecryptActivity : Activity() {
      * da nessuna parte finche' l'utente non lo salva apposta. Un file decifrato
      * lasciato in Download e' un file che finisce nella galleria e nel backup
      * cloud — cioe' proprio dove la cifratura serviva a non farlo arrivare.
+     *
+     * @param mio come in [showMessage]: allora la persona mostrata e' il destinatario.
      */
-    /** @param mio come in [showMessage]: allora la persona mostrata e' il destinatario. */
     private fun showFile(result: CipherCore.IncomingResult, mio: Boolean = false) {
         val content = result.fileContent
         val name = result.fileName.orEmpty()
@@ -399,41 +562,46 @@ class DecryptActivity : Activity() {
         fileInAttesa = content
         nomeInAttesa = name
 
-        val root = screen()
-        val chi = senderLine(result)
-        root.addView(
-            header(
-                if (mio) getString(R.string.cipher_own_message_to, chi) else chi,
-                !mio && result.verified == 1,
-            )
-        )
-        if (mio) root.addView(caption(getString(R.string.cipher_own_message_note)))
-        root.addView(caption(getString(R.string.cipher_composed_at, formatTimestamp(result.sentAtUnix))))
-        root.addView(body(getString(R.string.cipher_file_detail, name, content.size / 1024)))
-
         // Le immagini si guardano qui dentro, sotto FLAG_SECURE. Il tipo lo
         // dichiara chi ha mandato il file e non fa fede: se il contenuto non e'
-        // un'immagine, decodificarlo fallisce e si resta alla sola riga di
+        // un'immagine, decodificarlo fallisce e resta la sola riga di
         // descrizione.
-        if (result.fileMime.orEmpty().startsWith("image/")) {
-            val bitmap = runCatching {
+        val anteprima = if (result.fileMime.orEmpty().startsWith("image/")) {
+            runCatching {
                 android.graphics.BitmapFactory.decodeByteArray(content, 0, content.size)
             }.getOrNull()
-            if (bitmap != null) {
-                root.addView(android.widget.ImageView(this).apply {
-                    setImageBitmap(bitmap)
-                    adjustViewBounds = true
-                })
-            }
+        } else {
+            null
         }
 
-        root.addView(Button(this).apply {
-            setText(R.string.cipher_file_save)
-            setOnClickListener { chiediDoveSalvare(name) }
-        })
-        root.addView(contactsButton())
-        root.addView(closeButton())
-        setContentView(root)
+        val chi = senderLine(result)
+        mostra(
+            Schermo.Allegato(
+                chi = when {
+                    mio -> getString(R.string.cipher_own_message_to, chi)
+                    result.verified == 1 -> getString(R.string.cipher_sender_verified, chi)
+                    else -> chi
+                },
+                mio = mio,
+                quando = formatTimestamp(result.sentAtUnix),
+                dettaglio = getString(R.string.cipher_file_detail, name, content.size / 1024),
+                anteprima = anteprima,
+                nome = name,
+            )
+        )
+    }
+
+    /**
+     * Ingresso alla UI contatti, che e' dove si da' un nome a una chiave e la
+     * si conferma di persona.
+     *
+     * Sta qui perche' e' il momento in cui serve: l'utente ha appena visto
+     * comparire un contatto. `ContactsActivity` non e' nel launcher, quindi
+     * senza un aggancio come questo si arriverebbe solo dalle impostazioni.
+     */
+    private fun apriContatti() {
+        runCatching { startActivity(ContactsActivity.intent(this)) }
+        finish()
     }
 
     private fun chiediDoveSalvare(name: String) {
@@ -498,42 +666,11 @@ class DecryptActivity : Activity() {
         super.onDestroy()
     }
 
-    private fun contactsButton(): View = Button(this).apply {
-        setText(R.string.cipher_contacts)
-        setOnClickListener {
-            runCatching { startActivity(Intent(this@DecryptActivity, ContactsActivity::class.java)) }
-            finish()
-        }
-    }
-
-    private fun showUnreadable(part: CipherPart) {
-        val root = screen()
-        root.addView(header(getString(R.string.cipher_unreadable_title), false))
-        root.addView(
-            body(
-                getString(
-                    if (part == CipherPart.IDENTITY) R.string.cipher_unreadable_identity
-                    else R.string.cipher_unreadable_keyring
-                )
-            )
-        )
-        // Nessun pulsante "ripara": l'unica uscita e' resetIdentity, che
-        // distrugge l'identita' e fa vedere a ogni contatto un cambio di
-        // chiave. Un pulsante qui verrebbe premuto per togliersi il messaggio
-        // di torno. Va nella UI contatti, dietro una schermata che spieghi cosa
-        // si sta buttando via.
-        root.addView(closeButton())
-        setContentView(root)
-    }
+    private fun showUnreadable(part: CipherPart) = mostra(Schermo.NonLeggibile(part))
 
     private fun showNotice(resId: Int) = showNotice(getString(resId))
 
-    private fun showNotice(testo: String) {
-        val root = screen()
-        root.addView(body(testo))
-        root.addView(closeButton())
-        setContentView(root)
-    }
+    private fun showNotice(testo: String) = mostra(Schermo.Avviso(testo))
 
     private fun senderLine(result: CipherCore.IncomingResult): String =
         result.senderLabel ?: result.senderFingerprint ?: getString(R.string.cipher_unknown_sender)
@@ -548,50 +685,6 @@ class DecryptActivity : Activity() {
         val date = Date(unix * 1000)
         return "${DateFormat.getDateFormat(this).format(date)} ${DateFormat.getTimeFormat(this).format(date)}"
     }
-
-    private fun scroll(content: View): View = ScrollView(this).apply { addView(content) }
-
-    private fun screen(): LinearLayout = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        val pad = dp(20)
-        setPadding(pad, pad, pad, pad)
-    }
-
-    private fun header(text: String, verified: Boolean): View = TextView(this).apply {
-        this.text = if (verified) getString(R.string.cipher_sender_verified, text) else text
-        setTypeface(typeface, Typeface.BOLD)
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-    }
-
-    private fun caption(text: String): View = TextView(this).apply {
-        this.text = text
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-        alpha = 0.7f
-        setPadding(0, dp(2), 0, dp(12))
-    }
-
-    private fun body(text: String): View = ScrollView(this).apply {
-        addView(TextView(this@DecryptActivity).apply {
-            this.text = text
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-            setTextIsSelectable(true)
-        })
-        layoutParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            0,
-        ).apply { weight = 1f }
-    }
-
-    private fun closeButton(): View = Button(this).apply {
-        setText(android.R.string.ok)
-        setOnClickListener { finish() }
-        layoutParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-        ).apply { gravity = Gravity.END }
-    }
-
-    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     /**
      * ATTENZIONE — il contratto di `ACTION_PROCESS_TEXT` prevede che
@@ -642,10 +735,5 @@ class DecryptActivity : Activity() {
         }
         (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(clip)
         Toast.makeText(this, R.string.cipher_copied, Toast.LENGTH_SHORT).show()
-    }
-
-    private fun copyButton(text: CharSequence): View = Button(this).apply {
-        setText(R.string.cipher_copy)
-        setOnClickListener { copyPlaintext(text) }
     }
 }

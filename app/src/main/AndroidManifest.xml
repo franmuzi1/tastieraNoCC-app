@@ -183,7 +183,7 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
     android:excludeFromRecents="true"
     android:taskAffinity=""
     android:launchMode="singleTask"
-    android:theme="@style/Theme.Cipher.Dialog">
+    android:theme="@style/TransparentActivityTheme">
 
     <!-- Via 2: barra di selezione del testo. Compare solo nelle app che usano
          la barra standard di Android; quelle con menu di long-press
