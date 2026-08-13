@@ -185,6 +185,13 @@ dependencies {
     implementation("androidx.recyclerview:recyclerview:1.4.0")
     implementation("androidx.autofill:autofill:1.3.0")
     implementation("androidx.viewpager2:viewpager2:1.1.0")
+    // keyboard-cipher: `viewpager2` si tira dietro `fragment:1.1.0`, e con
+    // quella sul classpath lint blocca la build di RELEASE — non di debug —
+    // perche' `registerForActivityResult` vuole almeno la 1.3.0. Le nostre
+    // Activity non sono Fragment e non ne userebbero mai una, ma la regola
+    // guarda cosa c'e' compilato, non chi lo usa. Alzare la versione toglie il
+    // problema alla radice invece di zittire il controllo.
+    implementation("androidx.fragment:fragment:1.8.6")
 
     // kotlin
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
