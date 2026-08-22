@@ -57,6 +57,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import helium314.keyboard.latin.R
@@ -387,6 +389,24 @@ class ContactsActivity : ComponentActivity() {
                         value = valore,
                         onValueChange = { valore = it },
                         singleLine = true,
+                        // Invio conferma, come OK. Dare un nome costava due
+                        // tocchi — scrivere, poi cercare il pulsante — e questo
+                        // dialogo compare proprio quando l'utente vuole finire
+                        // in fretta, subito dopo aver conosciuto qualcuno.
+                        //
+                        // `Done` cambia anche l'icona del tasto invio, quindi
+                        // il gesto si vede prima di provarlo. La condizione e'
+                        // la stessa di `checkOk`: invio non deve poter
+                        // confermare un nome che il pulsante rifiuta.
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                if (valore.text.isNotBlank()) {
+                                    assegnaNome(peer, valore.text.trim())
+                                    chiudi()
+                                }
+                            },
+                        ),
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
