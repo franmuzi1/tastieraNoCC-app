@@ -131,7 +131,10 @@ internal class RecipientActivity : ComponentActivity() {
         // Su disco, altrimenti la scelta muore al primo riavvio del servizio —
         // che e' il guasto che questo progetto ha gia' pagato una volta.
         CipherRecipients.remember(this, appDiProvenienza, peer.key)
-        Toast.makeText(this, R.string.cipher_recipient_set, Toast.LENGTH_SHORT).show()
+        // Nessun avviso: diceva "ora in questa app cifri per questo contatto",
+        // e non e' cosi'. Il destinatario corrente lo stabilisce anche —
+        // e soprattutto — l'ultimo messaggio decifrato in quell'app, quindi
+        // quella frase prometteva una stabilita' che non c'e'.
         finish()
     }
 
