@@ -411,7 +411,11 @@ class DecryptActivity : ComponentActivity() {
         class Presentazione(
             val gia: Boolean,
             val impronta: String,
+            /** Il nome gia' dato a questa chiave, se ce l'ha. */
+            val nome: String?,
             val comeDestinatario: (() -> Unit)?,
+            /** Apre i contatti sul dialogo del nome, per cambiarlo. */
+            val rinomina: (() -> Unit)?,
         ) : Schermo
 
         class Allegato(
@@ -501,6 +505,14 @@ class DecryptActivity : ComponentActivity() {
             )
         ) {
             Column {
+                // Il nome prima dell'impronta: su un contatto gia' noto e'
+                // l'unica cosa che dice CHI e'. Un'impronta da sola non si
+                // riconosce, ed e' il motivo per cui "contatto gia' noto"
+                // senza nome lasciava l'utente a chiedersi quale.
+                dati.nome?.let {
+                    Text(it, style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(6.dp))
+                }
                 Impronta(dati.impronta, selezionabile = false)
                 Spacer(Modifier.height(6.dp))
                 Didascalia(
@@ -510,6 +522,13 @@ class DecryptActivity : ComponentActivity() {
                 )
                 Spacer(Modifier.height(10.dp))
                 Riquadro {
+                    // Cambiare nome da qui: chi rilegge una presentazione gia'
+                    // nota spesso lo fa proprio perche' il nome non gli torna,
+                    // e mandarlo a cercare i contatti era un passaggio in piu'
+                    // nel momento in cui serve meno.
+                    dati.rinomina?.let { azione ->
+                        Voce(stringResource(R.string.cipher_rename)) { azione() }
+                    }
                     // La presentazione NON sceglie il destinatario da sola: non
                     // e' autenticata, quindi chiunque potrebbe mandarne una e
                     // dirottare per chi cifri. Qui c'e' il gesto esplicito che
@@ -627,6 +646,16 @@ class DecryptActivity : ComponentActivity() {
             Schermo.Presentazione(
                 gia = gia,
                 impronta = result.senderFingerprint.orEmpty(),
+                // Il nome lo tiene il core, non l'intent: `senderLabel` e'
+                // vuoto per una chiave appena fissata e pieno per una gia'
+                // nota, che e' esattamente la distinzione che serve qui.
+                nome = result.senderLabel?.takeIf { it.isNotBlank() },
+                rinomina = peer?.let { chiave ->
+                    {
+                        runCatching { startActivity(ContactsActivity.intentNomina(this, chiave)) }
+                            .onSuccess { finish() }
+                    }
+                },
                 comeDestinatario = if (peer != null && app.isNotEmpty()) {
                     {
                         if (CipherCore.nativeSetCurrentPeer(app, peer) == CipherCore.OK) {
