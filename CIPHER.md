@@ -119,6 +119,60 @@ misurata la luminosità media dell'icona rispetto a quella di "cifra" come
 riferimento. Con testo qualunque negli appunti **+14,2** (spenta); con un
 nostro blob **+1,1** (accesa).
 
+**Apertura automatica anche a tastiera chiusa: FATTO.** `CipherActions.autoDecrypt`
+apriva `DecryptActivity` solo con la tastiera a schermo, e il caso più comune —
+copiare un blob da una chat con la tastiera chiusa — era proprio quello che non
+funzionava.
+
+*Il ragionamento che sembrava ovvio ed era sbagliato.* Da Android 10 un'app
+senza finestre visibili non può far partire un'Activity, quindi a tastiera
+chiusa la chiamata sarebbe stata ignorata in silenzio e serviva per forza una
+notifica da toccare. **Misurato, non è così.** Su Android 14 (emulatore AOSP,
+`default_background_activity_starts_enabled=false`, tastiera nascosta —
+`mInputShown=false` — e fuoco su un'altra app) `startActivity` dall'IME **apre
+la schermata**, senza blocchi in logcat e senza nessun permesso in più. Il
+sistema tratta l'IME predefinito come un caso a parte.
+
+Quindi `autoDecrypt` non guarda più `isInputViewShown`: costruisce l'intent e
+apre, punto. È più corto di prima.
+
+*Il ripiego che c'è stato e non c'è più.* Per un giro c'è stata una notifica da
+toccare, come rete di sicurezza per il caso in cui il sistema rifiutasse
+l'avvio: la tastiera provava ad aprire, guardava se qualcuno si era presentato
+(`startActivity` non segnala il rifiuto — torna come se fosse andato bene) e
+solo in caso contrario postava l'avviso. **Tolto di proposito.** Costava
+`POST_NOTIFICATIONS`, e un permesso notifiche su una tastiera che promette
+riservatezza è un cattivo segnale a fronte di un ramo che, dove è stato
+misurato, non scatta mai. Se un giorno si trovasse una ROM che rifiuta l'avvio,
+`git log` di questo file ha l'implementazione già scritta.
+
+*Conseguenza dichiarata:* dove il sistema dovesse rifiutare, **copiare non
+produce niente e non lo dice.** Non c'è modo di accorgersene dal codice, ed è il
+prezzo accettato. Restano però le altre tre vie, che non dipendono dall'avvio in
+background: barra di selezione (`ACTION_PROCESS_TEXT`), share sheet, e il tasto
+"decifra" della toolbar.
+
+*Perché non "Mostra sopra le altre app".* Era l'altra strada per l'avvio in
+background, ed è il permesso dietro il tapjacking — disegnare sopra un'altra
+app, per esempio un finto campo password sopra quello della banca. Si concede da
+Impostazioni → Accesso speciale, è permanente e senza ambito. Prenderlo per un
+effetto collaterale, e non per la funzione per cui esiste, sarebbe il contrario
+di come è costruito il resto: questa app è già l'IME predefinito e tiene in
+memoria i messaggi decifrati. Su Android 14+ quell'esenzione è per giunta
+ristretta ai casi con una finestra overlay effettivamente visibile — quindi
+probabilmente non funzionerebbe nemmeno.
+
+*Il limite che resta*, e non si aggira: tutto questo parte da
+`ClipboardHistoryManager`, che vive nel processo della tastiera. **Se quel
+processo non è in piedi non esiste nessun ascoltatore**, e copiare non produce
+niente. Verificato per caso durante le prove: dopo un `am force-stop` il giro
+non scatta più finché la tastiera non torna a servire un campo. In uso normale
+il sistema tiene vivo l'IME predefinito, ma non è una garanzia — e vale la pena
+sapere che **`am force-stop` sul pacchetto fa anche perdere la selezione come
+tastiera predefinita** (il pacchetto passa a `stopped=true` e il sistema ripiega
+su un'altra IME abilitata). La sola morte del processo, `kill -9`, non lo fa.
+
+
 **~~5. Identity card.~~ FATTO.** `CipherActions.insertIdentityCard`, agganciata
 alla pressione lunga su "cifra". Passa dal campo e non dagli appunti per
 l'asimmetria che governa il progetto: inserire nel campo è nativo per un IME,

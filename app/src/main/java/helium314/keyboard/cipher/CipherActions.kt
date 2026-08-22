@@ -392,10 +392,6 @@ object CipherActions {
         if (!CipherSettings.isAutoOpen(ime)) return
         val contenuto = testo.toString()
         if (!CipherCore.available || !CipherCore.nativeLooksLikeOurBlob(contenuto)) return
-        // Solo a tastiera visibile. Far comparire una schermata mentre l'utente
-        // sta facendo altro e' un'irruzione, e non e' quello che ha chiesto
-        // copiando.
-        if (!ime.isInputViewShown) return
         val intent = Intent(ime, DecryptActivity::class.java).apply {
             action = Intent.ACTION_SEND
             type = "text/plain"
@@ -406,6 +402,26 @@ object CipherActions {
             )
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
+        // Si apre e basta, tastiera a schermo o no.
+        //
+        // Sembrava non potersi fare: da Android 10 un'app senza finestre
+        // visibili non dovrebbe poter far partire un'Activity, e un avvio
+        // rifiutato non lancia niente — `startActivity` torna come se fosse
+        // andato bene e la finestra semplicemente non compare.
+        //
+        // Misurato invece su Android 14 (emulatore AOSP, con
+        // `default_background_activity_starts_enabled=false`): tastiera
+        // nascosta, fuoco su un'altra app, la schermata **si apre**. Il sistema
+        // tratta l'IME predefinito come un caso a parte.
+        //
+        // **Il limite, dichiarato:** e' una misura su un dispositivo solo. Dove
+        // il sistema dovesse rifiutare, copiare non produce niente e non lo
+        // dice — non c'e' niente da controllare, e infatti il ripiego che
+        // c'era (una notifica da toccare) e' stato tolto di proposito: valeva
+        // il permesso notifiche, che su una tastiera che promette riservatezza
+        // costa piu' di quanto renda. Restano le altre tre vie, che non
+        // dipendono da questo: barra di selezione, share sheet, tasto
+        // "decifra".
         runCatching { ime.startActivity(intent) }
     }
 
