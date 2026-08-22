@@ -411,6 +411,35 @@ object CipherActions {
      * esiti divergono al primo che se ne aggiunge.
      */
     /**
+     * L'ultimo blob passato di qui, per non elaborarlo due volte.
+     *
+     * Un digest e non il testo: tenere il chiaro cifrato in un campo statico
+     * significherebbe tenerlo in memoria oltre il momento in cui serviva.
+     */
+    private object Ripetuto {
+        private const val FINESTRA_MS = 10_000L
+
+        @Volatile
+        private var ultimo: String? = null
+
+        @Volatile
+        private var quando = 0L
+
+        fun gia(testo: String): Boolean {
+            val impronta = runCatching {
+                java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(testo.toByteArray())
+                    .joinToString("") { "%02x".format(it) }
+            }.getOrNull() ?: return false
+            val adesso = android.os.SystemClock.elapsedRealtime()
+            val ripetuto = impronta == ultimo && adesso - quando < FINESTRA_MS
+            ultimo = impronta
+            quando = adesso
+            return ripetuto
+        }
+    }
+
+    /**
      * Cosa e' successo al blob copiato.
      *
      * Tre esiti e non un booleano perche' i casi sono tre davvero: mostrato nel
@@ -523,6 +552,25 @@ object CipherActions {
         if (!CipherSettings.isAutoOpen(ime)) return
         val contenuto = testo.toString()
         if (!CipherCore.available || !CipherCore.nativeLooksLikeOurBlob(contenuto)) return
+        // ## La consegna e' at-least-once, e questa chiamata ha effetti
+        //
+        // `nativeHandleIncomingText` NON e' una lettura: fissa un mittente mai
+        // visto, fa avanzare la catena, brucia una conversazione. Farlo due
+        // volte sullo stesso blob significa che la seconda volta il contatto
+        // risulta "gia' noto" — e l'utente si ritrova due schermate
+        // sovrapposte, sotto quella che chiede il nome e sopra quella che dice
+        // che il nome ce l'ha gia'.
+        //
+        // Il cambio degli appunti puo' arrivare piu' di una volta per una copia
+        // sola. Non e' un difetto da rincorrere: e' una consegna at-least-once,
+        // come il ritentativo della scala di apertura. Contro una consegna
+        // ripetuta l'unica difesa corretta e' rendere idempotente cio' che non
+        // lo e', all'ingresso.
+        //
+        // Marcatore SEPARATO da quello di `DecryptActivity`: uno solo condiviso
+        // farebbe scartare all'Activity proprio l'apertura che questa funzione
+        // ha appena chiesto.
+        if (Ripetuto.gia(contenuto)) return
         // ## Prima di tutto: il pannello dentro la tastiera
         //
         // Non e' un avvio di Activity, quindi non passa da nessuna restrizione:
