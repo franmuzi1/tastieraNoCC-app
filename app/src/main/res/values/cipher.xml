@@ -173,6 +173,20 @@
     <string name="cipher_keep_alive_summary" tools:ignore="MissingTranslation">Da usare solo se togliere la restrizione batteria non e\' bastato. Aggiunge una notifica permanente il cui unico scopo e\' impedire al telefono di fermare la tastiera: e\' l\'unica cosa che i gestori di batteria piu\' aggressivi rispettano. Costa quella notifica in barra di stato e il permesso di mostrarla.</string>
     <string name="cipher_keep_alive_notice" tools:ignore="MissingTranslation">La tastiera resta viva</string>
     <string name="cipher_keep_alive_notice_text" tools:ignore="MissingTranslation">Serve solo a non farla fermare dal telefono. Non guarda niente e non manda niente.</string>
+    <!--
+        La notifica dice lo STATO, non una frase fissa. Tenere vivo il processo
+        non basta: gli appunti si possono leggere in quanto tastiera
+        predefinita, e quella si perde da sola dopo un force-stop. Senza queste
+        righe la notifica rassicurerebbe mentre non guarda piu' niente.
+
+        La riga sull'ultima copia serve a distinguere i due guasti che da fuori
+        si somigliano: "l'ascoltatore non scatta affatto" (la riga non cambia
+        mai) e "scatta ma non riconosce il blob".
+    -->
+    <string name="cipher_keep_alive_not_default" tools:ignore="MissingTranslation">Attenzione: la tastiera predefinita adesso e\' un\'altra, quindi gli appunti non li posso guardare. Riseleziona MusyBoard.</string>
+    <string name="cipher_keep_alive_none" tools:ignore="MissingTranslation">Nessuna copia vista finora.</string>
+    <string name="cipher_keep_alive_blob" tools:ignore="MissingTranslation">Ultima copia: messaggio cifrato riconosciuto.</string>
+    <string name="cipher_keep_alive_other" tools:ignore="MissingTranslation">Ultima copia: non era un messaggio cifrato.</string>
     <string name="cipher_keep_alive_channel" tools:ignore="MissingTranslation">Tastiera sempre viva</string>
     <string name="cipher_forward_secrecy" tools:ignore="MissingTranslation">Forward secrecy</string>
     <string name="cipher_forward_secrecy_summary" tools:ignore="MissingTranslation">Ogni messaggio porta una chiave nuova, e leggere una risposta butta le vecchie. Chi domani ti prendesse il telefono e la tua chiave non riaprirebbe quello che hai gia\' mandato. Il prezzo: i messaggi si aprono una volta sola, e riaprire una vecchia conversazione non sara\' piu\' possibile — nemmeno esportandola. Spegnila se ti serve poterla rileggere. Richiede che chi riceve abbia questa versione o piu\' recente e che tu sia gia\' fra i suoi contatti.</string>

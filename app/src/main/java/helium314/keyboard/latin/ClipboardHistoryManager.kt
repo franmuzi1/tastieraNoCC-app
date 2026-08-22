@@ -93,7 +93,7 @@ class ClipboardHistoryManager(
             // cronologia, quindi controllare se ha la forma di un nostro blob
             // non costa un secondo accesso agli appunti — che su Android 12+
             // farebbe comparire il toast di sistema a ogni cambio di clip.
-            CipherClipboard.noteClipboardContent(content)
+            CipherClipboard.noteClipboardContent(latinIME, content)
             // ...e se e' uno dei nostri, si apre da solo: copiare e' il gesto
             // con cui l'utente ha gia' detto che vuole leggerlo.
             CipherActions.autoDecrypt(latinIME, content)

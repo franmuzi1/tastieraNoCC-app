@@ -7,7 +7,11 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.database.ContentObserver
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import helium314.keyboard.latin.R
@@ -50,6 +54,40 @@ class CipherKeepAlive : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    /**
+     * Guarda quando cambia la tastiera predefinita.
+     *
+     * Senza, la riga di stato della notifica sarebbe cieca proprio nel caso
+     * peggiore: perdendo lo stato di predefinita, `LatinIME.onCreate` non gira
+     * piu' e l'ascoltatore degli appunti non scatta piu', quindi niente
+     * ripasserebbe di qui ad aggiornare il testo — che resterebbe a dire "la
+     * tastiera resta viva" per sempre.
+     *
+     * Un observer e non un controllo periodico: e' un evento, non uno stato da
+     * sondare, e questo servizio deve continuare a non fare lavoro.
+     */
+    private val osservatore = object : ContentObserver(Handler(Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean) {
+            runCatching { mostraNotifica() }
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        runCatching {
+            contentResolver.registerContentObserver(
+                Settings.Secure.getUriFor(Settings.Secure.DEFAULT_INPUT_METHOD),
+                false,
+                osservatore,
+            )
+        }
+    }
+
+    override fun onDestroy() {
+        runCatching { contentResolver.unregisterContentObserver(osservatore) }
+        super.onDestroy()
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // L'utente puo' aver spento l'interruttore mentre il sistema ci
         // riavviava: in quel caso ci si toglie di mezzo invece di ricomparire.
@@ -65,10 +103,32 @@ class CipherKeepAlive : Service() {
 
     private fun mostraNotifica() {
         creaCanale()
+        // Il testo dice lo STATO, non una rassicurazione fissa.
+        //
+        // Tenere vivo il processo non basta a guardare gli appunti: quel
+        // permesso ce l'abbiamo in quanto **pacchetto tastiera predefinita**,
+        // non in quanto processo in piedi. E la predefinita si perde da sola —
+        // basta un force-stop del gestore batteria e il sistema ripiega su
+        // un'altra tastiera. Il servizio pero' riparte lo stesso
+        // (`START_STICKY`), quindi senza questo controllo la notifica direbbe
+        // "la tastiera resta viva" mentre non guarda piu' niente: una
+        // rassicurazione falsa, peggio del silenzio.
+        val stato = if (sonoLaPredefinita()) {
+            getString(R.string.cipher_keep_alive_notice_text)
+        } else {
+            getString(R.string.cipher_keep_alive_not_default)
+        }
+        val copia = when (ultimaCopiaEraNostra) {
+            null -> getString(R.string.cipher_keep_alive_none)
+            true -> getString(R.string.cipher_keep_alive_blob)
+            false -> getString(R.string.cipher_keep_alive_other)
+        }
+        val testo = "$stato\n$copia"
         val notifica = NotificationCompat.Builder(this, CANALE)
             .setSmallIcon(R.drawable.ic_cipher_encrypt)
             .setContentTitle(getString(R.string.cipher_keep_alive_notice))
-            .setContentText(getString(R.string.cipher_keep_alive_notice_text))
+            .setContentText(testo)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(testo))
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setOngoing(true)
             .setShowWhen(false)
@@ -84,6 +144,18 @@ class CipherKeepAlive : Service() {
             startForeground(ID, notifica)
         }
     }
+
+    /**
+     * Siamo noi la tastiera predefinita in questo momento?
+     *
+     * Si legge dalle impostazioni sicure, che sono leggibili senza permessi. Il
+     * confronto e' sul package e non sul componente: quello che conta per
+     * l'accesso agli appunti e' il pacchetto.
+     */
+    private fun sonoLaPredefinita(): Boolean = runCatching {
+        Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
+            ?.startsWith("$packageName/") == true
+    }.getOrDefault(false)
 
     private fun creaCanale() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -105,6 +177,21 @@ class CipherKeepAlive : Service() {
 
     companion object {
         private const val CANALE = "cipher_keep_alive"
+
+        /**
+         * Esito dell'ultima copia vista, per la riga di stato della notifica.
+         * `null` finche' l'ascoltatore non ha visto passare niente — ed e'
+         * proprio quel `null` che distingue "non scatta" da "scatta e non
+         * riconosce", due guasti che da fuori si somigliano.
+         */
+        @Volatile
+        private var ultimaCopiaEraNostra: Boolean? = null
+
+        /** Chiamata dal percorso degli appunti a ogni testo che passa. */
+        fun segnalaCopia(context: Context, eraNostra: Boolean) {
+            ultimaCopiaEraNostra = eraNostra
+            aggiorna(context)
+        }
         private const val ID = 4712
 
         /**

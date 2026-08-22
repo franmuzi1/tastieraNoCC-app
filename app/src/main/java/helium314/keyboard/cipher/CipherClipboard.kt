@@ -97,6 +97,23 @@ internal object CipherClipboard {
     }
 
     /**
+     * Come [noteClipboardContent], ma dice anche cosa ha visto a chi tiene la
+     * notifica del servizio keep-alive.
+     *
+     * Serve a distinguere due guasti che da fuori si somigliano: l'ascoltatore
+     * degli appunti che **non scatta affatto** — perche' il processo non c'e',
+     * o perche' non siamo piu' la tastiera predefinita e il sistema non ci
+     * consegna il callback — e l'ascoltatore che scatta ma **non riconosce** il
+     * blob. Nel primo caso la riga della notifica non cambia mai.
+     */
+    fun noteClipboardContent(context: Context, text: CharSequence) {
+        noteClipboardContent(text)
+        if (CipherSettings.isKeepAlive(context)) {
+            runCatching { CipherKeepAlive.segnalaCopia(context, clipLooksLikeOurs) }
+        }
+    }
+
+    /**
      * Se il tasto "decifra" debba mostrarsi acceso.
      *
      * Non promette niente: dice che negli appunti c'e' qualcosa che ha la
