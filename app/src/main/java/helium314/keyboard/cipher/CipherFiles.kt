@@ -108,7 +108,10 @@ object CipherFiles {
         // La chiave temporanea appena generata su disco, prima che l'allegato
         // esca: senza, la risposta arriverebbe cifrata verso una chiave che il
         // processo si e' portato nella tomba.
-        CipherIdentity.persistKeyring(context)
+        // Come in `CipherActions.encrypt`: se le chiavi non arrivano su disco
+        // l'allegato non esce. Qui il file condiviso non e' ancora stato
+        // scritto, quindi annullare non lascia niente in giro.
+        if (!CipherIdentity.persistKeyring(context)) return null
 
         val file = writeShared(context, blob) ?: return null
         val shared = FileProvider.getUriForFile(context, authority(context), file)

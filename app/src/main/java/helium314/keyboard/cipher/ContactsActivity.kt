@@ -651,7 +651,7 @@ class ContactsActivity : ComponentActivity() {
         }
         when (result.kind) {
             CipherCore.LABEL_ASSIGNED -> {
-                CipherIdentity.persistKeyring(this)
+                if (!CipherIdentity.persistKeyring(this)) toast(R.string.cipher_keyring_not_saved)
                 ricarica()
             }
             // Il conflitto NON e' un fallimento: e' uno stato che richiede la
@@ -687,7 +687,7 @@ class ContactsActivity : ComponentActivity() {
         }
         // replace_pinned azzera `verified`: una chiave nuova non e' stata
         // confrontata fuori banda, per definizione. L'utente dovra' rifarlo.
-        CipherIdentity.persistKeyring(this)
+        if (!CipherIdentity.persistKeyring(this)) toast(R.string.cipher_keyring_not_saved)
         toast(R.string.cipher_key_replaced)
         ricarica()
     }
@@ -697,7 +697,7 @@ class ContactsActivity : ComponentActivity() {
             toast(R.string.cipher_unavailable)
             return
         }
-        CipherIdentity.persistKeyring(this)
+        if (!CipherIdentity.persistKeyring(this)) toast(R.string.cipher_keyring_not_saved)
         ricarica()
     }
 
@@ -705,7 +705,7 @@ class ContactsActivity : ComponentActivity() {
         val richiesta = CipherCore.nativeBurnConversation(peer.key, System.currentTimeMillis() / 1000)
         // Su disco SUBITO: da questo lato il rogo e' gia' avvenuto in memoria,
         // e un processo che muore adesso lascerebbe le chiavi al loro posto.
-        CipherIdentity.persistKeyring(this)
+        if (!CipherIdentity.persistKeyring(this)) toast(R.string.cipher_keyring_not_saved)
         if (richiesta == null) {
             toast(R.string.cipher_unavailable)
             ricarica()
@@ -727,7 +727,7 @@ class ContactsActivity : ComponentActivity() {
         // Su disco subito: un keyring non persistito farebbe ricomparire il
         // contatto al riavvio, e l'utente crederebbe che il pulsante non
         // funzioni.
-        CipherIdentity.persistKeyring(this)
+        if (!CipherIdentity.persistKeyring(this)) toast(R.string.cipher_keyring_not_saved)
         toast(R.string.cipher_forgotten)
         ricarica()
     }
@@ -779,7 +779,10 @@ class ContactsActivity : ComponentActivity() {
         }
         val intent = CipherFiles.shareIntent(this, peer, uri, System.currentTimeMillis() / 1000)
         if (intent == null) {
-            toast(getString(R.string.cipher_file_too_big, massimo / (1024 * 1024)))
+            // NON "troppo grande": la dimensione e' gia' stata controllata qui
+            // sopra, e dire la causa sbagliata manda a cercare nel posto
+            // sbagliato.
+            toast(R.string.cipher_file_not_prepared)
             return
         }
         runCatching {

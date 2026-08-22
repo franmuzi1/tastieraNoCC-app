@@ -135,7 +135,16 @@ object CipherActions {
         // chiave temporanea nuova, e se il processo muore prima che sia
         // salvata la risposta dell'altro arriva cifrata verso una chiave che
         // non esiste piu'. Il costo e' una scrittura per messaggio inviato.
-        CipherIdentity.persistKeyring(ime)
+        // L'esito si guarda. Con la forward secrecy accesa cifrare ha appena
+        // generato una chiave usa-e-getta, e se non arriva su disco il
+        // messaggio parte lo stesso ma la risposta non si aprira' mai: un
+        // fallimento che si manifesta ore dopo, a carico dell'altra persona.
+        // Qui si e' ancora in tempo — il campo non e' stato toccato — quindi si
+        // annulla invece di spedire.
+        if (!CipherIdentity.persistKeyring(ime)) {
+            toast(ime, R.string.cipher_keyring_not_saved_send)
+            return
+        }
         if (composed != null) {
             // Il campo dell'app e' vuoto per costruzione: qui non si sostituisce
             // niente, si consegna. E il buffer si svuota solo DOPO che il blob

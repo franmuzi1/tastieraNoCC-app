@@ -139,6 +139,28 @@
         <item name="android:textSize">16sp</item>
         <item name="android:background">?android:attr/selectableItemBackground</item>
     </style>
+    <!--
+        Il keyring non si e' scritto su disco.
+
+        Due messaggi e non uno, perche' le conseguenze sono diverse e vanno
+        dette diverse. Prima che il messaggio esca si puo' ancora annullare, e
+        allora si annulla; dopo che il pin o l'etichetta sono gia' cambiati in
+        memoria non si puo' piu', e l'unica cosa onesta e' avvisare che
+        potrebbero non sopravvivere al riavvio.
+
+        Il fallimento silenzioso qui e' il peggiore possibile: con la forward
+        secrecy accesa significa mandare un messaggio la cui risposta non si
+        aprira' mai, e su un mittente appena fissato significa riaprire al
+        riavvio la finestra di MITM che il pin serve a chiudere.
+    -->
+    <string name="cipher_keyring_not_saved" tools:ignore="MissingTranslation">Le chiavi non si sono salvate: questa modifica potrebbe non esserci piu\' al prossimo riavvio. Controlla lo spazio libero sul telefono.</string>
+    <string name="cipher_keyring_not_saved_send" tools:ignore="MissingTranslation">Non spedito: non si sono potute salvare le chiavi di questo messaggio, e senza quelle la risposta potrebbe non aprirsi piu\'. Controlla lo spazio libero e riprova.</string>
+    <!--
+        Prima diceva "file troppo grande" per qualunque fallimento, compresi
+        quelli che non c\'entrano niente con la dimensione — che il limite viene
+        gia' controllato prima, con un messaggio suo.
+    -->
+    <string name="cipher_file_not_prepared" tools:ignore="MissingTranslation">Non si e\' potuto preparare l\'allegato cifrato.</string>
     <string name="cipher_forward_secrecy" tools:ignore="MissingTranslation">Forward secrecy</string>
     <string name="cipher_forward_secrecy_summary" tools:ignore="MissingTranslation">Ogni messaggio porta una chiave nuova, e leggere una risposta butta le vecchie. Chi domani ti prendesse il telefono e la tua chiave non riaprirebbe quello che hai gia\' mandato. Il prezzo: i messaggi si aprono una volta sola, e riaprire una vecchia conversazione non sara\' piu\' possibile — nemmeno esportandola. Spegnila se ti serve poterla rileggere. Richiede che chi riceve abbia questa versione o piu\' recente e che tu sia gia\' fra i suoi contatti.</string>
     <string name="cipher_forget" tools:ignore="MissingTranslation">Dimentica questo contatto</string>

@@ -251,6 +251,7 @@ object CipherIdentity {
     @RequiresApi(Build.VERSION_CODES.M)
     private fun initLocked(context: Context): CipherState {
         var secret: ByteArray? = null
+        var keyring: ByteArray? = null
         try {
             val loaded = if (CipherStorage.exists(context, CipherStorage.IDENTITY)) {
                 val blob = CipherStorage.read(context, CipherStorage.IDENTITY)
@@ -265,7 +266,7 @@ object CipherIdentity {
             }
             secret = loaded
 
-            val keyring = if (CipherStorage.exists(context, CipherStorage.KEYRING)) {
+            keyring = if (CipherStorage.exists(context, CipherStorage.KEYRING)) {
                 val blob = CipherStorage.read(context, CipherStorage.KEYRING)
                     ?: return unreadableOrLocked(context, CipherPart.KEYRING)
                 // Un keyring illeggibile NON si sostituisce con uno vuoto:
@@ -291,7 +292,14 @@ object CipherIdentity {
         } finally {
             // Il core ha gia' copiato quello che gli serve; qui resta una copia
             // in heap che la GC non azzera.
+            //
+            // Vale per entrambi, e il keyring non e' meno delicato del segreto:
+            // ci stanno dentro le NOSTRE prechiavi private, che il core tiene
+            // in `Zeroizing` proprio perche' sono il materiale che la forward
+            // secrecy esiste per far sparire. Lasciarle in heap qui rende vana
+            // di la'.
             secret?.fill(0)
+            keyring?.fill(0)
         }
     }
 
@@ -344,7 +352,12 @@ object CipherIdentity {
     @RequiresApi(Build.VERSION_CODES.M)
     private fun persistLocked(context: Context): Boolean {
         val keyring = CipherCore.nativeExportKeyring() ?: return false
-        val blob = CipherKeystore.wrap(AAD_KEYRING, keyring) ?: return false
-        return CipherStorage.write(context, CipherStorage.KEYRING, blob)
+        return try {
+            val blob = CipherKeystore.wrap(AAD_KEYRING, keyring) ?: return false
+            CipherStorage.write(context, CipherStorage.KEYRING, blob)
+        } finally {
+            // Vedi [initLocked]: qui dentro ci sono prechiavi private.
+            keyring.fill(0)
+        }
     }
 }

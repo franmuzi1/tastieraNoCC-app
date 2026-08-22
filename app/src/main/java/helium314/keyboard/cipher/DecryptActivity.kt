@@ -168,7 +168,12 @@ class DecryptActivity : ComponentActivity() {
         // essersi spostato. Senza questa riga il pin vivrebbe solo in memoria
         // e sparirebbe al riavvio, riaprendo a ogni reboot la finestra di MITM
         // che il pin serve a chiudere.
-        CipherIdentity.persistKeyring(this)
+        //
+        // Qui il pin e' gia' avvenuto in memoria e non si puo' annullare:
+        // l'unica cosa onesta e' dire che potrebbe non sopravvivere al riavvio.
+        if (!CipherIdentity.persistKeyring(this)) {
+            Toast.makeText(this, R.string.cipher_keyring_not_saved, Toast.LENGTH_LONG).show()
+        }
 
         // Decifrare stabilisce il destinatario: chi legge e poi risponde ha
         // gia' scelto leggendo, ed e' la leva che rende automatico il caso
@@ -235,7 +240,9 @@ class DecryptActivity : ComponentActivity() {
 
         // Un mittente mai visto e' stato appena fissato: il keyring va scritto,
         // altrimenti il pin vive solo in memoria.
-        CipherIdentity.persistKeyring(this)
+        if (!CipherIdentity.persistKeyring(this)) {
+            Toast.makeText(this, R.string.cipher_keyring_not_saved, Toast.LENGTH_LONG).show()
+        }
         showFile(result, mio = result.kind == CipherCore.KIND_OWN_FILE)
     }
 

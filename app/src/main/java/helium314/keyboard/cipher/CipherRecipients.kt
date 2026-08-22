@@ -77,14 +77,29 @@ internal object CipherRecipients {
         CipherStorage.delete(context, CipherStorage.RECIPIENTS)
     }
 
+    /**
+     * Il chiaro non resta in heap oltre il necessario: qui dentro ci sono le
+     * chiavi dei peer, cioe' proprio l'elenco di con chi parli che questo
+     * progetto esiste per non regalare. Stessa regola del segreto di identita'
+     * in [CipherIdentity].
+     */
     private fun load(context: Context): Map<String, ByteArray> {
         val blob = CipherStorage.read(context, CipherStorage.RECIPIENTS) ?: return emptyMap()
         val plain = CipherKeystore.unwrap(AAD, blob) ?: return emptyMap()
-        return runCatching { decode(plain) }.getOrDefault(emptyMap())
+        return try {
+            runCatching { decode(plain) }.getOrDefault(emptyMap())
+        } finally {
+            plain.fill(0)
+        }
     }
 
     private fun save(context: Context, map: Map<String, ByteArray>) {
-        val blob = CipherKeystore.wrap(AAD, encode(map)) ?: return
+        val plain = encode(map)
+        val blob = try {
+            CipherKeystore.wrap(AAD, plain) ?: return
+        } finally {
+            plain.fill(0)
+        }
         CipherStorage.write(context, CipherStorage.RECIPIENTS, blob)
     }
 
