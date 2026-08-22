@@ -239,6 +239,53 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
         <data android:mimeType="application/octet-stream" />
     </intent-filter>
 
+    <!--
+        Via 5: "Apri con" su un file .kc gia' salvato.
+
+        Il codice la gestiva gia' — `extractStream` legge `intent.data` per
+        ACTION_VIEW — ma il filtro non c'era, quindi la tastiera non compariva
+        mai fra le app suggerite e l'unico modo era passare da "condividi".
+
+        Stesso compromesso del filtro qui sopra, e per la stessa ragione: il tipo
+        MIME e' l'unica cosa su cui un filtro puo' discriminare, e una chat manda
+        un `.kc` come `application/octet-stream`, che e' il tipo di qualunque
+        file che il sistema non riconosce. Comparire per tutti quelli e' il
+        prezzo per comparire per i nostri. Chi apre un file che non e' nostro
+        legge "questo testo non e' cifrato" e chiude.
+    -->
+    <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:mimeType="application/octet-stream" />
+    </intent-filter>
+
+    <!--
+        Via 4: un `.kc` gia' salvato sul telefono, toccato da un file manager o
+        dai Download. Il codice questa strada la sapeva gia' percorrere
+        (`extractStream` per ACTION_VIEW legge `intent.data`): mancava solo
+        dichiararla, e finche' non era dichiarata l'unico modo di riaprire un
+        allegato salvato era ricondividerlo.
+
+        Si paga lo stesso prezzo del filtro qui sopra e per lo stesso motivo:
+        compariamo in "Apri con" per qualunque file che il sistema non sa
+        tipizzare.
+
+        Un secondo filtro piu' stretto (schemi content e file con pathPattern
+        `.*\\.kc`, come quello dei `.dict`) e' stato valutato e scartato:
+        matcherebbe un sottoinsieme di questo, perche' un filtro che dichiara
+        il solo mimeType copre gia' entrambi quegli schemi. Non aggiungerebbe
+        nessun caso, solo una seconda riga da tenere allineata. E stretto non
+        potrebbe stare da solo: su `content://` il nome del file nel path
+        spesso non c'e', perche' il provider non lo espone.
+    -->
+    <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:mimeType="application/octet-stream" />
+    </intent-filter>
+
 </activity>
 
 <!--
