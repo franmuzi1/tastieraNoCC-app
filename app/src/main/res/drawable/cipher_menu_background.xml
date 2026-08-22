@@ -1,0 +1,16 @@
+<!--
+    keyboard-cipher: sfondo del menu a tendina della riga di composizione.
+
+    Solo la forma: il colore lo mette `CipherCompose.bind` dalla tavolozza
+    (POPUP_KEYS_BACKGROUND), perche' un colore scritto qui sarebbe l'unico
+    elemento della tastiera a non seguire il tema scelto dall'utente.
+
+    Il bordo tondo e' quello del pannello che compare tenendo premuto un tasto:
+    e' l'unica altra tendina che questa tastiera mostra, e due raggi diversi si
+    noterebbero.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FFFFFF" />
+    <corners android:radius="8dp" />
+</shape>

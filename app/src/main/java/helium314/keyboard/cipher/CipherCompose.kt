@@ -14,7 +14,11 @@ import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import androidx.core.view.isVisible
+import helium314.keyboard.event.Event
+import helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode
+import helium314.keyboard.latin.LatinIME
 import helium314.keyboard.latin.R
+import helium314.keyboard.latin.common.Constants
 import helium314.keyboard.latin.common.ColorType
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.InputTypeUtils
@@ -72,6 +76,9 @@ object CipherCompose {
     private var row: CipherComposeView? = null
     private var barra: View? = null
     private var destinatario: TextView? = null
+
+    /** La tendina della selezione. Vedi [mostraMenu]. */
+    private var menu: View? = null
 
     /**
      * Il servizio, per poter aprire la scelta del destinatario dal tocco sul
@@ -203,6 +210,8 @@ object CipherCompose {
         if (found == null) return
         if (connection == null) connection = CipherConnection(view) { updateRow() }
         found.onSelezione = { inizio, fine -> spostaSelezione(inizio, fine) }
+        found.onMenu = { x -> mostraMenu(x) }
+        found.onMenuDaChiudere = { chiudiMenu() }
 
         val colors = Settings.getValues().mColors
         barra?.let { colors.setBackground(it, ColorType.STRIP_BACKGROUND) }
@@ -210,6 +219,7 @@ object CipherCompose {
         found.setTextColor(colors.get(ColorType.KEY_TEXT))
         found.setHintTextColor(colors.get(ColorType.KEY_HINT_TEXT))
         found.setCaretColor(colors.get(ColorType.KEY_TEXT))
+        collegaMenu(view, colors)
         updateRow()
         updateRecipient(owner)
     }
@@ -369,6 +379,85 @@ object CipherCompose {
         )
     }
 
+    // ========================================================================
+    // Il menu a tendina della selezione
+    // ========================================================================
+
+    /**
+     * Aggancia le cinque voci, una volta per gerarchia.
+     *
+     * **Nessuna azione e' scritta qui.** Ognuna manda il codice tasto che
+     * HeliBoard usa gia' per la stessa cosa, e finisce in `InputLogic` dove le
+     * regole stanno scritte una volta sola — compreso il divieto di copiare il
+     * chiaro, che altrimenti avrebbe due implementazioni destinate a divergere.
+     * Vedi `InputLogic.rifiutaCopiaDelChiaro`.
+     */
+    private fun collegaMenu(view: View, colori: helium314.keyboard.latin.common.Colors) {
+        val tendina = view.findViewById<View>(R.id.cipher_selection_menu)
+        menu = tendina ?: return
+        colori.setBackground(tendina, ColorType.POPUP_KEYS_BACKGROUND)
+        val voci = listOf(
+            R.id.cipher_menu_copy to KeyCode.CLIPBOARD_COPY,
+            R.id.cipher_menu_paste to KeyCode.CLIPBOARD_PASTE,
+            R.id.cipher_menu_cut to KeyCode.CLIPBOARD_CUT,
+            R.id.cipher_menu_delete to KeyCode.DELETE,
+            R.id.cipher_menu_select_all to KeyCode.CLIPBOARD_SELECT_ALL,
+        )
+        for ((id, codice) in voci) {
+            val voce = tendina.findViewById<TextView>(id) ?: continue
+            voce.setTextColor(colori.get(ColorType.KEY_TEXT))
+            voce.setOnClickListener {
+                // Prima si chiude: "seleziona tutto" lascia una selezione viva,
+                // e una tendina che resta aperta sopra il risultato nasconde
+                // proprio cio' che si e' appena ottenuto.
+                chiudiMenu()
+                (servizio as? LatinIME)?.onEvent(
+                    Event.createSoftwareKeypressEvent(
+                        codice, 0, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false,
+                    )
+                )
+            }
+        }
+    }
+
+    /**
+     * Apre la tendina sotto il punto in cui il dito si e' alzato.
+     *
+     * La x arriva dalla riga e non si usa cosi' com'e': va rientrata perche' la
+     * tendina non esca dallo schermo a destra. La y non serve — la riga e' alta
+     * 56dp e sta in cima, quindi la tendina scende sempre da li' sui tasti, che
+     * e' l'unico spazio disponibile: sopra c'e' l'app.
+     */
+    private fun mostraMenu(x: Float) {
+        val tendina = menu ?: return
+        val riga = row ?: return
+        tendina.visibility = View.VISIBLE
+        // Misurata prima di poterla posizionare: a vista appena mostrata la
+        // larghezza e' ancora zero, e rientrare qualcosa di largo zero non
+        // rientra niente.
+        tendina.post {
+            val padre = tendina.parent as? View ?: return@post
+            val margine = (x + riga.left - tendina.width / 2f)
+                .coerceIn(0f, (padre.width - tendina.width).coerceAtLeast(0).toFloat())
+            tendina.translationX = margine
+        }
+    }
+
+    private fun chiudiMenu() {
+        menu?.visibility = View.GONE
+    }
+
+    /**
+     * Chiude la tendina se la selezione non c'e' piu'.
+     *
+     * Chiamata a ogni aggiornamento della riga: cancellare, incollare o
+     * scrivere fanno collassare la selezione, e un menu che sopravvive a cio'
+     * su cui agiva offre azioni che non hanno piu' un bersaglio.
+     */
+    private fun chiudiMenuSenzaSelezione(inizio: Int, fine: Int) {
+        if (fine <= inizio) chiudiMenu()
+    }
+
     private fun updateRow() {
         val view = row ?: return
         barra?.isVisible = enabled && !suppressed
@@ -381,7 +470,10 @@ object CipherCompose {
         // su dove finira' il prossimo carattere.
         val start = buffer?.let { Selection.getSelectionStart(it) } ?: 0
         val end = buffer?.let { Selection.getSelectionEnd(it) } ?: 0
-        view.setComposed(text, minOf(start, end).coerceAtLeast(0), maxOf(start, end).coerceAtLeast(0))
+        val a = minOf(start, end).coerceAtLeast(0)
+        val b = maxOf(start, end).coerceAtLeast(0)
+        chiudiMenuSenzaSelezione(a, b)
+        view.setComposed(text, a, b)
     }
 
     /**

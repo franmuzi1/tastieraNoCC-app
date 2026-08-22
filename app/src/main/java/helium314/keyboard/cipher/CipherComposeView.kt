@@ -107,6 +107,20 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
      */
     var onSelezione: ((Int, Int) -> Unit)? = null
 
+    /**
+     * Il dito si e' alzato e sotto e' rimasta una selezione: e' il momento di
+     * offrire cosa farci. Riceve la x del punto lasciato, per far uscire la
+     * tendina da li' invece che da un angolo fisso.
+     *
+     * Al rilascio e non durante: mentre si trascina la selezione cambia a ogni
+     * pixel, e un menu che compare in mezzo al gesto e' un menu che si finisce
+     * per toccare per sbaglio.
+     */
+    var onMenu: ((Float) -> Unit)? = null
+
+    /** Chiude la tendina: la selezione non c'e' piu', o non e' piu' sua. */
+    var onMenuDaChiudere: (() -> Unit)? = null
+
     private val pressioneLunga = Runnable {
         val (inizio, fine) = parolaIntorno(ancora)
         if (fine > inizio) {
@@ -168,6 +182,9 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 parent?.requestDisallowInterceptTouchEvent(true)
+                // Un tocco nuovo annulla quello di prima: la tendina rimasta
+                // aperta si riferirebbe a una selezione che sta per cambiare.
+                onMenuDaChiudere?.invoke()
                 ancora = offset
                 gestoInCorso = true
                 trascinando = false
@@ -204,9 +221,14 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
                 // Un tocco secco che non ha ne' trascinato ne' selezionato una
                 // parola vuol dire una cosa sola: il cursore va li'.
                 if (!trascinando && !giaSelezionato) onSelezione?.invoke(offset, offset)
+                val avevaSelezionato = trascinando || giaSelezionato
                 gestoInCorso = false
                 trascinando = false
                 giaSelezionato = false
+                // Solo se il gesto ha davvero prodotto una selezione. Un tocco
+                // secco sposta il cursore e basta: li' non c'e' niente da
+                // tagliare o copiare, e la tendina sarebbe di intralcio.
+                if (avevaSelezionato && selectionEnd > selectionStart) onMenu?.invoke(event.x)
                 return true
             }
             MotionEvent.ACTION_CANCEL -> {

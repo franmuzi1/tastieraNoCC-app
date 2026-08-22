@@ -607,6 +607,41 @@ proprio mentre si cerca di leggere piu' su. Ora mentre il dito e' giu' comanda
 il dito, e `setComposed` non riposiziona: trentasei fotogrammi su trentasei
 restano dove il gesto li ha portati.
 
+### Il menu della selezione
+
+Selezionare serviva a poco finche' non c'era niente da farci. La riga non ha il
+menu di sistema e non puo' averlo: quella barra la offre Android al campo che ha
+il **fuoco**, e la finestra di un IME non lo prende mai — se lo prendesse, lo
+toglierebbe al campo dell'app.
+
+Quindi una tendina propria, che si apre rilasciando il dito dopo aver
+selezionato del testo **nella riga**, con le cinque voci di qualunque campo:
+copia, incolla, taglia, elimina, seleziona tutto.
+
+*Al rilascio e non durante il gesto:* mentre si trascina la selezione cambia a
+ogni pixel, e un menu che compare in mezzo e' un menu che si tocca per sbaglio.
+E solo se il gesto ha davvero prodotto una selezione — un tocco secco sposta il
+cursore, e li' non c'e' niente da tagliare.
+
+*Dove sta:* dentro `KeyboardWrapperView`, che e' un `FrameLayout`, quindi si
+sovrappone ai tasti. Non poteva prendersi altezza propria — la riga e' alta
+56dp fisse apposta perche' la tastiera non cresca mentre si scrive — e sopra non
+c'era spazio: sopra c'e' l'app.
+
+*Come e' fatto:* `POPUP_KEYS_BACKGROUND` e `KEY_TEXT` dalla tavolozza, gli
+stessi del pannello che esce tenendo premuto un tasto, cosi' segue il tema
+scelto dall'utente. Le etichette sono le stringhe di sistema gia' tradotte
+(`@android:string/copy` e compagne, esposte da HeliBoard in `strings.xml`): le
+stesse parole che l'utente legge in ogni altro campo del telefono. "Elimina"
+no, perche' la stringa di sistema corrispondente e' privata.
+
+**Nessuna azione e' implementata li'.** Ogni voce manda il codice tasto che
+HeliBoard usa gia' per la stessa cosa e finisce in `InputLogic`, dove le regole
+stanno scritte una volta sola — compreso il divieto di copiare il chiaro, che
+altrimenti avrebbe due implementazioni destinate a divergere. Verificato sul
+dispositivo: con l'interruttore acceso (default) "copia" e "taglia" non fanno
+nulla e compare la spiegazione, mentre "elimina" e "seleziona tutto" agiscono.
+
 ## Tre guasti trovati usando la tastiera per davvero
 
 Nessuno dei tre si vedeva rileggendo il codice, e il primo rendeva il sistema

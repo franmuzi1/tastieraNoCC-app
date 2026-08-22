@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    keyboard-cipher: il menu a tendina della riga di composizione.
+
+    Compare rilasciando il dito dopo aver selezionato del testo NELLA RIGA, e
+    solo li': e' l'unico campo in cui il chiaro esiste, ed e' l'unico che non
+    ha il menu di sistema, perche' la finestra di un IME non prende il fuoco e
+    senza fuoco Android non offre nessuna barra di selezione.
+
+    Sta dentro `KeyboardWrapperView`, che e' un FrameLayout, quindi si sovrappone
+    ai tasti invece di rubare altezza: la riga e' alta 56dp fisse e la tastiera
+    non deve crescere mentre si scrive.
+
+    Colori e sfondo si assegnano in `CipherCompose.bind`, dalla tavolozza di
+    HeliBoard: POPUP_KEYS_BACKGROUND e KEY_TEXT, gli stessi del pannello che
+    esce tenendo premuto un tasto. Cosi' segue il tema scelto dall'utente
+    invece di inventarsi una faccia propria.
+
+    Le etichette sono le stringhe di sistema (@android:string/copy e compagne):
+    le stesse parole, gia' tradotte, che l'utente vede in qualunque altro campo
+    di testo del telefono.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/cipher_selection_menu"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="top|start"
+    android:orientation="vertical"
+    android:visibility="gone"
+    android:background="@drawable/cipher_menu_background"
+    android:elevation="8dp"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp">
+
+    <TextView
+        android:id="@+id/cipher_menu_copy"
+        style="@style/CipherMenuItem"
+        android:text="@string/copy" />
+
+    <TextView
+        android:id="@+id/cipher_menu_paste"
+        style="@style/CipherMenuItem"
+        android:text="@string/paste" />
+
+    <TextView
+        android:id="@+id/cipher_menu_cut"
+        style="@style/CipherMenuItem"
+        android:text="@string/cut" />
+
+    <TextView
+        android:id="@+id/cipher_menu_delete"
+        style="@style/CipherMenuItem"
+        android:text="@string/cipher_menu_delete" />
+
+    <TextView
+        android:id="@+id/cipher_menu_select_all"
+        style="@style/CipherMenuItem"
+        android:text="@string/select_all" />
+</LinearLayout>

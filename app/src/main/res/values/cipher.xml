@@ -116,6 +116,29 @@
     <string name="cipher_block_copy_summary" tools:ignore="MissingTranslation">Copia e taglia non funzionano finche\' stai scrivendo nella riga della tastiera. Il testo negli appunti lo puo\' leggere l\'app di chat che ha il fuoco, e resta nella cronologia appunti sul telefono: sarebbe lo stesso buco che scrivere dentro la tastiera serve a chiudere. Spegnendolo puoi copiare, ma quello che copi esce dalla tastiera.</string>
     <string name="cipher_auto_open" tools:ignore="MissingTranslation">Apri da solo i messaggi copiati</string>
     <string name="cipher_auto_open_summary" tools:ignore="MissingTranslation">Quando copi un messaggio cifrato, la tastiera lo apre senza che tu prema niente, anche se la tastiera non e\' a schermo. Funziona solo con la cronologia appunti attiva: e\' li\' che il testo viene gia\' letto, e leggerlo di nostra iniziativa farebbe della tastiera un\'app che spia gli appunti.</string>
+    <!--
+        Voci del menu a tendina della riga. Le altre quattro sono le stringhe di
+        sistema gia' tradotte (@android:string/copy e compagne, esposte in
+        strings.xml): stesse parole di qualunque campo di testo del telefono.
+        "Elimina" invece si scrive qui: la stringa di sistema corrispondente e'
+        privata e non si puo' referenziare da un'app.
+    -->
+    <string name="cipher_menu_delete" tools:ignore="MissingTranslation">Elimina</string>
+    <!--
+        Voce del menu a tendina. Altezza comoda al dito (48dp e' il minimo
+        raccomandato per un bersaglio tattile), colore assegnato in
+        `CipherCompose.bind` dalla tavolozza: qui non si scrive nessun colore.
+    -->
+    <style name="CipherMenuItem">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:minWidth">180dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingStart">20dp</item>
+        <item name="android:paddingEnd">20dp</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:background">?android:attr/selectableItemBackground</item>
+    </style>
     <string name="cipher_forward_secrecy" tools:ignore="MissingTranslation">Forward secrecy</string>
     <string name="cipher_forward_secrecy_summary" tools:ignore="MissingTranslation">Ogni messaggio porta una chiave nuova, e leggere una risposta butta le vecchie. Chi domani ti prendesse il telefono e la tua chiave non riaprirebbe quello che hai gia\' mandato. Il prezzo: i messaggi si aprono una volta sola, e riaprire una vecchia conversazione non sara\' piu\' possibile — nemmeno esportandola. Spegnila se ti serve poterla rileggere. Richiede che chi riceve abbia questa versione o piu\' recente e che tu sia gia\' fra i suoi contatti.</string>
     <string name="cipher_forget" tools:ignore="MissingTranslation">Dimentica questo contatto</string>
