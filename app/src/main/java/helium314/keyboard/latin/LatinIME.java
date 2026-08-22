@@ -60,6 +60,7 @@ import helium314.keyboard.latin.SuggestedWords.SuggestedWordInfo;
 import helium314.keyboard.latin.common.ColorType;
 import helium314.keyboard.cipher.CipherActions;
 import helium314.keyboard.cipher.CipherCompose;
+import helium314.keyboard.cipher.CipherKeepAlive;
 import helium314.keyboard.latin.common.Constants;
 import helium314.keyboard.latin.common.CoordinateUtils;
 import helium314.keyboard.latin.common.InputPointers;
@@ -553,6 +554,13 @@ public class LatinIME extends InputMethodService implements
 
         loadSettings();
         mClipboardHistoryManager.onCreate();
+        // keyboard-cipher: se l'utente ha chiesto di tenere viva la tastiera, il
+        // servizio va (ri)avviato qui. E' il primo momento in cui il processo
+        // esiste dopo un riavvio del telefono o dopo essere stato ucciso, ed e'
+        // anche il punto in cui l'ascoltatore degli appunti viene registrato:
+        // tenerli insieme e' l'unico modo perche' il servizio protegga
+        // esattamente cio' per cui esiste.
+        CipherKeepAlive.Companion.aggiorna(this);
         mHandler.onCreate();
         if (FoldableUtils.INSTANCE.isFoldable())
             foldableObserver = new FoldableUtils.FoldableObserver(this);

@@ -138,6 +138,38 @@ object CipherSettings {
 
     fun isBlockCopy(context: Context): Boolean = isBlockCopy(context.prefs())
 
+    /**
+     * Tenere vivo il processo della tastiera con un servizio in primo piano.
+     *
+     * ## Il problema che risolve, e perche' non ce n'erano altri
+     *
+     * Il riconoscimento di un blob negli appunti vive in
+     * `ClipboardHistoryManager`, cioe' nel processo della tastiera: se quel
+     * processo non c'e', copiare non produce niente. E **non c'e' modo di
+     * accorgersene**: Android non ha nessun evento per gli appunti — nessun
+     * broadcast dichiarabile, nessun observer — quindi non esiste niente che
+     * possa risvegliare un'app ferma quando l'utente copia.
+     *
+     * A fermarla e' tipicamente il gestore batteria del produttore, che fa un
+     * force-stop vero: il pacchetto passa a `stopped` e il sistema ripiega
+     * perfino su un'altra tastiera. Un servizio in primo piano e' la sola cosa
+     * che quei gestori di solito rispettano, perche' ha una notifica visibile.
+     *
+     * ## Perche' e' SPENTO di default
+     *
+     * Costa una notifica permanente in barra di stato e il permesso notifiche,
+     * che su una tastiera che promette riservatezza non e' gratis. La strada da
+     * provare prima e' togliere la restrizione batteria all'app: stessa
+     * efficacia, zero ingombro. Vedi la voce che apre quella schermata.
+     */
+    const val PREF_KEEP_ALIVE = "cipher_keep_alive"
+    const val DEFAULT_KEEP_ALIVE = false
+
+    fun isKeepAlive(prefs: SharedPreferences): Boolean =
+        isEnabled(prefs) && prefs.getBoolean(PREF_KEEP_ALIVE, DEFAULT_KEEP_ALIVE)
+
+    fun isKeepAlive(context: Context): Boolean = isKeepAlive(context.prefs())
+
     fun isEnabled(prefs: SharedPreferences): Boolean =
         prefs.getBoolean(PREF_ENABLED, DEFAULT_ENABLED)
 

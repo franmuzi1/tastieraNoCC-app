@@ -13,6 +13,20 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WRITE_USER_DICTIONARY" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!--
+      Servono al solo servizio che tiene viva la tastiera, che e' SPENTO di
+      default: vedi CipherKeepAlive e `PREF_KEEP_ALIVE`. Dichiararli non attiva
+      niente — la notifica compare solo se l'utente accende l'interruttore, e su
+      Android 13+ il permesso glielo si chiede in quel momento.
+
+      `specialUse` perche' nessuno dei tipi previsti descrive cio' che facciamo:
+      non riproduciamo, non localizziamo, non sincronizziamo. Il servizio non fa
+      lavoro, esiste e basta, per impedire al gestore batteria del telefono di
+      fermare il processo che guarda gli appunti.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application android:label="@string/english_ime_name"
             android:name="helium314.keyboard.latin.App"
@@ -37,6 +51,16 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
                 <action android:name="android.view.InputMethod" />
             </intent-filter>
             <meta-data android:name="android.view.im" android:resource="@xml/method_dummy" />
+        </service>
+
+        <!-- keyboard-cipher: vedi CipherKeepAlive. Non esportato: lo avvia
+             solo l'app, quando l'utente accende l'interruttore. -->
+        <service android:name="helium314.keyboard.cipher.CipherKeepAlive"
+                android:exported="false"
+                android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keeps the keyboard process alive so it can notice encrypted messages copied to the clipboard; the OS offers no clipboard wake-up event." />
         </service>
 
         <service android:name=".spellcheck.AndroidSpellCheckerService"

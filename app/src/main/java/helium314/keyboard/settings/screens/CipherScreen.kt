@@ -1,12 +1,20 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard.settings.screens
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import helium314.keyboard.cipher.CipherKeepAlive
 import helium314.keyboard.cipher.CipherSettings
 import helium314.keyboard.cipher.ContactsActivity
 import helium314.keyboard.keyboard.KeyboardSwitcher
@@ -52,6 +60,10 @@ fun CipherScreen(
         if (enabled && CipherSettings.isComposeMode(prefs)) CipherSettings.PREF_BLOCK_COPY else null,
         if (enabled) CipherSettings.PREF_AUTO_OPEN else null,
         if (enabled) CipherSettings.PREF_FORWARD_SECRECY else null,
+        // Le due risposte a "il telefono ferma la tastiera e copiare non fa
+        // piu' niente", nell'ordine giusto: prima quella che non costa niente.
+        if (enabled) SettingsWithoutKey.CIPHER_BATTERY else null,
+        if (enabled) CipherSettings.PREF_KEEP_ALIVE else null,
         if (enabled) SettingsWithoutKey.CIPHER_CONTACTS else null,
     )
     SearchSettingsScreen(
@@ -107,6 +119,58 @@ fun createCipherSettings(context: Context) = listOf(
         R.string.cipher_forward_secrecy, R.string.cipher_forward_secrecy_summary
     ) {
         SwitchPreference(it, CipherSettings.DEFAULT_FORWARD_SECRECY)
+    },
+    Setting(
+        context, SettingsWithoutKey.CIPHER_BATTERY,
+        R.string.cipher_battery, R.string.cipher_battery_summary
+    ) {
+        val ctx = LocalContext.current
+        // Lo stato si puo' LEGGERE senza permessi; e' chiederlo con un dialogo
+        // che ne vorrebbe uno. Qui si apre la schermata di sistema e basta:
+        // un tocco in piu' per l'utente, un permesso in meno nel manifest, e
+        // "zero permessi" resta un vincolo vero invece di un ricordo.
+        val gia = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            (ctx.getSystemService(Context.POWER_SERVICE) as? PowerManager)
+                ?.isIgnoringBatteryOptimizations(ctx.packageName) == true
+        Preference(
+            name = it.title,
+            description = if (gia) stringResource(R.string.cipher_battery_ok) else it.description,
+            onClick = {
+                runCatching {
+                    ctx.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                }.onFailure {
+                    // Non tutti i telefoni hanno quella schermata: si ripiega
+                    // sulla pagina dell'app, da cui la batteria si raggiunge.
+                    runCatching {
+                        ctx.startActivity(
+                            Intent(
+                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                Uri.fromParts("package", ctx.packageName, null),
+                            )
+                        )
+                    }
+                }
+            },
+        ) { NextScreenIcon() }
+    },
+    Setting(
+        context, CipherSettings.PREF_KEEP_ALIVE,
+        R.string.cipher_keep_alive, R.string.cipher_keep_alive_summary
+    ) {
+        val ctx = LocalContext.current
+        // Il permesso si chiede accendendo, non alla prima notifica: senza, il
+        // servizio partirebbe e la notifica non comparirebbe, cioe' l'unica
+        // cosa che lo rende rispettato dai gestori di batteria.
+        val chiediNotifiche = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { CipherKeepAlive.aggiorna(ctx) }
+        SwitchPreference(it, CipherSettings.DEFAULT_KEEP_ALIVE) { acceso ->
+            if (acceso && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                runCatching { chiediNotifiche.launch(Manifest.permission.POST_NOTIFICATIONS) }
+            } else {
+                CipherKeepAlive.aggiorna(ctx)
+            }
+        }
     },
     Setting(context, SettingsWithoutKey.CIPHER_CONTACTS, R.string.cipher_contacts) {
         // Un'Activity e non una destinazione Compose: ContactsActivity ha
