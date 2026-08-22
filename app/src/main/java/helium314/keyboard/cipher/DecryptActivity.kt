@@ -81,6 +81,42 @@ class DecryptActivity : ComponentActivity() {
     }
 
     /**
+     * Ricorda l'ultimo blob elaborato, per non rielaborarlo.
+     *
+     * La finestra e' corta: serve a fermare il ritentativo della scala di
+     * apertura, non a impedire all'utente di riaprire davvero lo stesso
+     * messaggio piu' tardi.
+     */
+    object Duplicato {
+        private const val FINESTRA_MS = 10_000L
+
+        @Volatile
+        private var ultimo: String? = null
+
+        @Volatile
+        private var quando = 0L
+
+        fun gia(impronta: String): Boolean {
+            val adesso = SystemClock.elapsedRealtime()
+            val duplicato = impronta == ultimo && adesso - quando < FINESTRA_MS
+            ultimo = impronta
+            quando = adesso
+            return duplicato
+        }
+    }
+
+    private fun digestDi(intent: Intent): String? {
+        val testo = extractText(intent)?.toString()
+            ?: extractStream(intent)?.toString()
+            ?: return null
+        return runCatching {
+            java.security.MessageDigest.getInstance("SHA-256")
+                .digest(testo.toByteArray())
+                .joinToString("") { "%02x".format(it) }
+        }.getOrNull()
+    }
+
+    /**
      * Il package dell'app da cui arriva il testo, risolto UNA volta per
      * intent.
      *
@@ -136,6 +172,28 @@ class DecryptActivity : ComponentActivity() {
     }
 
     private fun handle(intent: Intent) {
+        // ## Lo stesso blob due volte non si rielabora
+        //
+        // `nativeHandleIncomingText` NON e' una lettura: fissa un mittente mai
+        // visto, fa avanzare la catena, brucia una conversazione. Rielaborarlo
+        // non e' innocuo — la seconda volta una presentazione nuova risulta
+        // "gia' nota", niente dialogo del nome, e il contatto resta salvato
+        // senza nome.
+        //
+        // E il doppio arrivo capita davvero: la scala di tentativi in
+        // `CipherActions.autoDecrypt` riprova se dopo un secondo nessuno si e'
+        // presentato, e misurato su emulatore questa Activity ci ha messo
+        // **1341 ms** a comparire. Alzare quel secondo sposterebbe solo la
+        // soglia; l'unica difesa che non dipende da un tempo e' rifiutare il
+        // duplicato qui.
+        //
+        // Un digest e non il testo: tenere il blob in un campo statico
+        // significherebbe tenerlo in heap oltre la finestra che lo mostrava.
+        val impronta = digestDi(intent)
+        if (impronta != null && Duplicato.gia(impronta)) {
+            finish()
+            return
+        }
         // Sono qui: chi mi ha lanciata non deve ripiegare sull'avviso. E se ci
         // si e' arrivati proprio dall'avviso, quello ha finito — via anche il
         // blob che il suo PendingIntent teneva in `system_server`.

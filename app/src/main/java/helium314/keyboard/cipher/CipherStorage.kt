@@ -50,6 +50,8 @@ internal object CipherStorage {
     const val KEYRING = "keyring.bin"
     /** Destinatario corrente per app. Vedi [CipherRecipients]. */
     const val RECIPIENTS = "recipients.bin"
+    /** Ultimo uso di ogni contatto, per l'ordine dell'elenco. Vedi [CipherUsage]. */
+    const val USAGE = "usage.bin"
 
     /**
      * Distingue "non c'e' ancora" da "c'e' ma non si legge". Il primo caso e'

@@ -308,7 +308,12 @@
         non e\' autenticata, quindi non puo\' decidere per chi si cifra.
     -->
     <string name="cipher_use_as_recipient" tools:ignore="MissingTranslation">Scrivi a questo contatto</string>
-    <string name="cipher_recipient_set" tools:ignore="MissingTranslation">Ora in questa app cifri per questo contatto</string>
+    <!--
+        Non dice piu' "ora in questa app cifri per...": un destinatario
+        predefinito per app non esiste piu', perche' dentro una stessa chat si
+        scrive a piu' persone. Ora la scelta vale per QUESTO messaggio.
+    -->
+    <string name="cipher_recipient_set" tools:ignore="MissingTranslation">Cifrato per questo contatto</string>
 
     <!-- ContactsActivity. -->
     <string name="cipher_my_identity" tools:ignore="MissingTranslation">La tua identita\'</string>

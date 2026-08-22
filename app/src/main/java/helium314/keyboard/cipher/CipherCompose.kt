@@ -116,6 +116,15 @@ object CipherCompose {
     fun isEnabled(): Boolean = enabled
 
     /**
+     * Il servizio, per chi deve tornare alla tastiera da un'Activity.
+     *
+     * Stesso processo, quindi non e' un riferimento che attraversa un confine:
+     * `RecipientActivity` lo usa per far cifrare subito dopo la scelta, invece
+     * di lasciare all'utente un secondo tocco sul lucchetto.
+     */
+    fun servizio(): InputMethodService? = servizio
+
+    /**
      * La connessione da dare a HeliBoard al posto di quella dell'app, o `null`
      * se il testo deve andare all'app come sempre.
      */

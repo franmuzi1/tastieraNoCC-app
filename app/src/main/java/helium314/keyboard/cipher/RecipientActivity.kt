@@ -98,7 +98,10 @@ internal class RecipientActivity : ComponentActivity() {
     @Composable
     private fun Scelta() {
         val peers = remember {
-            CipherCore.nativeListPeers()?.let { PeerList.parse(it) }.orEmpty()
+            CipherUsage.ordinati(
+                this,
+                CipherCore.nativeListPeers()?.let { PeerList.parse(it) }.orEmpty(),
+            )
         }
         val senzaNome = stringResource(R.string.cipher_unnamed_peer)
         val righe = peers.map { peer ->
@@ -131,8 +134,15 @@ internal class RecipientActivity : ComponentActivity() {
         // Su disco, altrimenti la scelta muore al primo riavvio del servizio —
         // che e' il guasto che questo progetto ha gia' pagato una volta.
         CipherRecipients.remember(this, appDiProvenienza, peer.key)
-        Toast.makeText(this, R.string.cipher_recipient_set, Toast.LENGTH_SHORT).show()
+        // Per l'ordine dell'elenco la prossima volta: chi si usa di recente
+        // sale in cima. Vedi CipherUsage.
+        CipherUsage.nota(this, peer.key)
+        // Si cifra SUBITO, senza far tornare l'utente a premere il lucchetto
+        // una seconda volta. Ora che il destinatario si chiede a ogni invio,
+        // quel secondo tocco sarebbe un tocco per messaggio, non una volta
+        // sola.
         finish()
+        CipherCompose.servizio()?.let { CipherActions.encryptOra(it) }
     }
 
     companion object {

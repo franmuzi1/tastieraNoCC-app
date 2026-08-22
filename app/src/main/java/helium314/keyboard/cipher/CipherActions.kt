@@ -104,11 +104,28 @@ object CipherActions {
      */
     fun encrypt(ime: InputMethodService) {
         if (!ready(ime)) return
-        val pacchetto = ime.currentInputEditorInfo?.packageName.orEmpty()
-        if (pacchetto.isNotEmpty() && !CipherCore.nativeHasCurrentPeer(pacchetto)) {
-            chiediDestinatario(ime)
-            return
-        }
+        // **Si chiede sempre.** Prima si chiedeva solo la prima volta, poi si
+        // riusava il destinatario ricordato per quell'app. Il modello era
+        // sbagliato: dentro una stessa chat si scrive a piu' persone, quindi
+        // "il destinatario di Telegram" non e' una cosa che esista. Riusarlo in
+        // silenzio significa cifrare per chi ti ha scritto per ultimo, che e'
+        // proprio il fallimento peggiore che questo sistema possa produrre.
+        //
+        // Il costo e' un tocco in piu' per messaggio. Si paga con l'ordine
+        // dell'elenco, che mette per primo chi hai usato di recente: vedi
+        // [CipherUsage].
+        chiediDestinatario(ime)
+        return
+    }
+
+    /**
+     * Cifra davvero, per il destinatario che l'utente ha appena indicato.
+     *
+     * Separata da [encrypt] perche' ora la scelta precede sempre la cifratura:
+     * `encrypt` chiede, e questa e' cio' che succede dopo la risposta.
+     */
+    fun encryptOra(ime: InputMethodService) {
+        if (!ready(ime)) return
         val ic = appConnection(ime) ?: return
 
         // Con la riga di composizione attiva il chiaro non e' mai stato nel
