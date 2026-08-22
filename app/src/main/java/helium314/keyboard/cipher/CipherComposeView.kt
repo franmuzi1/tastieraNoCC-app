@@ -275,11 +275,30 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
         }
     }
 
+    /**
+     * ## Niente `scrollX`/`scrollY` qui dentro
+     *
+     * La tentazione e' sottrarli, visto che la riga scorre. E' sbagliato: la
+     * tela arriva a `onDraw` **gia' traslata** di `-scrollX,-scrollY` — lo fa
+     * `View` prima di chiamarci — quindi qui si disegna in coordinate del
+     * contenuto, le stesse che restituisce `Layout.getLineTop`. Sottraendoli si
+     * contava lo scorrimento due volte.
+     *
+     * Si vedeva solo **dalla terza riga in poi**, perche' prima la riga non
+     * scorre e `scrollY` vale zero: il cursore si staccava dal testo e
+     * tremolava a ogni tasto, e toccando per spostarlo finiva altrove rispetto
+     * a dove compariva — l'offset del tocco lo calcola `getOffsetForPosition`,
+     * che lo scorrimento lo conta giusto.
+     *
+     * `totalPaddingTop` e' quello giusto anche a testo corto: comprende gia' lo
+     * scostamento del `gravity="center_vertical"`, che e' quanto `TextView`
+     * sposta il testo quando non riempie la riga.
+     */
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val l = layout ?: return
-        val left = totalPaddingLeft - scrollX
-        val top = totalPaddingTop - scrollY
+        val left = totalPaddingLeft
+        val top = totalPaddingTop
 
         if (selectionEnd > selectionStart) {
             drawSelection(canvas, left.toFloat(), top.toFloat())

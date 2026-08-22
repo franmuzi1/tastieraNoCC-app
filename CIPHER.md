@@ -482,6 +482,25 @@ barra spazio** muove il caret e che il carattere successivo entra li' e non in
 fondo. Disegnata anche la selezione, riga per riga — su piu' righe non e' un
 rettangolo.
 
+**Lo scorrimento non si sottrae.** `onDraw` disegnava a
+`totalPaddingTop - scrollY`, che sembra ovvio in una riga che scorre ed e'
+sbagliato: la tela arriva a `onDraw` **gia' traslata** di `-scrollX,-scrollY`,
+quindi li' si e' gia' in coordinate del contenuto — le stesse di
+`Layout.getLineTop`. Sottrarli contava lo scorrimento due volte.
+
+Invisibile per due righe, perche' finche' il testo ci sta `scrollY` vale zero.
+La riga e' alta 56dp con 8dp di padding e il testo 16sp: due righe entrano, la
+terza no. **Da li' in poi** il cursore si staccava dal testo e tremolava a ogni
+tasto, e toccando per spostarlo finiva altrove rispetto a dove compariva —
+l'offset del tocco lo calcola `getOffsetForPosition`, che lo scorrimento lo
+conta giusto. Stessa correzione per il rettangolo di selezione. Verificato con
+un confronto A/B: ricostruita la versione bacata, il cursore lampeggia staccato
+in cima alla riga; con la correzione sta subito dopo l'ultimo carattere.
+
+`totalPaddingTop` va bene anche a testo corto: comprende gia' lo scostamento del
+`gravity="center_vertical"`, cioe' di quanto `TextView` sposta in basso il testo
+quando non riempie la riga.
+
 ## Tre guasti trovati usando la tastiera per davvero
 
 Nessuno dei tre si vedeva rileggendo il codice, e il primo rendeva il sistema
