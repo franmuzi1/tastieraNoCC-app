@@ -53,8 +53,15 @@ class ClipboardHistoryManager(
         clipboardManager = latinIME.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboardManager.addPrimaryClipChangedListener(this)
         clipboardDao = ClipboardDao.getInstance(latinIME)
+        // keyboard-cipher: `daUnCambio = false`. Qui si legge cio' che negli
+        // appunti c'era GIA', per popolare la cronologia — non e' un gesto
+        // dell'utente. Aprire un messaggio cifrato qui significherebbe
+        // riaprirlo a ogni ricreazione del servizio, che in quel flusso avviene
+        // di continuo: la tastiera che si mostra da sola, la schermata che si
+        // apre e si chiude. Era la ragione per cui una presentazione nuova
+        // veniva fissata due volte e la seconda risultava "gia' nota".
         if (latinIME.mSettings.current.mClipboardHistoryEnabled)
-            fetchPrimaryClip()
+            fetchPrimaryClip(daUnCambio = false)
     }
 
     fun onDestroy() {
@@ -64,7 +71,7 @@ class ClipboardHistoryManager(
     override fun onPrimaryClipChanged() {
         // Make sure we read clipboard content only if history settings is set
         if (latinIME.mSettings.current.mClipboardHistoryEnabled) {
-            fetchPrimaryClip()
+            fetchPrimaryClip(daUnCambio = true)
             dontShowCurrentSuggestion = false
         }
     }
@@ -72,7 +79,13 @@ class ClipboardHistoryManager(
     // todo for later
     //  setting whether to store sensitive clip data?
     //  care about other clip items than first?
-    private fun fetchPrimaryClip() {
+    /**
+     * @param daUnCambio vero solo quando arriva da [onPrimaryClipChanged], cioe'
+     *   quando l'utente ha appena copiato. La cifratura apre il messaggio solo
+     *   in quel caso: copiare e' il gesto con cui si e' chiesto di leggerlo,
+     *   mentre l'avvio del servizio non e' un gesto di nessuno.
+     */
+    private fun fetchPrimaryClip(daUnCambio: Boolean) {
         if (tempPrimaryClip) return // avoid updating history
         val clipData = clipboardManager.primaryClip ?: return
         if (clipData.itemCount == 0) return
@@ -96,7 +109,7 @@ class ClipboardHistoryManager(
             CipherClipboard.noteClipboardContent(latinIME, content)
             // ...e se e' uno dei nostri, si apre da solo: copiare e' il gesto
             // con cui l'utente ha gia' detto che vuole leggerlo.
-            CipherActions.autoDecrypt(latinIME, content)
+            if (daUnCambio) CipherActions.autoDecrypt(latinIME, content)
             clipboardDao?.addClip(timeStamp, false, content.toString())
         } else if (maySaveFromUri(clipItem.uri, latinIME)) {
             clipboardDao?.addClipUri(timeStamp, false, clipItem.uri, description, latinIME)

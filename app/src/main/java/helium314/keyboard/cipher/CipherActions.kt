@@ -54,14 +54,28 @@ object CipherActions {
     private const val MAX_BLOB_CHARS = 4096
 
     /**
-     * Il blob cresce di circa 1,6 volte rispetto al testo, piu' un'ottantina di
-     * byte di involucro. Misurato: 1000 caratteri diventano 1738, 2400 ne
-     * diventano 3978, 2500 sforano.
+     * Involucro del blob, in byte, contato sul formato vero: 4 di prefisso, 32
+     * di chiave nell'intestazione, 24 di nonce, 16 di tag, piu' 8 di marca
+     * temporale e 32 di prekey dentro il cifrato.
+     *
+     * Era 84, cioe' l'ingombro del solo schema statico, che `encrypt_for_app`
+     * non usa piu': entrambi i rami mettono 32 byte di chiave dentro il cifrato.
+     * La stima usciva corta di ~49 caratteri, e un messaggio fra 2443 e 2472
+     * byte passava il controllo per poi produrre un blob oltre i 4096 di
+     * Telegram — cioe' proprio il caso che il controllo esiste per fermare, e
+     * che si scopre quando il campo dell'utente e' gia' stato svuotato.
+     *
+     * Va sbagliata per ECCESSO, mai per difetto: rifiutare un messaggio che
+     * sarebbe passato si vede subito, mandarne uno che si spezza no.
      */
-    private const val OVERHEAD_BYTES = 84
+    private const val OVERHEAD_BYTES = 116
 
-    /** `kc/1/` — vedi il sentinel nel core. */
-    private const val SENTINEL_LEN = 5
+    /**
+     * `kc/`, tre caratteri. La versione NON ci sta dentro: il core la tiene
+     * fuori di proposito, cosi' un blob di una versione futura resta
+     * riconoscibile come nostro invece di sembrare testo qualunque.
+     */
+    private const val SENTINEL_LEN = 3
 
     /**
      * Quanto si aspetta prima di dare per rifiutato l'avvio della schermata.
@@ -509,24 +523,6 @@ object CipherActions {
         if (!CipherSettings.isAutoOpen(ime)) return
         val contenuto = testo.toString()
         if (!CipherCore.available || !CipherCore.nativeLooksLikeOurBlob(contenuto)) return
-        // ## Lo stesso blob non si elabora due volte
-        //
-        // `ClipboardHistoryManager` puo' consegnare piu' di una volta lo stesso
-        // contenuto per una copia sola, e `nativeHandleIncomingText` NON e' una
-        // lettura: fissa un mittente mai visto, fa avanzare la catena, brucia
-        // una conversazione.
-        //
-        // Sintomo osservato, ed e' il motivo per cui questa guardia sta QUI e
-        // non solo dentro `DecryptActivity`: copiando la presentazione di un
-        // contatto nuovo comparivano DUE schermate sovrapposte — sotto quella
-        // giusta, che chiede il nome, e sopra "contatto gia' noto", prodotta
-        // dalla seconda elaborazione. La prima volta la chiave era nuova, la
-        // seconda no.
-        //
-        // La guardia dentro l'Activity resta: copre il ritentativo della scala
-        // di apertura, che e' un'altra sorgente di duplicati. Questa copre
-        // l'ingresso, cioe' la sorgente vera.
-        if (DecryptActivity.Duplicato.gia(contenuto)) return
         // ## Prima di tutto: il pannello dentro la tastiera
         //
         // Non e' un avvio di Activity, quindi non passa da nessuna restrizione:
