@@ -54,14 +54,32 @@ object CipherActions {
     private const val MAX_BLOB_CHARS = 4096
 
     /**
-     * Il blob cresce di circa 1,6 volte rispetto al testo, piu' un'ottantina di
-     * byte di involucro. Misurato: 1000 caratteri diventano 1738, 2400 ne
-     * diventano 3978, 2500 sforano.
+     * Involucro del blob, in byte, contato sul formato vero.
+     *
+     * Fuori dal cifrato: 4 di prefisso, 32 di chiave nell'intestazione, 24 di
+     * nonce, 16 di tag. Dentro: 8 di marca temporale e 32 di prekey. Totale
+     * **116**.
+     *
+     * Era 84, cioe' l'ingombro del solo schema statico, che `encrypt_for_app`
+     * **non usa piu'**: entrambi i rami mettono 32 byte di chiave dentro il
+     * cifrato. La stima usciva corta di ~49 caratteri, e un messaggio fra 2443
+     * e 2472 byte passava questo controllo per poi produrre un blob oltre i
+     * 4096 di Telegram — cioe' proprio il caso che il controllo esiste per
+     * fermare, e che si scopre quando il campo dell'utente e' gia' stato
+     * svuotato.
+     *
+     * Se un giorno un ramo dovesse ingombrare di piu', questa costante va
+     * alzata e non abbassata: sbagliare per eccesso rifiuta un messaggio che
+     * sarebbe passato, sbagliare per difetto ne manda uno che si spezza.
      */
-    private const val OVERHEAD_BYTES = 84
+    private const val OVERHEAD_BYTES = 116
 
-    /** `kc/1/` — vedi il sentinel nel core. */
-    private const val SENTINEL_LEN = 5
+    /**
+     * `kc/`, tre caratteri. NON contiene la versione: il core la tiene fuori di
+     * proposito, cosi' un blob di una versione futura viene comunque
+     * riconosciuto come nostro invece di sembrare testo qualunque.
+     */
+    private const val SENTINEL_LEN = 3
 
     /**
      * Quanto si aspetta prima di dare per rifiutato l'avvio della schermata.
