@@ -51,13 +51,12 @@ fun CipherScreen(
         // Le altre voci esistono solo se la cifratura e' accesa: mostrarle
         // spente e inerti e' il modo piu' rapido per far credere che siano
         // rotte.
-        if (enabled) CipherSettings.PREF_COMPOSE_MODE else null,
         // Solo con la riga attiva: senza, l'invio automatico non ha un momento
         // in cui scattare.
-        if (enabled && CipherSettings.isComposeMode(prefs)) CipherSettings.PREF_AUTO_SEND else null,
+        if (enabled) CipherSettings.PREF_AUTO_SEND else null,
         // Stessa ragione: senza la riga il chiaro sta gia' nel campo dell'app, e
         // un divieto di copiarlo non proteggerebbe niente.
-        if (enabled && CipherSettings.isComposeMode(prefs)) CipherSettings.PREF_BLOCK_COPY else null,
+        if (enabled) CipherSettings.PREF_BLOCK_COPY else null,
         if (enabled) CipherSettings.PREF_AUTO_OPEN else null,
         if (enabled) CipherSettings.PREF_FORWARD_SECRECY else null,
         // Le due risposte a "il telefono ferma la tastiera e copiare non fa

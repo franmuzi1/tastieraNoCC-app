@@ -181,8 +181,19 @@ object CipherSettings {
      * modo piu' facile per ritrovarsi con una riga di composizione in una
      * tastiera che non cifra.
      */
-    fun isComposeMode(prefs: SharedPreferences): Boolean =
-        isEnabled(prefs) && prefs.getBoolean(PREF_COMPOSE_MODE, DEFAULT_COMPOSE_MODE)
+    /**
+     * Coincide con [isEnabled], e non e' una svista.
+     *
+     * Erano due interruttori, ed erano lo stesso: con la riga spenta la
+     * toolbar perde lucchetti, contatti e allegati — resta solo il tasto per
+     * riaccenderla. Cioe' "cifratura accesa, riga spenta" era una tastiera
+     * normale, esattamente come "cifratura spenta". Due modi di dire la stessa
+     * cosa, con l'utente lasciato a indovinare la differenza.
+     *
+     * La preferenza resta letta e scritta da chi gia' la usa, ma non ha piu'
+     * una voce sua nelle impostazioni.
+     */
+    fun isComposeMode(prefs: SharedPreferences): Boolean = isEnabled(prefs)
 
     fun isComposeMode(context: Context): Boolean = isComposeMode(context.prefs())
 }

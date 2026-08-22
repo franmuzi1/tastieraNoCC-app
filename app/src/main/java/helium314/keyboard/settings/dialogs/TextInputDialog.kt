@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.OutlinedTextField
@@ -70,7 +71,21 @@ fun TextInputDialog(
                         .fillMaxWidth()
                         .focusRequester(focusRequester),
                     label = textInputLabel,
-                    keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+                    // keyboard-cipher: invio = OK, cosi' dare un nome a un
+                    // contatto costa un tocco invece di due. `Done` cambia
+                    // anche l'icona del tasto invio, quindi il gesto si vede
+                    // prima di provarlo. La condizione e' la stessa che abilita
+                    // il pulsante: invio non deve poter confermare cio' che OK
+                    // rifiuta.
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = keyboardType,
+                        imeAction = if (singleLine) ImeAction.Done else ImeAction.Default,
+                    ),
+                    onKeyboardAction = {
+                        if (checkTextValid(state.text.toString())) {
+                            onConfirmed(state.text.toString())
+                        }
+                    },
                     lineLimits = if (singleLine) TextFieldLineLimits.SingleLine else TextFieldLineLimits.MultiLine(),
                     textStyle = contentTextDirectionStyle,
                 )
