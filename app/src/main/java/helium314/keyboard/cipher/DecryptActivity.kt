@@ -8,6 +8,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.text.format.DateFormat
 import android.view.WindowManager
 import android.widget.Toast
@@ -51,6 +52,32 @@ class DecryptActivity : ComponentActivity() {
     private companion object {
         /** Richiesta del selettore "dove salvo". */
         const val RICHIESTA_SALVA = 1
+    }
+
+    /**
+     * "Ce l'ho fatta ad aprirmi?", per chi ci ha provato dalla tastiera.
+     *
+     * Serve perche' un avvio di Activity rifiutato dal sistema **non lancia
+     * niente**: `startActivity` torna come se fosse andato bene e la finestra
+     * semplicemente non compare. Non c'e' un valore da controllare, quindi
+     * l'unico modo onesto di sapere com'e' finita e' guardare se qualcuno si e'
+     * presentato. Vedi `CipherActions.autoDecrypt`.
+     *
+     * Un istante e non un booleano: due tentativi ravvicinati si
+     * distinguerebbero solo per il tempo, e un flag lasciato acceso dal
+     * tentativo precedente farebbe credere riuscito quello dopo.
+     */
+    object Apertura {
+        @Volatile
+        private var ultima = 0L
+
+        fun ora(): Long = SystemClock.elapsedRealtime()
+
+        fun segnala() {
+            ultima = SystemClock.elapsedRealtime()
+        }
+
+        fun avvenutaDopo(istante: Long): Boolean = ultima >= istante
     }
 
     /**
@@ -109,6 +136,11 @@ class DecryptActivity : ComponentActivity() {
     }
 
     private fun handle(intent: Intent) {
+        // Sono qui: chi mi ha lanciata non deve ripiegare sull'avviso. E se ci
+        // si e' arrivati proprio dall'avviso, quello ha finito — via anche il
+        // blob che il suo PendingIntent teneva in `system_server`.
+        Apertura.segnala()
+        CipherNotification.dismiss(this)
         appDiProvenienza = resolveCallerPackage()
 
         // Un allegato arriva come flusso, non come testo. Si guarda prima: se

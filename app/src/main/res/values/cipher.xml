@@ -166,6 +166,16 @@
         piu' niente". Stanno vicine perche' sono due risposte allo stesso
         problema, e l'ordine conta: prima quella gratis.
     -->
+    <!--
+        L'avviso di ripiego, quando il sistema rifiuta di aprire la schermata.
+        Testo fisso e senza contenuto: la barra di stato non ha nessuna delle
+        protezioni della finestra che poi mostra il messaggio, e la legge
+        chiunque guardi lo schermo.
+    -->
+    <string name="cipher_notif_title" tools:ignore="MissingTranslation">Messaggio cifrato negli appunti</string>
+    <string name="cipher_notif_text" tools:ignore="MissingTranslation">Tocca per leggerlo</string>
+    <string name="cipher_notif_channel" tools:ignore="MissingTranslation">Messaggi copiati</string>
+    <string name="cipher_notif_channel_desc" tools:ignore="MissingTranslation">Avvisa quando negli appunti finisce un messaggio cifrato e il telefono non lascia aprire la schermata da sola. Non mostra niente del contenuto.</string>
     <string name="cipher_battery" tools:ignore="MissingTranslation">Impedisci al telefono di fermare la tastiera</string>
     <string name="cipher_battery_summary" tools:ignore="MissingTranslation">Apre la schermata di sistema del risparmio energetico. Se il telefono ferma la tastiera, copiare un messaggio non fa piu\' niente — e\' lei a guardare gli appunti — e a volte ti ritrovi perfino la tastiera di sistema. Mettendo MusyBoard su «Senza restrizioni» il problema sparisce, e non costa niente.</string>
     <string name="cipher_battery_ok" tools:ignore="MissingTranslation">Gia\' senza restrizioni. Se il problema si ripresenta, il tuo telefono la ferma lo stesso: prova a tenerla viva qui sotto.</string>

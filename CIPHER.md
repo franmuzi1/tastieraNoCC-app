@@ -136,15 +136,35 @@ sistema tratta l'IME predefinito come un caso a parte.
 Quindi `autoDecrypt` non guarda più `isInputViewShown`: costruisce l'intent e
 apre, punto. È più corto di prima.
 
-*Il ripiego che c'è stato e non c'è più.* Per un giro c'è stata una notifica da
-toccare, come rete di sicurezza per il caso in cui il sistema rifiutasse
-l'avvio: la tastiera provava ad aprire, guardava se qualcuno si era presentato
-(`startActivity` non segnala il rifiuto — torna come se fosse andato bene) e
-solo in caso contrario postava l'avviso. **Tolto di proposito.** Costava
-`POST_NOTIFICATIONS`, e un permesso notifiche su una tastiera che promette
-riservatezza è un cattivo segnale a fronte di un ramo che, dove è stato
-misurato, non scatta mai. Se un giorno si trovasse una ROM che rifiuta l'avvio,
-`git log` di questo file ha l'implementazione già scritta.
+*E su un telefono vero è andata diversamente.* Quella misura era su **un
+dispositivo solo**, e la ROM di un telefono reale l'avvio lo rifiuta davvero.
+Riscontrato con la riga diagnostica della notifica keep-alive: diceva «messaggio
+cifrato riconosciuto» e non compariva niente. Cioè l'ascoltatore scatta, il blob
+si riconosce, e l'avvio viene rifiutato — in silenzio, perché `startActivity`
+non segnala il rifiuto.
+
+Per un giro il ripiego era stato **tolto**, sulla fiducia in quella singola
+misura, con la motivazione che costava `POST_NOTIFICATIONS` per un ramo che non
+sembrava scattare mai. Era sbagliato, e il modo in cui era sbagliato vale più
+della conclusione: una misura su un dispositivo non è una proprietà della
+piattaforma.
+
+*Come è fatto adesso: tre tentativi, dal meno invadente al più rumoroso.*
+
+1. **Aprire e basta.** Dove il sistema lo concede, finisce qui.
+2. **Mostrare la tastiera, poi riprovare.** `requestShowSelf` **non è un avvio
+   di Activity**: è la tastiera che chiede la propria finestra, e non passa da
+   quelle restrizioni. Una volta che quella finestra è visibile, l'app ha una
+   finestra a schermo e il secondo `startActivity` non è più "in background".
+   Costa zero permessi. Funziona però solo se in quel momento c'è un campo di
+   testo attivo — in una chat con la tastiera chiusa può non esserci, ed è il
+   motivo per cui esiste anche il terzo.
+3. **L'avviso da toccare.** Ultima spiaggia. Il permesso ormai è dichiarato
+   comunque per il servizio che tiene viva la tastiera, quindi non costa più
+   niente di nuovo.
+
+L'esito di ogni tentativo non si può controllare direttamente: si guarda se
+qualcuno si è presentato, tramite `DecryptActivity.Apertura`.
 
 *Conseguenza dichiarata:* dove il sistema dovesse rifiutare, **copiare non
 produce niente e non lo dice.** Non c'è modo di accorgersene dal codice, ed è il

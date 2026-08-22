@@ -2,6 +2,9 @@ package helium314.keyboard.cipher
 
 import android.content.Intent
 import android.inputmethodservice.InputMethodService
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedTextRequest
@@ -59,6 +62,19 @@ object CipherActions {
 
     /** `kc/1/` — vedi il sentinel nel core. */
     private const val SENTINEL_LEN = 5
+
+    /**
+     * Quanto si aspetta prima di dare per rifiutato l'avvio della schermata.
+     *
+     * Il processo e' gia' vivo — e' quello della tastiera — quindi l'Activity si
+     * presenta in poche decine di millisecondi. Un secondo e' abbondante:
+     * sbagliare per eccesso costa un ripiego in ritardo, sbagliare per difetto
+     * costa un ripiego che non serviva, sopra una schermata gia' aperta.
+     */
+    private const val ATTESA_APERTURA_MS = 1000L
+
+    /** Quanto si da' alla finestra della tastiera per comparire. */
+    private const val ATTESA_FINESTRA_MS = 400L
 
     /**
      * Sostituisce il contenuto del campo con il blob cifrato.
@@ -411,27 +427,49 @@ object CipherActions {
             )
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        // Si apre e basta, tastiera a schermo o no.
+        // ## Tre tentativi, dal meno invadente al piu' rumoroso
         //
-        // Sembrava non potersi fare: da Android 10 un'app senza finestre
-        // visibili non dovrebbe poter far partire un'Activity, e un avvio
-        // rifiutato non lancia niente — `startActivity` torna come se fosse
-        // andato bene e la finestra semplicemente non compare.
+        // **1. Aprire e basta.** Da Android 10 un'app senza finestre visibili
+        // non dovrebbe poter avviare un'Activity, ma misurato su Android 14
+        // (emulatore AOSP) si apre lo stesso: il sistema tratta l'IME
+        // predefinito come un caso a parte. Dove vale, finisce qui.
         //
-        // Misurato invece su Android 14 (emulatore AOSP, con
-        // `default_background_activity_starts_enabled=false`): tastiera
-        // nascosta, fuoco su un'altra app, la schermata **si apre**. Il sistema
-        // tratta l'IME predefinito come un caso a parte.
+        // **2. Mostrare la tastiera, poi riprovare.** Su un telefono vero
+        // l'avvio viene invece rifiutato — riscontrato con la riga diagnostica
+        // della notifica keep-alive: "messaggio cifrato riconosciuto" e niente
+        // a schermo. `requestShowSelf` pero' **non e' un avvio di Activity**: e'
+        // la tastiera che chiede la propria finestra, e non passa da quelle
+        // restrizioni. E una volta che quella finestra e' visibile l'app ha una
+        // finestra a schermo, quindi il secondo `startActivity` non e' piu' "in
+        // background". Costa zero permessi. Funziona solo se in quel momento
+        // c'e' un campo di testo attivo: in una chat con la tastiera chiusa puo'
+        // non esserci, ed e' il motivo per cui esiste anche il terzo.
         //
-        // **Il limite, dichiarato:** e' una misura su un dispositivo solo. Dove
-        // il sistema dovesse rifiutare, copiare non produce niente e non lo
-        // dice — non c'e' niente da controllare, e infatti il ripiego che
-        // c'era (una notifica da toccare) e' stato tolto di proposito: valeva
-        // il permesso notifiche, che su una tastiera che promette riservatezza
-        // costa piu' di quanto renda. Restano le altre tre vie, che non
-        // dipendono da questo: barra di selezione, share sheet, tasto
-        // "decifra".
+        // **3. L'avviso da toccare.** Ultima spiaggia, e nient'altro funziona.
+        //
+        // L'esito non si puo' controllare direttamente: un avvio rifiutato non
+        // lancia niente, `startActivity` torna come se fosse andato bene. Quindi
+        // si guarda se qualcuno si e' presentato — vedi `DecryptActivity.Apertura`.
+        val tentativo = DecryptActivity.Apertura.ora()
         runCatching { ime.startActivity(intent) }
+        if (ime.isInputViewShown) return
+
+        val mano = Handler(Looper.getMainLooper())
+        mano.postDelayed({
+            if (DecryptActivity.Apertura.avvenutaDopo(tentativo)) return@postDelayed
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                runCatching { ime.requestShowSelf(0) }
+            }
+            mano.postDelayed({
+                if (DecryptActivity.Apertura.avvenutaDopo(tentativo)) return@postDelayed
+                runCatching { ime.startActivity(intent) }
+                mano.postDelayed({
+                    if (!DecryptActivity.Apertura.avvenutaDopo(tentativo)) {
+                        CipherNotification.offer(ime, contenuto)
+                    }
+                }, ATTESA_APERTURA_MS)
+            }, ATTESA_FINESTRA_MS)
+        }, ATTESA_APERTURA_MS)
     }
 
     /**

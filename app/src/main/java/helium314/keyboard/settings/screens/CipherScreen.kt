@@ -112,7 +112,19 @@ fun createCipherSettings(context: Context) = listOf(
         context, CipherSettings.PREF_AUTO_OPEN,
         R.string.cipher_auto_open, R.string.cipher_auto_open_summary
     ) {
-        SwitchPreference(it, CipherSettings.DEFAULT_AUTO_OPEN)
+        // Il permesso serve all'avviso di ripiego, quello che compare quando il
+        // telefono rifiuta di aprire la schermata da solo. Si chiede accendendo
+        // l'interruttore e non alla prima copia: quando servirebbe, la tastiera
+        // e' chiusa e un IME non apre un dialogo di permessi. Chi rifiuta perde
+        // il ripiego, non la funzione.
+        val chiediNotifiche = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { }
+        SwitchPreference(it, CipherSettings.DEFAULT_AUTO_OPEN) { acceso ->
+            if (acceso && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                runCatching { chiediNotifiche.launch(Manifest.permission.POST_NOTIFICATIONS) }
+            }
+        }
     },
     Setting(
         context, CipherSettings.PREF_FORWARD_SECRECY,
