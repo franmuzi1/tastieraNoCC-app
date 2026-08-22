@@ -396,8 +396,18 @@ object CipherActions {
      * tutti. Qui non si duplica quella logica — due implementazioni degli stessi
      * esiti divergono al primo che se ne aggiunge.
      */
-    private fun mostraNelPannello(ime: InputMethodService, blob: String): Boolean {
-        if (CipherIdentity.ensureReady(ime) != CipherState.Ready) return false
+    /**
+     * Cosa e' successo al blob copiato.
+     *
+     * Tre esiti e non un booleano perche' i casi sono tre davvero: mostrato nel
+     * pannello (e allora la finestra va chiesta), gia' sbrigato per conto suo
+     * (e allora chi chiama non deve fare NIENTE, o rielaborerebbe il blob), o
+     * non nostro da gestire qui.
+     */
+    private enum class Esito { PANNELLO, GESTITO, NO }
+
+    private fun mostraNelPannello(ime: InputMethodService, blob: String): Esito {
+        if (CipherIdentity.ensureReady(ime) != CipherState.Ready) return Esito.NO
         val result = CipherCore.IncomingResult()
         val code = CipherCore.nativeHandleIncomingText(
             ime.currentInputEditorInfo?.packageName.orEmpty(),
@@ -405,13 +415,39 @@ object CipherActions {
             System.currentTimeMillis() / 1000,
             result,
         )
-        if (code != CipherCore.OK) return false
+        if (code != CipherCore.OK) return Esito.NO
+        // ## La presentazione mai vista non si puo' rielaborare
+        //
+        // `nativeHandleIncomingText` NON e' senza effetti: una chiave mai vista
+        // la fissa (TOFU) proprio mentre la legge. Rimandarla all'Activity
+        // significherebbe richiamare il core sullo stesso blob, e la seconda
+        // volta risulterebbe **gia' nota**: niente dialogo del nome, e il
+        // contatto salvato senza nome — cioe' l'opposto di cio' che serve nel
+        // momento in cui qualcuno si presenta per la prima volta.
+        //
+        // Quindi si apre di qui la stessa schermata che aprirebbe
+        // `DecryptActivity.showIdentityCard`, con lo stesso ingresso. La chiave
+        // del peer e' PUBBLICA: non e' un segreto che viaggia in un intent.
+        //
+        // Se invece era gia' nota, rielaborarla da' lo stesso esito e se ne
+        // occupa l'Activity come sempre.
+        if (result.kind == CipherCore.KIND_IDENTITY_CARD) {
+            val peer = result.senderKey
+            if (result.alreadyPinned != 0 || peer == null) return Esito.NO
+            // Il pin appena avvenuto va su disco: vive solo in memoria finche'
+            // qualcuno non lo scrive, e al riavvio il TOFU ricomincerebbe.
+            if (!CipherIdentity.persistKeyring(ime)) {
+                toast(ime, R.string.cipher_keyring_not_saved)
+            }
+            scalaDiApertura(ime, blob, ContactsActivity.intentNomina(ime, peer))
+            return Esito.GESTITO
+        }
         // Anche un messaggio nostro riaperto: e' testo in chiaro come l'altro, e
         // trattarlo diversamente vorrebbe dire che rileggere cio' che hai
         // scritto tu apre una schermata mentre leggere quello di un altro no.
         val mio = result.kind == CipherCore.KIND_OWN_MESSAGE
-        if (result.kind != CipherCore.KIND_MESSAGE && !mio) return false
-        val bytes = result.plaintext ?: return false
+        if (result.kind != CipherCore.KIND_MESSAGE && !mio) return Esito.NO
+        val bytes = result.plaintext ?: return Esito.NO
         // Il core consegna ByteArray e non String proprio per poterlo azzerare.
         // Per mostrarlo serve una CharSequence, quindi una copia non azzerabile
         // esiste comunque: la garanzia si ferma qui, e si mitiga con FLAG_SECURE
@@ -440,7 +476,7 @@ object CipherActions {
                 android.text.format.DateFormat.getTimeFormat(ime).format(java.util.Date(result.sentAtUnix * 1000))
         }.getOrDefault("")
         CipherPanel.mostra(intestazione, quando, chiaro)
-        return true
+        return Esito.PANNELLO
     }
 
     /**
@@ -488,7 +524,9 @@ object CipherActions {
         // da nessuna restrizione: e' la tastiera che chiede la propria finestra.
         // Serve pero' una sessione di input attiva, quindi puo' non bastare: si
         // guarda com'e' andata e in caso si ripiega sulla scala qui sotto.
-        if (CipherPanel.disponibile() && mostraNelPannello(ime, contenuto)) {
+        val esito = if (CipherPanel.disponibile()) mostraNelPannello(ime, contenuto) else Esito.NO
+        if (esito == Esito.GESTITO) return
+        if (esito == Esito.PANNELLO) {
             if (ime.isInputViewShown) return
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 runCatching { ime.requestShowSelf(0) }
@@ -509,8 +547,12 @@ object CipherActions {
      * Le tre vie per far comparire [DecryptActivity], quando il pannello dentro
      * la tastiera non e' praticabile.
      */
-    private fun scalaDiApertura(ime: InputMethodService, contenuto: String) {
-        val intent = Intent(ime, DecryptActivity::class.java).apply {
+    private fun scalaDiApertura(
+        ime: InputMethodService,
+        contenuto: String,
+        daAprire: Intent? = null,
+    ) {
+        val intent = daAprire ?: Intent(ime, DecryptActivity::class.java).apply {
             action = Intent.ACTION_SEND
             type = "text/plain"
             putExtra(Intent.EXTRA_TEXT, contenuto)

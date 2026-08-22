@@ -25,3 +25,6 @@ tools/*.txt
 keystore.properties
 *.jks
 *.keystore
+
+# worktree degli agenti: repository annidati, non vanno nella storia
+.claude/worktrees/
