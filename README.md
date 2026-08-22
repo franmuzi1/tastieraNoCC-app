@@ -231,6 +231,23 @@ Quando incolli la presentazione di qualcuno mai visto, i contatti si aprono da
 soli sul dialogo del nome: una chiave senza nome è un contatto che non si
 riconosce.
 
+### Il modo più affidabile di aprire un messaggio ricevuto
+
+**Tieni premuto sul messaggio nella chat e scegli «Decifra».** È un passaggio in
+meno della copia, il testo non passa mai dagli appunti, e soprattutto funziona
+**anche a tastiera ferma**: quella voce la offre Android, che avvia la schermata
+da zero anche se l'app non è in esecuzione. Compare nelle app che usano la barra
+di selezione standard; quelle con un menu proprio, come WhatsApp, non la
+mostrano.
+
+Copiare funziona ed è comodo — la schermata si apre da sola — ma dipende dal
+fatto che la tastiera sia viva, perché è lei a guardare gli appunti. Se il
+gestore batteria del telefono la ferma, copiare non produce niente e non c'è modo
+per l'app di accorgersene: Android non ha nessun evento di sistema per gli
+appunti, quindi non esiste niente che possa risvegliarla. Se ti capita spesso,
+metti l'app su «Senza restrizioni» nelle impostazioni della batteria e usa la
+selezione per i messaggi che contano.
+
 Il testo decifrato compare in una finestra della tastiera che blocca screenshot
 e anteprime di sistema, e **non torna mai nell'app di chat**.
 
