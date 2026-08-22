@@ -388,6 +388,55 @@ object CipherActions {
     }
 
     /**
+     * Decifra e mostra dentro la tastiera. `false` se non si e' potuto, e allora
+     * chi chiama prosegue con l'Activity.
+     *
+     * Torna `false` per **qualunque** esito che non sia un messaggio di testo
+     * riuscito: gli altri cinque li gestisce [DecryptActivity], che li ha gia'
+     * tutti. Qui non si duplica quella logica — due implementazioni degli stessi
+     * esiti divergono al primo che se ne aggiunge.
+     */
+    private fun mostraNelPannello(ime: InputMethodService, blob: String): Boolean {
+        if (CipherIdentity.ensureReady(ime) != CipherState.Ready) return false
+        val result = CipherCore.IncomingResult()
+        val code = CipherCore.nativeHandleIncomingText(
+            ime.currentInputEditorInfo?.packageName.orEmpty(),
+            blob,
+            System.currentTimeMillis() / 1000,
+            result,
+        )
+        if (code != CipherCore.OK) return false
+        if (result.kind != CipherCore.KIND_MESSAGE) return false
+        val bytes = result.plaintext ?: return false
+        // Il core consegna ByteArray e non String proprio per poterlo azzerare.
+        // Per mostrarlo serve una CharSequence, quindi una copia non azzerabile
+        // esiste comunque: la garanzia si ferma qui, e si mitiga con FLAG_SECURE
+        // sulla finestra e azzerando l'array.
+        val chiaro = try {
+            String(bytes, Charsets.UTF_8)
+        } finally {
+            bytes.fill(0)
+        }
+        // Il pin appena fissato va su disco, esattamente come nell'Activity.
+        if (!CipherIdentity.persistKeyring(ime)) {
+            toast(ime, R.string.cipher_keyring_not_saved)
+        }
+        val nome = result.senderLabel ?: result.senderFingerprint.orEmpty()
+        val intestazione = if (result.verified == 1) {
+            ime.getString(R.string.cipher_sender_verified, nome)
+        } else {
+            nome
+        }
+        val quando = runCatching {
+            android.text.format.DateFormat.getDateFormat(ime).format(java.util.Date(result.sentAtUnix * 1000)) +
+                " " +
+                android.text.format.DateFormat.getTimeFormat(ime).format(java.util.Date(result.sentAtUnix * 1000))
+        }.getOrDefault("")
+        CipherPanel.mostra(intestazione, quando, chiaro)
+        return true
+    }
+
+    /**
      * Quanto sara' lungo il blob per questo testo, prima di produrlo.
      *
      * Si stima invece di cifrare e misurare: cifrare per poi scoprire che non
@@ -427,6 +476,15 @@ object CipherActions {
             )
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
+        // ## Prima di tutto: il pannello dentro la tastiera
+        //
+        // Non e' un avvio di Activity, quindi non passa da nessuna restrizione:
+        // la finestra della tastiera e' gia' nostra. Copre il caso comune — un
+        // messaggio di testo che si decifra — e lascia all'Activity tutto il
+        // resto, che e' anche il modo di non avere due implementazioni dei sei
+        // esiti.
+        if (CipherPanel.disponibile() && mostraNelPannello(ime, contenuto)) return
+
         // ## Tre tentativi, dal meno invadente al piu' rumoroso
         //
         // **1. Aprire e basta.** Da Android 10 un'app senza finestre visibili

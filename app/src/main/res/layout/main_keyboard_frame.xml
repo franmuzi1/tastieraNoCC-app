@@ -94,6 +94,10 @@
              ai tasti e non occupa altezza propria. -->
         <include layout="@layout/cipher_selection_menu" />
 
+        <!-- keyboard-cipher: il messaggio decifrato, dentro la tastiera.
+             Vedi CipherPanel. -->
+        <include layout="@layout/cipher_message_panel" />
+
         <ImageButton
             android:id="@+id/btn_stop_one_handed_mode"
             android:contentDescription="@string/label_stop_onehanded_mode_key"

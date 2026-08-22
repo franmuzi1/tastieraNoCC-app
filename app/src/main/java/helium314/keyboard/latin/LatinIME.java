@@ -61,6 +61,7 @@ import helium314.keyboard.latin.common.ColorType;
 import helium314.keyboard.cipher.CipherActions;
 import helium314.keyboard.cipher.CipherCompose;
 import helium314.keyboard.cipher.CipherKeepAlive;
+import helium314.keyboard.cipher.CipherPanel;
 import helium314.keyboard.latin.common.Constants;
 import helium314.keyboard.latin.common.CoordinateUtils;
 import helium314.keyboard.latin.common.InputPointers;
@@ -778,6 +779,7 @@ public class LatinIME extends InputMethodService implements
         // tenuta da parte.
         CipherCompose.INSTANCE.reload(this);
         CipherCompose.INSTANCE.bind(this, view);
+        CipherPanel.INSTANCE.bind(this, view);
     }
 
     /**
@@ -831,6 +833,11 @@ public class LatinIME extends InputMethodService implements
 
     @Override
     public void onFinishInputView(final boolean finishingInput) {
+        // keyboard-cipher: il pannello del messaggio decifrato non sopravvive
+        // alla sessione. Copre i tasti, quindi lasciarlo aperto renderebbe la
+        // tastiera inservibile al ritorno; e tiene il chiaro, quindi lasciarlo
+        // aperto vuol dire chiaro in memoria oltre il momento in cui serviva.
+        CipherPanel.INSTANCE.chiudi();
         StatsUtils.onFinishInputView();
         mHandler.onFinishInputView(finishingInput);
         mStatsUtilsManager.onFinishInputView();

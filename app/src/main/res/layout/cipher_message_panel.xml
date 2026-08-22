@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    keyboard-cipher: il messaggio decifrato, dentro la finestra della tastiera.
+
+    Esiste perche' `DecryptActivity` non sempre si puo' aprire: su alcune ROM il
+    sistema rifiuta l'avvio di un'Activity da un'app senza finestre visibili, in
+    silenzio. La finestra della tastiera invece e' gia' nostra e non e' soggetta
+    a quella restrizione — un IME la mostra quando ha una sessione di input.
+
+    Ed e' anche piu' coerente col resto: il chiaro non esce dalla tastiera
+    nemmeno per finire in una finestra separata. Niente task, niente Recenti,
+    niente intent, nessun chiamante da autenticare.
+
+    Sta dentro `KeyboardWrapperView`, che e' un FrameLayout, quindi copre i tasti
+    per il tempo della lettura senza cambiare l'altezza della tastiera.
+
+    `FLAG_SECURE` sulla finestra dell'IME lo mette e lo toglie `CipherPanel`:
+    qui non si puo' dichiarare, ed e' la ragione per cui quel codice esiste.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/cipher_message_panel"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:visibility="gone"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/cipher_panel_who"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/cipher_panel_close"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="16dp"
+            android:paddingEnd="4dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:textSize="15sp"
+            android:text="@string/cipher_panel_close" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/cipher_panel_when"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingBottom="6dp"
+        android:textSize="12sp" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <TextView
+            android:id="@+id/cipher_panel_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textIsSelectable="false"
+            android:textSize="16sp" />
+    </ScrollView>
+</LinearLayout>

@@ -172,6 +172,7 @@
         protezioni della finestra che poi mostra il messaggio, e la legge
         chiunque guardi lo schermo.
     -->
+    <string name="cipher_panel_close" tools:ignore="MissingTranslation">Chiudi</string>
     <string name="cipher_notif_title" tools:ignore="MissingTranslation">Messaggio cifrato negli appunti</string>
     <string name="cipher_notif_text" tools:ignore="MissingTranslation">Tocca per leggerlo</string>
     <string name="cipher_notif_channel" tools:ignore="MissingTranslation">Messaggi copiati</string>
