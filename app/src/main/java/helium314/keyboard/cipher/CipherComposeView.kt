@@ -121,6 +121,18 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
     /** Chiude la tendina: la selezione non c'e' piu', o non e' piu' sua. */
     var onMenuDaChiudere: (() -> Unit)? = null
 
+    /**
+     * Il dito ha toccato la riga, qualunque cosa stia per fare.
+     *
+     * Serve a togliere di mezzo il pannello del messaggio decifrato: toccare la
+     * riga vuol dire "voglio rispondere", e il pannello copre i tasti. Chiuderlo
+     * a mano prima era un passaggio che non aggiungeva niente.
+     *
+     * Scatta **prima** dell'uscita anticipata a testo vuoto qui sotto: la riga
+     * vuota e' proprio il caso in cui si sta per rispondere.
+     */
+    var onToccata: (() -> Unit)? = null
+
     private val pressioneLunga = Runnable {
         val (inizio, fine) = parolaIntorno(ancora)
         if (fine > inizio) {
@@ -177,6 +189,7 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
      * via a meta'.
      */
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) onToccata?.invoke()
         if (text.isNullOrEmpty()) return super.onTouchEvent(event)
         val offset = offsetDelTocco(event)
         when (event.actionMasked) {

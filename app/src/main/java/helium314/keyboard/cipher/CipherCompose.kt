@@ -212,6 +212,9 @@ object CipherCompose {
         found.onSelezione = { inizio, fine -> spostaSelezione(inizio, fine) }
         found.onMenu = { x -> mostraMenu(x) }
         found.onMenuDaChiudere = { chiudiMenu() }
+        // Toccare la riga vuol dire "rispondo": il pannello del messaggio
+        // decifrato copre i tasti, quindi si toglie di mezzo da solo.
+        found.onToccata = { CipherPanel.chiudi() }
 
         val colors = Settings.getValues().mColors
         barra?.let { colors.setBackground(it, ColorType.STRIP_BACKGROUND) }

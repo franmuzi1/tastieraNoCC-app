@@ -406,7 +406,11 @@ object CipherActions {
             result,
         )
         if (code != CipherCore.OK) return false
-        if (result.kind != CipherCore.KIND_MESSAGE) return false
+        // Anche un messaggio nostro riaperto: e' testo in chiaro come l'altro, e
+        // trattarlo diversamente vorrebbe dire che rileggere cio' che hai
+        // scritto tu apre una schermata mentre leggere quello di un altro no.
+        val mio = result.kind == CipherCore.KIND_OWN_MESSAGE
+        if (result.kind != CipherCore.KIND_MESSAGE && !mio) return false
         val bytes = result.plaintext ?: return false
         // Il core consegna ByteArray e non String proprio per poterlo azzerare.
         // Per mostrarlo serve una CharSequence, quindi una copia non azzerabile
@@ -422,10 +426,13 @@ object CipherActions {
             toast(ime, R.string.cipher_keyring_not_saved)
         }
         val nome = result.senderLabel ?: result.senderFingerprint.orEmpty()
-        val intestazione = if (result.verified == 1) {
-            ime.getString(R.string.cipher_sender_verified, nome)
-        } else {
-            nome
+        // Su un messaggio nostro non si mostra "confrontato di persona": li' non
+        // c'e' nessuna identita' da verificare, l'abbiamo scritto noi. Stessa
+        // regola di DecryptActivity.showMessage.
+        val intestazione = when {
+            mio -> ime.getString(R.string.cipher_own_message_to, nome)
+            result.verified == 1 -> ime.getString(R.string.cipher_sender_verified, nome)
+            else -> nome
         }
         val quando = runCatching {
             android.text.format.DateFormat.getDateFormat(ime).format(java.util.Date(result.sentAtUnix * 1000)) +
@@ -466,6 +473,43 @@ object CipherActions {
         if (!CipherSettings.isAutoOpen(ime)) return
         val contenuto = testo.toString()
         if (!CipherCore.available || !CipherCore.nativeLooksLikeOurBlob(contenuto)) return
+        // ## Prima di tutto: il pannello dentro la tastiera
+        //
+        // Non e' un avvio di Activity, quindi non passa da nessuna restrizione:
+        // la finestra della tastiera e' gia' nostra. Copre il caso comune — un
+        // messaggio di testo che si decifra — e lascia all'Activity tutto il
+        // resto, che e' anche il modo di non avere due implementazioni dei sei
+        // esiti.
+        //
+        // **La finestra va chiesta.** Riempire il pannello non lo fa vedere: se
+        // la tastiera non e' a schermo resta li' invisibile, e l'utente lo trova
+        // solo aprendo la tastiera a mano — che e' esattamente cio' che
+        // succedeva. `requestShowSelf` non e' un avvio di Activity e non passa
+        // da nessuna restrizione: e' la tastiera che chiede la propria finestra.
+        // Serve pero' una sessione di input attiva, quindi puo' non bastare: si
+        // guarda com'e' andata e in caso si ripiega sulla scala qui sotto.
+        if (CipherPanel.disponibile() && mostraNelPannello(ime, contenuto)) {
+            if (ime.isInputViewShown) return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                runCatching { ime.requestShowSelf(0) }
+            }
+            Handler(Looper.getMainLooper()).postDelayed({
+                if (ime.isInputViewShown) return@postDelayed
+                // La finestra non e' arrivata: il pannello resterebbe carico e
+                // invisibile, col chiaro dentro. Si svuota e si prosegue.
+                CipherPanel.chiudi()
+                scalaDiApertura(ime, contenuto)
+            }, ATTESA_FINESTRA_MS)
+            return
+        }
+        scalaDiApertura(ime, contenuto)
+    }
+
+    /**
+     * Le tre vie per far comparire [DecryptActivity], quando il pannello dentro
+     * la tastiera non e' praticabile.
+     */
+    private fun scalaDiApertura(ime: InputMethodService, contenuto: String) {
         val intent = Intent(ime, DecryptActivity::class.java).apply {
             action = Intent.ACTION_SEND
             type = "text/plain"
@@ -476,14 +520,6 @@ object CipherActions {
             )
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        // ## Prima di tutto: il pannello dentro la tastiera
-        //
-        // Non e' un avvio di Activity, quindi non passa da nessuna restrizione:
-        // la finestra della tastiera e' gia' nostra. Copre il caso comune — un
-        // messaggio di testo che si decifra — e lascia all'Activity tutto il
-        // resto, che e' anche il modo di non avere due implementazioni dei sei
-        // esiti.
-        if (CipherPanel.disponibile() && mostraNelPannello(ime, contenuto)) return
 
         // ## Tre tentativi, dal meno invadente al piu' rumoroso
         //
