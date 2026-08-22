@@ -555,6 +555,58 @@ in cima alla riga; con la correzione sta subito dopo l'ultimo carattere.
 `gravity="center_vertical"`, cioe' di quanto `TextView` sposta in basso il testo
 quando non riempie la riga.
 
+### Chi comanda lo scorrimento, e quando
+
+Corretto il cursore ne sono usciti altri due, sempre dalla terza riga in poi —
+cioe' da quando la riga comincia davvero a scorrere.
+
+**Il blocco di testo tremava a ogni lettera.** Misurato con un log in `onDraw`:
+a ogni tasto veniva disegnato *un* fotogramma a scorrimento zero, e solo dopo
+lo scorrimento tornava al valore giusto.
+
+    portaInVista(71) chiamata, scrollY ora=31
+    draw scrollY=0            <- il fotogramma sbagliato
+      -> scrollTo 31 (era 0)
+    draw scrollY=31
+
+Trentuno pixel di salto, sessanta volte al minuto mentre si scrive. La causa e'
+che il riposizionamento stava in un `post`, cioe' a giro finito: `setText`
+azzera lo scorrimento, si disegna, e solo dopo si rimedia.
+
+Spostarlo "prima" pero' non basta, e i primi due tentativi sono falliti
+entrambi:
+
+- applicato subito dopo `setText`, viene cancellato da `TextView.onMeasure`,
+  che chiama `scrollTo(0, 0)`;
+- applicato in `onLayout`, viene cancellato **dopo**, da `TextView.onPreDraw`
+  → `bringTextIntoView`, che per una vista senza fuoco significa di nuovo
+  `scrollTo(0, 0)`.
+
+Il punto giusto e' quindi `onPreDraw`, l'ultimo momento prima del disegno:
+
+    at android.widget.TextView.bringTextIntoView(TextView.java:11381)
+    at android.widget.TextView.onPreDraw(TextView.java:8477)
+
+E la posizione da tenere in vista e' diventata un **invariante** invece di un
+evento: `TextView` azzera lo scorrimento piu' volte per giro — una per passata
+di misura, e dentro un `LinearLayout` con i pesi il figlio viene misurato due
+volte — quindi una richiesta consumata alla prima occasione si perde alla
+seconda. Verificato: tredici fotogrammi su tredici disegnati alla posizione
+giusta, contro uno sbagliato per ogni tasto di prima.
+
+**Selezionando all'indietro la vista tornava sempre sull'ultima riga.** Per ogni
+spostamento del dito arrivavano tre richieste di scorrimento:
+
+    portaInVista(63)   <- dall'ancora della selezione
+    portaInVista(63)
+    portaInVista(30)   <- dal dito
+
+`selectionEnd` e' l'estremo piu' avanti nel testo, cioe' l'**ancora** da cui il
+gesto e' partito: rimetterla in vista a ogni movimento ritira indietro la vista
+proprio mentre si cerca di leggere piu' su. Ora mentre il dito e' giu' comanda
+il dito, e `setComposed` non riposiziona: trentasei fotogrammi su trentasei
+restano dove il gesto li ha portati.
+
 ## Tre guasti trovati usando la tastiera per davvero
 
 Nessuno dei tre si vedeva rileggendo il codice, e il primo rendeva il sistema

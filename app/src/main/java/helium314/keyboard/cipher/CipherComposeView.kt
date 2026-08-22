@@ -72,6 +72,23 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
     private var giaSelezionato = false
 
     /**
+     * Vero dal primo tocco al rilascio, qualunque cosa il gesto stia facendo.
+     *
+     * Mentre il dito e' giu' **decide il dito** dove si guarda, e [setComposed]
+     * non deve rimettere in vista il cursore. Non e' un dettaglio: selezionando
+     * all'indietro, `selectionEnd` e' l'**ancora** — il punto da cui il gesto e'
+     * partito, cioe' quello piu' avanti nel testo — e riportarla in vista a
+     * ogni movimento ritirava indietro la vista proprio mentre si cercava di
+     * leggere piu' su. Da fuori sembrava che il testo tornasse sempre
+     * sull'ultima riga scritta.
+     *
+     * Misurato: per ogni spostamento del dito arrivavano tre richieste, due
+     * `portaInVista(63)` dall'ancora e una `portaInVista(30)` dal dito, che si
+     * annullavano a vicenda.
+     */
+    private var gestoInCorso = false
+
+    /**
      * La parola presa dalla pressione lunga.
      *
      * Continuando a tenere premuto arrivano altri `ACTION_MOVE` sullo stesso
@@ -128,7 +145,8 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
         selectionEnd = end.coerceIn(selectionStart, text.length)
         caretOn = true
         restartBlink()
-        scrollToCaret()
+        // Mentre il dito e' giu' comanda lui: vedi [gestoInCorso].
+        if (!gestoInCorso) scrollToCaret()
         invalidate()
     }
 
@@ -151,6 +169,7 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
             MotionEvent.ACTION_DOWN -> {
                 parent?.requestDisallowInterceptTouchEvent(true)
                 ancora = offset
+                gestoInCorso = true
                 trascinando = false
                 giaSelezionato = false
                 parolaInizio = -1
@@ -185,12 +204,14 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
                 // Un tocco secco che non ha ne' trascinato ne' selezionato una
                 // parola vuol dire una cosa sola: il cursore va li'.
                 if (!trascinando && !giaSelezionato) onSelezione?.invoke(offset, offset)
+                gestoInCorso = false
                 trascinando = false
                 giaSelezionato = false
                 return true
             }
             MotionEvent.ACTION_CANCEL -> {
                 removeCallbacks(pressioneLunga)
+                gestoInCorso = false
                 trascinando = false
                 giaSelezionato = false
                 return true
@@ -258,21 +279,90 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
      */
     private fun scrollToCaret() = portaInVista(selectionEnd)
 
+    /**
+     * Posizione che deve restare in vista, in attesa di un layout su cui
+     * calcolarla. `-1` quando non c'e' niente in sospeso.
+     */
+    private var daPortareInVista = -1
+
+    /**
+     * ## Perche' non in `post`
+     *
+     * `setText` **azzera lo scorrimento**. Rimetterlo a posto in un `post`
+     * significa lasciare che venga disegnato un fotogramma con il testo a
+     * scorrimento zero, e solo dopo rimediare: a ogni lettera battuta l'intero
+     * blocco di testo saltava su e giu'.
+     *
+     * Misurato con un log in `onDraw`, riga di tre righe di testo, un tasto:
+     *
+     *     portaInVista(71) chiamata, scrollY ora=31
+     *     draw scrollY=0            <- il fotogramma sbagliato
+     *       -> scrollTo 31 (era 0)
+     *     draw scrollY=31
+     *
+     * Quel salto di 31 pixel e' il tremolio. Qui si applica subito: dopo
+     * `setText` il layout c'e' gia' — la larghezza e' fissa, quindi `TextView`
+     * lo ricostruisce nello stesso giro invece di rimandare — e lo scorrimento
+     * e' corretto **prima** che si disegni.
+     *
+     * Se il layout non c'e' ancora, o se qualcosa lo azzera piu' avanti nel
+     * giro, la posizione resta memorizzata e la riapplica [onPreDraw]. E' il
+     * motivo per cui si ricorda invece di perdersi.
+     */
     private fun portaInVista(posizione: Int) {
-        post {
-            val l = layout ?: return@post
-            val line = l.getLineForOffset(posizione.coerceIn(0, text.length))
-            val visible = height - totalPaddingTop - totalPaddingBottom
-            if (visible <= 0) return@post
-            val top = l.getLineTop(line)
-            val bottom = l.getLineBottom(line)
-            val y = when {
-                bottom > scrollY + visible -> bottom - visible
-                top < scrollY -> top
-                else -> return@post
-            }
-            scrollTo(0, y.coerceAtLeast(0))
+        daPortareInVista = posizione.coerceAtLeast(0)
+        applicaScorrimento()
+    }
+
+    /**
+     * Rimette in vista [daPortareInVista], se ce n'e' bisogno.
+     *
+     * Non consuma la richiesta: e' un **invariante**, non un evento. `TextView`
+     * azzera lo scorrimento piu' volte per giro — una per ogni passata di
+     * misura, e dentro un `LinearLayout` con i pesi il figlio viene misurato
+     * due volte — quindi una richiesta consumata alla prima occasione si
+     * perderebbe alla successiva, e la riga resterebbe inchiodata in cima.
+     */
+    private fun applicaScorrimento() {
+        val posizione = daPortareInVista
+        if (posizione < 0) return
+        val l = layout ?: return
+        // In misura l'altezza definitiva non e' ancora assegnata.
+        val altezza = if (height > 0) height else measuredHeight
+        val visible = altezza - totalPaddingTop - totalPaddingBottom
+        if (visible <= 0) return
+        val line = l.getLineForOffset(posizione.coerceIn(0, text?.length ?: 0))
+        val top = l.getLineTop(line)
+        val bottom = l.getLineBottom(line)
+        val y = when {
+            bottom > scrollY + visible -> bottom - visible
+            top < scrollY -> top
+            else -> return
         }
+        scrollTo(0, y.coerceAtLeast(0))
+    }
+
+    /**
+     * L'ultima parola sullo scorrimento, e va detta qui.
+     *
+     * `TextView` si registra come `OnPreDrawListener` quando rifa' il layout, e
+     * il suo `onPreDraw` chiama `bringTextIntoView`, che per una vista senza
+     * fuoco significa `scrollTo(0, 0)`. Gira **dopo** misura e layout e
+     * **subito prima** del disegno: qualunque correzione fatta prima — in
+     * `onMeasure`, in `onLayout`, o al momento di `setText` — viene cancellata
+     * da qui. Trovato leggendo lo stack di chi azzerava, non la documentazione:
+     *
+     *     at android.widget.TextView.bringTextIntoView(TextView.java:11381)
+     *     at android.widget.TextView.onPreDraw(TextView.java:8477)
+     *
+     * E' anche il motivo per cui la versione originale rimediava in un `post`:
+     * quello girava a giro finito, cioe' dopo `onPreDraw` — e dopo un
+     * fotogramma gia' disegnato storto, che era il tremolio.
+     */
+    override fun onPreDraw(): Boolean {
+        val esito = super.onPreDraw()
+        applicaScorrimento()
+        return esito
     }
 
     /**
