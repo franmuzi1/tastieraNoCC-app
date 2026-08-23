@@ -363,7 +363,7 @@ object CipherActions {
         // L'estremo basso e' l'ULTIMO codice della cifratura, non il primo
         // aggiunto: aggiungendone uno nuovo senza spostarlo, quel tasto
         // resterebbe fuori dall'intervallo e tornerebbe ad adottare il campo.
-        if (primaryCode <= KeyCode.CIPHER_ENCRYPT && primaryCode >= KeyCode.CIPHER_GALLERY) {
+        if (primaryCode <= KeyCode.CIPHER_ENCRYPT && primaryCode >= KeyCode.CIPHER_CONTACTS) {
             return
         }
         // MAI sull'invio. E' il tasto con cui si SPEDISCE cio' che sta nel
@@ -767,18 +767,6 @@ object CipherActions {
             .onFailure { toast(ime, R.string.cipher_unavailable) }
     }
 
-    /**
-     * Come [allegato], ma il selettore parte gia' filtrato su immagini e video.
-     *
-     * Due tasti e non uno con la pressione lunga: mandare una foto e mandare un
-     * documento sono i due gesti piu' frequenti qui dentro, e nascondere il
-     * primo dietro un gesto che va scoperto significa che non lo usa nessuno.
-     */
-    fun galleria(ime: InputMethodService) {
-        if (!CipherSettings.isEnabled(ime)) return
-        runCatching { ime.startActivity(ContactsActivity.intentAllegato(ime, soloMedia = true)) }
-            .onFailure { toast(ime, R.string.cipher_unavailable) }
-    }
 
     /** Apre l'elenco dei contatti cifrati. */
     fun contatti(ime: InputMethodService) {
