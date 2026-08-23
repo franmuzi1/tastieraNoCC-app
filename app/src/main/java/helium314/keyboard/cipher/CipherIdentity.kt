@@ -191,7 +191,7 @@ object CipherIdentity {
             // continuava a cifrare con l'identita' importata finche' il
             // processo restava vivo, per poi tornare alla vecchia al riavvio.
             // Due identita' che si alternano senza che nulla lo dica.
-            val wrapped = CipherKeystore.wrap(AAD_IDENTITY, secret)
+            val wrapped = CipherKeystore.wrap(AAD_IDENTITY, secret, creaSeManca = true)
             if (wrapped == null) {
                 annullaImport(context)
                 return CipherState.Unavailable(CipherReason.KEYSTORE)
@@ -333,7 +333,9 @@ object CipherIdentity {
     private fun createIdentity(context: Context): Created {
         val secret = CipherCore.nativeGenerateSecret()
             ?: return Created.Failed(CipherReason.CORE)
-        val blob = CipherKeystore.wrap(AAD_IDENTITY, secret)
+        // L'UNICO punto in cui la chiave maestra puo' nascere, insieme
+        // all'import di un backup: qui l'identita' si sta creando davvero.
+        val blob = CipherKeystore.wrap(AAD_IDENTITY, secret, creaSeManca = true)
         if (blob == null) {
             secret.fill(0)
             return Created.Failed(CipherReason.KEYSTORE)

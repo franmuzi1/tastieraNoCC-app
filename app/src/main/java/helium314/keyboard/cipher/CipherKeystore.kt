@@ -66,8 +66,12 @@ internal object CipherKeystore {
      * rifiuta un IV fornito dal chiamante, che e' esattamente il modo in cui
      * GCM si rompe.
      */
-    fun wrap(domain: ByteArray, plaintext: ByteArray): ByteArray? = runCatching {
-        val key = masterKey() ?: return null
+    fun wrap(
+        domain: ByteArray,
+        plaintext: ByteArray,
+        creaSeManca: Boolean = false,
+    ): ByteArray? = runCatching {
+        val key = masterKey(creaSeManca) ?: return null
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, key)
         cipher.updateAAD(domain)
@@ -93,7 +97,9 @@ internal object CipherKeystore {
     fun unwrap(domain: ByteArray, blob: ByteArray): ByteArray? = runCatching {
         if (blob.size < 1 + IV_LEN + TAG_LEN) return null
         if (blob[0] != VERSION) return null
-        val key = masterKey() ?: return null
+        // MAI creare qui. Decifrare non e' il momento in cui una chiave nasce:
+        // se non c'e', l'unica risposta onesta e' "non si legge".
+        val key = masterKey(creaSeManca = false) ?: return null
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_BITS, blob, 1, IV_LEN))
         cipher.updateAAD(domain)
@@ -111,10 +117,38 @@ internal object CipherKeystore {
         }
     }
 
-    private fun masterKey(): SecretKey? = runCatching {
+    /**
+     * La chiave maestra. **Genera solo se richiesto esplicitamente.**
+     *
+     * Prima questa funzione generava ogni volta che non riusciva a leggere, e
+     * la distinzione che mancava e' quella fra "non c'e' ancora" e "c'e' ma non
+     * si legge adesso". Sono lo stesso `null`, e hanno conseguenze opposte:
+     * generare nel primo caso e' il primo avvio, generare nel secondo
+     * **sostituisce l'alias** e rende per sempre indecifrabile tutto il
+     * salvato — identita', portachiavi, contatti. Perdita di dati silenziosa,
+     * al primo intoppo transitorio.
+     *
+     * Ora si guarda prima se l'alias esiste. Se esiste ma l'ingresso non e'
+     * quello atteso — tipo sbagliato, chiave invalidata — si torna `null` e non
+     * si tocca niente: chi chiama lo tratta come "non leggibile", che e' cio'
+     * che e', e `CipherIdentity` risponde con `Unreadable` invece di
+     * ricominciare da capo. E' la stessa regola che quel file gia' segue: non
+     * rigenerare mai l'identita' da soli, perche' un guasto locale diventerebbe
+     * indistinguibile da un attacco.
+     *
+     * Sostituire la chiave resta possibile, ma solo dove e' una decisione presa
+     * — creazione dell'identita' e ripristino di un backup — e mai come effetto
+     * collaterale di una lettura.
+     */
+    private fun masterKey(creaSeManca: Boolean): SecretKey? = runCatching {
         val keystore = KeyStore.getInstance(PROVIDER).apply { load(null) }
-        val entry = keystore.getEntry(ALIAS, null) as? KeyStore.SecretKeyEntry
-        entry?.secretKey ?: generate()
+        if (keystore.containsAlias(ALIAS)) {
+            (keystore.getEntry(ALIAS, null) as? KeyStore.SecretKeyEntry)?.secretKey
+        } else if (creaSeManca) {
+            generate()
+        } else {
+            null
+        }
     }.getOrNull()
 
     /**
