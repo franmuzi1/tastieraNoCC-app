@@ -315,6 +315,32 @@ object CipherCompose {
         bloccaCopia && connection() != null && !isEmptyBuffer()
 
     /**
+     * La tastiera non deve IMPARARE cio' che si sta scrivendo qui.
+     *
+     * Il resto della tastiera non sa che questo testo sara' cifrato: riceve le
+     * battute come sempre, perche' `getCurrentInputConnection` e' deviata sulla
+     * riga (vedi `LatinIME.setInputView`). Cosi' il chiaro finiva nel dizionario
+     * personale — che vive in `filesDir`, quindi dentro il backup automatico di
+     * Android — e ne riemergeva come suggerimento **mentre si scrive in chiaro
+     * in un'altra app**. Cifrare il messaggio e poi vedersi suggerire il nome
+     * che conteneva e' peggio che non averlo cifrato: la cifratura fa credere
+     * che il testo sia rimasto qui.
+     *
+     * La condizione e' la stessa che decide se le battute finiscono nel nostro
+     * buffer: `connection() != null` e' vero esattamente quando la riga esiste
+     * ed e' attiva per questo campo. Non si duplica il criterio, si riusa —
+     * perche' due criteri che devono coincidere prima o poi divergono.
+     *
+     * Chi la usa la tratta come la modalita' anonima gia' esistente
+     * (`mIncognitoModeEnabled`), che e' il meccanismo che HeliBoard ha gia' per
+     * "non imparare": stessa strada, gia' collaudata.
+     *
+     * NON copre la raccolta dati dei gesti (`GestureDataGathering`), che ha una
+     * sua decisione separata ed e' spenta di default.
+     */
+    fun apprendimentoVietato(): Boolean = connection() != null
+
+    /**
      * Il dito ha spostato il cursore o selezionato un pezzo di testo.
      *
      * Il passaggio che conta non e' spostare la selezione — quello e' una riga —

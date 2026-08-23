@@ -1734,7 +1734,9 @@ public final class InputLogic {
             return;
         boolean wasAutoCapitalized = mWordComposer.wasAutoCapitalized() && !mWordComposer.isMostlyCaps();
         String word = StringUtilsKt.stripTrailingSeparatorsAndConnectors(suggestion, settingsValues.mSpacingAndPunctuations);
-        if (settingsValues.mIncognitoModeEnabled) {
+        // keyboard-cipher: cio' che si scrive nella riga cifrata non si impara.
+        // Stessa strada dell'anonimo, perche' e' lo stesso bisogno.
+        if (settingsValues.mIncognitoModeEnabled || CipherCompose.INSTANCE.apprendimentoVietato()) {
             // don't add to history, but still adjust confidences
             // otherwise incognito input fields can be very annoying when the wrong language is active
             mDictionaryFacilitator.adjustConfidences(word, wasAutoCapitalized);
@@ -1758,6 +1760,7 @@ public final class InputLogic {
             || mWordComposer.isComposingWord() // emoji will be part of the word in this case, better do nothing
             || !settingsValues.mBigramPredictionEnabled // this is only for next word suggestions, so they need to be enabled
             || settingsValues.mIncognitoModeEnabled
+            || CipherCompose.INSTANCE.apprendimentoVietato() // keyboard-cipher: vedi sopra
             || !settingsValues.needsToLookupSuggestions()
             || !StringUtilsKt.isEmoji(text)
             || mConnection.hasSlowInputConnection()

@@ -227,6 +227,14 @@
     -->
     <string name="cipher_replace_failed" tools:ignore="MissingTranslation">Questa app non ha lasciato sostituire il testo: controlla il campo, potrebbe esserci ancora del testo in chiaro</string>
     <!--
+        La consegna dalla riga di composizione non e' riuscita, e il messaggio
+        e' rimasto nella riga. Il messaggio dice DOVE si trova il testo, perche'
+        e' l'unica cosa che l'utente deve sapere per non riscriverlo: la riga
+        appare vuota solo dopo un invio riuscito, quindi vedendolo ancora li'
+        capisce da solo che non e' partito.
+    -->
+    <string name="cipher_send_failed_kept" tools:ignore="MissingTranslation">Invio non riuscito: il messaggio e\' ancora nella riga, riprova</string>
+    <!--
         Dice "invia", non "fatto": la card e\' nel campo ma non e\' ancora
         partita, e senza l\'invio il primo contatto non si chiude.
     -->

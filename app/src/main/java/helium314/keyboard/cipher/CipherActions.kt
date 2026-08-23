@@ -180,10 +180,28 @@ object CipherActions {
             // niente, si consegna. E il buffer si svuota solo DOPO che il blob
             // e' stato consegnato — svuotarlo prima, con la consegna che poi
             // fallisce, cancellerebbe un messaggio che non e' mai partito.
+            //
+            // "Dopo" nel tempo non bastava, ed e' il difetto che c'era qui: il
+            // ritorno di `commitText` veniva ignorato e `clear()` partiva
+            // comunque. Con la connessione morta, o con un campo che tronca a
+            // una lunghezza massima, il chiaro spariva dall'unico posto in cui
+            // esisteva — il nostro buffer — e non arrivava a nessuno.
+            //
+            // La verifica e' la stessa di [replaceField]: non ci si fida del
+            // ritorno, si RILEGGE il campo. Un `commitText` puo' rispondere di
+            // si' e lasciare nel campo qualcosa di diverso da quello che gli si
+            // e' dato.
             ic.beginBatchEdit()
             ic.finishComposingText()
-            ic.commitText(blob, 1)
+            val consegnato = ic.commitText(blob, 1)
             ic.endBatchEdit()
+            if (!consegnato || !fieldIs(ic, blob)) {
+                // Non si svuota niente e non si preme invio: il messaggio resta
+                // nella riga, dove l'utente lo vede. Meglio un invio da
+                // ripetere che un messaggio da riscrivere.
+                toast(ime, R.string.cipher_send_failed_kept)
+                return
+            }
             CipherCompose.clear()
             deliver(ime, ic)
             return
@@ -780,10 +798,16 @@ object CipherActions {
         }
         ic.beginBatchEdit()
         ic.finishComposingText()
-        ic.commitText(text, 1)
+        val consegnato = ic.commitText(text, 1)
         ic.endBatchEdit()
-        // Dopo la consegna, come per il blob: svuotare prima significherebbe
-        // perdere il testo se la consegna fallisse.
+        // Dopo la consegna, e solo se e' RIUSCITA: svuotare prima, o svuotare
+        // comunque, significa perdere il testo quando la consegna fallisce.
+        // Vale qui quanto per il blob — anzi di piu', perche' questo e' il
+        // testo dell'utente e non una sua ricifratura.
+        if (!consegnato || !fieldIs(ic, text)) {
+            toast(ime, R.string.cipher_send_failed_kept)
+            return
+        }
         CipherCompose.clear()
         if (!deliver(ime, ic)) avvisoUnaVolta(ime, "chiaro", R.string.cipher_sent_plain)
     }
