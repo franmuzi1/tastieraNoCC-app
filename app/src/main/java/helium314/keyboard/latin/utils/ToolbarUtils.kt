@@ -301,7 +301,12 @@ fun getPinnedToolbarKeys(prefs: SharedPreferences) =
  */
 private fun withCipherKeys(prefs: SharedPreferences, pref: String, default: String): List<ToolbarKey> {
     val keys = getEnabledToolbarKeys(prefs, pref, default)
-    if (!CipherSettings.isEnabled(prefs)) return keys.filterNot { it in cipherKeys }
+    // COMPOSE sopravvive anche a cifratura spenta: e' l'interruttore, e un
+    // interruttore che sparisce spegnendosi si puo' solo riaccendere dalle
+    // impostazioni. Tutto il resto se ne va.
+    if (!CipherSettings.isEnabled(prefs)) {
+        return keys.filterNot { it in cipherKeys && it != COMPOSE }
+    }
     val composizione = CipherSettings.isComposeMode(prefs)
     // COMPOSE resta anche a modalita' spenta: e' l'interruttore, cioe' l'unico
     // modo per riaccenderla. Tutto il resto della cifratura vive dentro la riga.

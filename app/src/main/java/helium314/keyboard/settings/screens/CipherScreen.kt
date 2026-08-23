@@ -88,14 +88,6 @@ fun createCipherSettings(context: Context) = listOf(
         }
     },
     Setting(
-        context, CipherSettings.PREF_COMPOSE_MODE,
-        R.string.cipher_compose_mode, R.string.cipher_compose_mode_summary
-    ) {
-        SwitchPreference(it, CipherSettings.DEFAULT_COMPOSE_MODE) {
-            KeyboardSwitcher.getInstance().setThemeNeedsReload()
-        }
-    },
-    Setting(
         context, CipherSettings.PREF_AUTO_SEND,
         R.string.cipher_auto_send, R.string.cipher_auto_send_summary
     ) {

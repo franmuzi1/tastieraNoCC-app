@@ -28,3 +28,6 @@ keystore.properties
 
 # worktree degli agenti: repository annidati, non vanno nella storia
 .claude/worktrees/
+
+# screenshot di diagnostica
+.diag/

@@ -406,10 +406,19 @@ object CipherActions {
      * tastiera.
      */
     fun toggleCompose(ime: InputMethodService) {
-        if (!CipherSettings.isEnabled(ime)) return
         val prefs = ime.prefs()
-        val wanted = !CipherSettings.isComposeMode(prefs)
-        prefs.edit().putBoolean(CipherSettings.PREF_COMPOSE_MODE, wanted).apply()
+        // Scrive PREF_ENABLED, non PREF_COMPOSE_MODE. Da quando i due
+        // interruttori sono diventati uno — erano lo stesso, vedi
+        // `CipherSettings.isComposeMode` — quella preferenza non la legge piu'
+        // nessuno: il tasto la scriveva, `reload` non vedeva cambiare niente, e
+        // il toast annunciava un cambio che non era avvenuto. Un tasto muto che
+        // si dichiarava riuscito.
+        //
+        // Niente uscita anticipata su `isEnabled`: questo tasto e' proprio
+        // quello che riaccende, e rifiutare di funzionare da spento lo
+        // renderebbe un interruttore a senso unico.
+        val wanted = !CipherSettings.isEnabled(prefs)
+        prefs.edit().putBoolean(CipherSettings.PREF_ENABLED, wanted).apply()
         CipherCompose.reload(ime)
         KeyboardSwitcher.getInstance().setThemeNeedsReload()
         // La riga che compare o sparisce e' gia' la risposta: la spiegazione
