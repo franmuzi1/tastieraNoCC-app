@@ -250,6 +250,18 @@ object CipherCompose {
     fun isEmptyBuffer(): Boolean = connection?.buffer?.isEmpty() != false
 
     /**
+     * La riga e' sospesa per il campo corrente: non c'e' a schermo, non riceve
+     * le battute, e a scrivere e' tornata a essere l'app. Vedi [onInputStarted].
+     *
+     * Diverso da `!isEnabled()`, che parla della preferenza: qui la modalita'
+     * e' accesa e la riga esiste, semplicemente **questo** campo non la usa.
+     * Serve a chi porta via il testo dal campo dell'app — vedi
+     * `CipherActions.adoptFieldText`: con la riga sospesa non c'e' nessun posto
+     * dove portarlo, e [adopt] lo rifiuterebbe comunque.
+     */
+    fun isSuppressed(): Boolean = suppressed
+
+    /**
      * Copiare adesso porterebbe fuori del chiaro, e l'utente ha chiesto di non
      * poterlo fare.
      *

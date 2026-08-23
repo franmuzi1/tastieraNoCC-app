@@ -52,6 +52,8 @@ internal object CipherStorage {
     const val RECIPIENTS = "recipients.bin"
     /** Contatti dimenticati, per riconoscerli se tornano. Vedi [CipherLapidi]. */
     const val TOMBSTONES = "forgotten.bin"
+    /** Ultimo uso di ogni contatto, per l'ordine dell'elenco. Vedi [CipherUsage]. */
+    const val USAGE = "usage.bin"
 
     /**
      * Distingue "non c'e' ancora" da "c'e' ma non si legge". Il primo caso e'

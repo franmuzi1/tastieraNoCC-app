@@ -98,7 +98,13 @@ internal class RecipientActivity : ComponentActivity() {
     @Composable
     private fun Scelta() {
         val peers = remember {
-            CipherCore.nativeListPeers()?.let { PeerList.parse(it) }.orEmpty()
+            // Ordinati per uso recente: chi scrivi spesso sta in cima invece
+            // che in fondo a un elenco che cresce. Nessuna preselezione — vedi
+            // CipherUsage: l'ordine non afferma chi sia il destinatario.
+            CipherUsage.ordinati(
+                this,
+                CipherCore.nativeListPeers()?.let { PeerList.parse(it) }.orEmpty(),
+            )
         }
         val senzaNome = stringResource(R.string.cipher_unnamed_peer)
         val righe = peers.map { peer ->
@@ -131,6 +137,7 @@ internal class RecipientActivity : ComponentActivity() {
         // Su disco, altrimenti la scelta muore al primo riavvio del servizio —
         // che e' il guasto che questo progetto ha gia' pagato una volta.
         CipherRecipients.remember(this, appDiProvenienza, peer.key)
+        CipherUsage.nota(this, peer.key)
         // Nessun avviso: diceva "ora in questa app cifri per questo contatto",
         // e non e' cosi'. Il destinatario corrente lo stabilisce anche —
         // e soprattutto — l'ultimo messaggio decifrato in quell'app, quindi

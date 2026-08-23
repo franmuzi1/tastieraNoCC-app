@@ -330,6 +330,10 @@ object CipherActions {
      * cancellazione non riesce, il testo resterebbe in tutti e due i posti: al
      * momento di cifrare finirebbe nel blob *e* accanto ad esso, in chiaro.
      * Meglio non adottare niente e lasciare le cose come stanno.
+     *
+     * **E solo se la riga puo' riceverlo.** Svuotare il campo e' la prima
+     * meta' di uno spostamento: senza la seconda non e' un'adozione, e'
+     * una cancellazione.
      */
     @JvmOverloads
     fun adoptFieldText(ime: InputMethodService, primaryCode: Int = 0) {
@@ -363,6 +367,22 @@ object CipherActions {
         }
         if (!CipherSettings.isEnabled(ime)) return
         if (!CipherCompose.isEnabled() || !CipherCompose.isEmptyBuffer()) return
+        // MAI a riga sospesa. Su un campo password la riga non compare e non
+        // riceve niente (vedi CipherCompose.onInputStarted), e di conseguenza
+        // `adopt` rifiuta il testo: qui non esiste un posto dove spostarlo, e
+        // toglierlo dal campo vuol dire solo distruggerlo.
+        //
+        // Era il tastierino del PIN, e il sintomo non somigliava affatto alla
+        // causa: la prima cifra finiva nel campo dell'app; alla seconda si
+        // passava di qui, si trovava "1", lo si cancellava dal campo e non lo
+        // si consegnava a nessuno. A ogni tasto restava solo l'ultima cifra, e
+        // il PIN era impossibile da scrivere.
+        //
+        // Non basta che sia `adopt` a rifiutare: la cancellazione dal campo
+        // avviene PRIMA — e deve avvenire prima, perche' il chiaro non stia mai
+        // in due posti insieme — quindi il rifiuto arriva a danno gia' fatto.
+        // L'unico punto in cui si puo' evitare e' questo, prima di leggere.
+        if (CipherCompose.isSuppressed()) return
         val ic = appConnection(ime) ?: return
         val field = readField(ime, ic) ?: return
         if (field.text.isEmpty()) return
