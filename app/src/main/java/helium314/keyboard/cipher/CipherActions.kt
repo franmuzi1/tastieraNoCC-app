@@ -609,6 +609,30 @@ object CipherActions {
      * Le tre vie per far comparire [DecryptActivity], quando il pannello dentro
      * la tastiera non e' praticabile.
      */
+    /**
+     * Apre [daAprire], una volta sola.
+     *
+     * ## Perche' non si ritenta
+     *
+     * Un avvio rifiutato non segnala niente: `startActivity` torna come se
+     * fosse andato bene. La versione precedente provava, aspettava un secondo e
+     * riprovava se nessuno si era presentato — e misurato, l'Activity ci mette
+     * **1341 ms** a comparire. Il ritentativo partiva sempre, e siccome
+     * `nativeHandleIncomingText` non e' una lettura (fissa un mittente mai
+     * visto), la seconda apertura rielaborava il blob: presentazione fissata
+     * due volte, e la seconda "gia' nota". La difesa contro i duplicati che era
+     * seguita nascondeva il difetto invece di toglierlo, e a sua volta
+     * impediva di aprire due volte di fila lo stesso file.
+     *
+     * Qui non si indovina l'esito: si crea la condizione perche' l'avvio sia
+     * permesso, e poi si avvia. La condizione e' avere una finestra a schermo,
+     * e quella e' **osservabile** — `isInputViewShown` — mentre l'esito
+     * dell'avvio no. `requestShowSelf` non e' un avvio di Activity e non passa
+     * da quelle restrizioni: e' la tastiera che chiede la propria finestra.
+     *
+     * Se la finestra non arriva — nessuna sessione di input attiva — allora non
+     * si puo' aprire niente, e li' il ripiego non e' un'ipotesi ma un fatto.
+     */
     private fun scalaDiApertura(
         ime: InputMethodService,
         contenuto: String,
@@ -624,50 +648,20 @@ object CipherActions {
             )
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-
-        // ## Tre tentativi, dal meno invadente al piu' rumoroso
-        //
-        // **1. Aprire e basta.** Da Android 10 un'app senza finestre visibili
-        // non dovrebbe poter avviare un'Activity, ma misurato su Android 14
-        // (emulatore AOSP) si apre lo stesso: il sistema tratta l'IME
-        // predefinito come un caso a parte. Dove vale, finisce qui.
-        //
-        // **2. Mostrare la tastiera, poi riprovare.** Su un telefono vero
-        // l'avvio viene invece rifiutato — riscontrato con la riga diagnostica
-        // della notifica keep-alive: "messaggio cifrato riconosciuto" e niente
-        // a schermo. `requestShowSelf` pero' **non e' un avvio di Activity**: e'
-        // la tastiera che chiede la propria finestra, e non passa da quelle
-        // restrizioni. E una volta che quella finestra e' visibile l'app ha una
-        // finestra a schermo, quindi il secondo `startActivity` non e' piu' "in
-        // background". Costa zero permessi. Funziona solo se in quel momento
-        // c'e' un campo di testo attivo: in una chat con la tastiera chiusa puo'
-        // non esserci, ed e' il motivo per cui esiste anche il terzo.
-        //
-        // **3. L'avviso da toccare.** Ultima spiaggia, e nient'altro funziona.
-        //
-        // L'esito non si puo' controllare direttamente: un avvio rifiutato non
-        // lancia niente, `startActivity` torna come se fosse andato bene. Quindi
-        // si guarda se qualcuno si e' presentato — vedi `DecryptActivity.Apertura`.
-        val tentativo = DecryptActivity.Apertura.ora()
-        runCatching { ime.startActivity(intent) }
-        if (ime.isInputViewShown) return
-
-        val mano = Handler(Looper.getMainLooper())
-        mano.postDelayed({
-            if (DecryptActivity.Apertura.avvenutaDopo(tentativo)) return@postDelayed
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                runCatching { ime.requestShowSelf(0) }
-            }
-            mano.postDelayed({
-                if (DecryptActivity.Apertura.avvenutaDopo(tentativo)) return@postDelayed
+        if (ime.isInputViewShown) {
+            runCatching { ime.startActivity(intent) }
+            return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            runCatching { ime.requestShowSelf(0) }
+        }
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (ime.isInputViewShown) {
                 runCatching { ime.startActivity(intent) }
-                mano.postDelayed({
-                    if (!DecryptActivity.Apertura.avvenutaDopo(tentativo)) {
-                        CipherNotification.offer(ime, contenuto)
-                    }
-                }, ATTESA_APERTURA_MS)
-            }, ATTESA_FINESTRA_MS)
-        }, ATTESA_APERTURA_MS)
+            } else {
+                CipherNotification.offer(ime, contenuto)
+            }
+        }, ATTESA_FINESTRA_MS)
     }
 
     /**
