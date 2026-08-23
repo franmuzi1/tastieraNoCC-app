@@ -214,6 +214,12 @@ class DecryptActivity : ComponentActivity() {
             CipherCore.KIND_MESSAGE -> showMessage(result)
             CipherCore.KIND_OWN_MESSAGE -> showMessage(result, mio = true)
             CipherCore.KIND_IDENTITY_CARD -> showIdentityCard(result)
+            // La propria chiave: si dice e basta. Nessuna azione da offrire —
+            // non c'e' niente da nominare, niente da scegliere come
+            // destinatario, e un pulsante qui suggerirebbe che ci sia.
+            CipherCore.KIND_OWN_IDENTITY_CARD -> showNotice(
+                getString(R.string.cipher_own_card, result.senderFingerprint.orEmpty())
+            )
             else -> showNotice(R.string.cipher_unavailable)
         }
     }

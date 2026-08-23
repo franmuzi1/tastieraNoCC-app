@@ -390,4 +390,11 @@
     -->
     <string name="cipher_learn" tools:ignore="MissingTranslation">Impara dalle parole cifrate</string>
     <string name="cipher_learn_summary" tools:ignore="MissingTranslation">Migliora i suggerimenti anche con cio\' che scrivi nella riga cifrata. Da spento (consigliato) quelle parole non entrano nel dizionario personale, che finisce nel backup di Android e ricompare come suggerimento nelle altre app</string>
+    <!--
+        Dice per prima cosa CHE COSA e\', perche\' e\' l\'informazione che
+        sorprende, e poi che non e\' successo niente — altrimenti l\'utente resta a
+        chiedersi se il contatto sia stato aggiunto lo stesso. L\'impronta c\'e\'
+        perche\' e\' l\'occasione buona per riconoscere la propria.
+    -->
+    <string name="cipher_own_card" tools:ignore="MissingTranslation">Questa e\' la TUA chiave (%1$s), non quella di un contatto. Non e\' stato aggiunto niente alla rubrica.</string>
 </resources>

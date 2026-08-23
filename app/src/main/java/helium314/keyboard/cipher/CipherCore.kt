@@ -86,6 +86,15 @@ object CipherCore {
      */
     const val KIND_BURNED = 5
 
+    /**
+     * La propria card, riaperta. **Non e' stato fissato nessun contatto**, e
+     * `senderKey` resta nullo apposta: riempirlo con la propria chiave
+     * inviterebbe a trattarla come un peer, che e' il difetto da cui nasce
+     * questo caso. Copiare la propria chiave e riaprirla creava in rubrica un
+     * contatto che e' se stessi, senza che niente lo dicesse.
+     */
+    const val KIND_OWN_IDENTITY_CARD = 6
+
     // Valori del campo `kind` dopo nativeAssignLabel.
     const val LABEL_ASSIGNED = 0
     /** L'etichetta appartiene gia' a un'altra chiave: "safety number changed". */
