@@ -28,12 +28,28 @@ import java.io.FileOutputStream
  *
  * ## Dove finiscono davvero, misurato
  *
- * Il manifest ha `defaultToDeviceProtectedStorage="true"`, da cui sarebbe
- * naturale dedurre che questi file stiano in device protected storage. **Non
- * e' cosi'.** Verificato su emulatore API 34: finiscono in
- * `/data/user/0/<pkg>/no_backup/cipher/`, cioe' in *credential encrypted*
- * storage; la directory device-protected dell'app esiste separatamente e
- * contiene solo cio' che HeliBoard ci mette tramite `DeviceProtectedUtils`.
+ * Il manifest ha `defaultToDeviceProtectedStorage="true"` (riga
+ * `<application>`), da cui sarebbe naturale dedurre che questi file stiano in
+ * device protected storage — la documentazione di quel flag dice che
+ * reindirizza le API di storage predefinite. **Non e' cosi' per
+ * `noBackupFilesDir`.**
+ *
+ * Verificato due volte, la seconda il 23 agosto 2026 su API 34 e su
+ * installazione PULITA — disinstalla, reinstalla, poi si legge il percorso che
+ * la funzione restituisce davvero. La pulizia non e' pedanteria: la prima
+ * verifica guardava una directory che poteva essere il residuo di una build con
+ * flag diversi, e una misura che non distingue "l'ha creata questa versione" da
+ * "c'era gia'" non dimostra niente.
+ *
+ * Esito: `/data/user/0/<pkg>/no_backup/cipher/`, cioe' *credential encrypted*.
+ * L'albero device-protected dell'app esiste in parallelo — `/data/user_de/0/…`,
+ * con `files`, `cache`, `shared_prefs` — e **non ha affatto un `no_backup`**.
+ * Li' dentro c'e' solo cio' che HeliBoard ci mette tramite
+ * `DeviceProtectedUtils`.
+ *
+ * Il meccanismo per cui quel flag non tocca `noBackupFilesDir` non e' stato
+ * ricostruito: e' registrato l'esito, misurato, non la spiegazione. Chi
+ * cambiasse il flag o la directory rifaccia la misura invece di dedurla.
  *
  * La differenza conta ed e' a nostro favore: CE e' cifrato con una chiave
  * derivata dalla credenziale dell'utente, quindi a riposo e prima del primo
