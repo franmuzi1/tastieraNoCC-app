@@ -101,7 +101,11 @@ object CipherActions {
     fun encrypt(ime: InputMethodService) {
         if (!ready(ime)) return
         val pacchetto = ime.currentInputEditorInfo?.packageName.orEmpty()
-        if (pacchetto.isNotEmpty() && !CipherCore.nativeHasCurrentPeer(pacchetto)) {
+        // Un gruppo scelto conta come destinatario: senza questo controllo il
+        // ramo qui sotto chiederebbe di sceglierne uno singolo, cioe' la
+        // domanda a cui l'utente ha gia' risposto.
+        val gruppo = if (pacchetto.isEmpty()) null else CipherGroups.corrente(ime, pacchetto)
+        if (gruppo == null && pacchetto.isNotEmpty() && !CipherCore.nativeHasCurrentPeer(pacchetto)) {
             chiediDestinatario(ime)
             return
         }
@@ -142,6 +146,28 @@ object CipherActions {
         }
 
         val plaintext = field.text.toByteArray()
+        // Un gruppo si cifra con la sua via: una chiave di contenuto sola e uno
+        // slot per persona. **Non ha forward secrecy** — l'interruttore qui non
+        // si guarda nemmeno, perche' non c'e' niente da decidere: vedi la
+        // decisione K1, il gruppo ha la forward secrecy del suo membro
+        // peggiore, e prometterla sarebbe peggio che non averla.
+        if (gruppo != null) {
+            val chiavi = ByteArray(gruppo.membri.size * 32)
+            for ((i, membro) in gruppo.membri.withIndex()) {
+                membro.copyInto(chiavi, i * 32)
+            }
+            val blobGruppo = try {
+                CipherCore.nativeEncryptGroup(chiavi, plaintext, System.currentTimeMillis() / 1000)
+            } finally {
+                plaintext.fill(0)
+            }
+            if (blobGruppo == null) {
+                toast(ime, R.string.cipher_group_failed)
+                return
+            }
+            consegna(ime, ic, field, composed != null, blobGruppo)
+            return
+        }
         val blob = try {
             CipherCore.nativeEncryptForApp(
                 ime.currentInputEditorInfo?.packageName.orEmpty(),
@@ -175,7 +201,25 @@ object CipherActions {
             toast(ime, R.string.cipher_keyring_not_saved_send)
             return
         }
-        if (composed != null) {
+        consegna(ime, ic, field, composed != null, blob)
+    }
+
+    /**
+     * Mette il blob dove va e chiede all'app di spedirlo.
+     *
+     * Estratta da [encrypt] quando e' arrivato il gruppo: due vie che cifrano
+     * in modi diversi ma consegnano allo stesso modo, e due copie di questa
+     * logica sarebbero due posti dove ricascare nel difetto che c'era qui —
+     * svuotare la riga senza aver verificato che il blob fosse arrivato.
+     */
+    private fun consegna(
+        ime: InputMethodService,
+        ic: InputConnection,
+        field: Field,
+        dallaRiga: Boolean,
+        blob: String,
+    ) {
+        if (dallaRiga) {
             // Il campo dell'app e' vuoto per costruzione: qui non si sostituisce
             // niente, si consegna. E il buffer si svuota solo DOPO che il blob
             // e' stato consegnato — svuotarlo prima, con la consegna che poi
@@ -615,7 +659,17 @@ object CipherActions {
                 " " +
                 android.text.format.DateFormat.getTimeFormat(ime).format(java.util.Date(result.sentAtUnix * 1000))
         }.getOrDefault("")
-        CipherPanel.mostra(intestazione, quando, chiaro)
+        // Un messaggio di gruppo dice di esserlo, e dice il prezzo. E' la
+        // condizione che accompagna la decisione K1: il gruppo non ha forward
+        // secrecy, e tacerlo farebbe credere a chi legge di avere una garanzia
+        // che ha solo nei messaggi a due. Sta accanto alla data e non nel
+        // titolo perche' riguarda il messaggio, non chi l'ha scritto.
+        val riga = if (result.recipientCount > 1) {
+            quando + "  ·  " + ime.getString(R.string.cipher_group_message, result.recipientCount)
+        } else {
+            quando
+        }
+        CipherPanel.mostra(intestazione, riga, chiaro)
         return Esito.PANNELLO
     }
 

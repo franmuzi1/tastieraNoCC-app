@@ -152,6 +152,10 @@ object CipherIdentity {
             // dato a ogni contatto dimenticato, in chiaro dopo la decifratura.
             CipherStorage.delete(app, CipherStorage.TOMBSTONES)
             CipherStorage.delete(app, CipherStorage.USAGE)
+            // E i gruppi salvati: sono chiavi di contatti raggruppate per
+            // affinita', cioe' "chi sta insieme a chi" — un metadato piu' ricco
+            // dell'elenco dei contatti, non piu' povero.
+            CipherGroups.cancellaTutto(app)
             // Dopo i file: cancellare prima la chiave lascerebbe su disco due
             // blob non piu' decifrabili se la cancellazione dei file fallisse.
             CipherKeystore.deleteKey()

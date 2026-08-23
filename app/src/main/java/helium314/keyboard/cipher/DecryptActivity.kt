@@ -599,7 +599,14 @@ class DecryptActivity : ComponentActivity() {
                     else -> chi
                 },
                 mio = mio,
-                quando = formatTimestamp(result.sentAtUnix),
+                // Vedi CipherActions: un messaggio di gruppo dice di esserlo
+                // e dice il prezzo, perche' non ha forward secrecy.
+                quando = if (result.recipientCount > 1) {
+                    formatTimestamp(result.sentAtUnix) + "  ·  " +
+                        getString(R.string.cipher_group_message, result.recipientCount)
+                } else {
+                    formatTimestamp(result.sentAtUnix)
+                },
                 testo = testo,
             )
         )
@@ -693,7 +700,14 @@ class DecryptActivity : ComponentActivity() {
                     else -> chi
                 },
                 mio = mio,
-                quando = formatTimestamp(result.sentAtUnix),
+                // Vedi CipherActions: un messaggio di gruppo dice di esserlo
+                // e dice il prezzo, perche' non ha forward secrecy.
+                quando = if (result.recipientCount > 1) {
+                    formatTimestamp(result.sentAtUnix) + "  ·  " +
+                        getString(R.string.cipher_group_message, result.recipientCount)
+                } else {
+                    formatTimestamp(result.sentAtUnix)
+                },
                 dettaglio = getString(R.string.cipher_file_detail, name, content.size / 1024),
                 anteprima = anteprima,
                 nome = name,

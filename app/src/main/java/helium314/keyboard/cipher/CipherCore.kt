@@ -119,6 +119,17 @@ object CipherCore {
         @JvmField var verified: Int = 0
         /** Solo per le presentazioni: 1 se quella chiave era gia' nota. */
         @JvmField var alreadyPinned: Int = 0
+
+        /**
+         * Quante persone potevano leggere questo messaggio, mittente compreso.
+         * `1` per un messaggio a due.
+         *
+         * Non e' una curiosita' da mostrare: sopra uno, il messaggio viene da
+         * un gruppo, e **un messaggio di gruppo non ha forward secrecy** — la
+         * condizione che accompagna quella decisione e' che l'interfaccia lo
+         * dica. Senza questo numero non sarebbe esprimibile.
+         */
+        @JvmField var recipientCount: Int = 1
         /** Solo per [KIND_MESSAGE]. Da azzerare dopo l'uso. */
         @JvmField var plaintext: ByteArray? = null
         /**
@@ -243,6 +254,28 @@ object CipherCore {
      *   scelta sta nel chiamante perche' il core non sa che versione abbia il
      *   destinatario.
      */
+    /**
+     * Cifra per piu' destinatari (decisione K).
+     *
+     * Le chiavi vanno **concatenate** in un solo array, 32 byte ciascuna: un
+     * array di array attraverso JNI costa un riferimento locale per riga e un
+     * ciclo che li rilascia, cioe' piu' codice `unsafe` per trasportare la
+     * stessa cosa.
+     *
+     * Il mittente si aggiunge da solo dall'altra parte, e non va messo qui:
+     * senza uno slot suo non potrebbe rileggere cio' che ha scritto.
+     *
+     * `null` se qualcosa non va — chiave mai fissata, troppi destinatari,
+     * identita' non pronta. **Cifrare non e' di sola lettura**: il portachiavi
+     * qui non cambia, ma la regola vale per tutte le altre vie e chi legge
+     * questa firma non deve dedurne il contrario.
+     */
+    external fun nativeEncryptGroup(
+        peers: ByteArray,
+        plaintext: ByteArray,
+        nowUnix: Long,
+    ): String?
+
     external fun nativeEncryptForApp(
         appPackage: String,
         plaintext: ByteArray,

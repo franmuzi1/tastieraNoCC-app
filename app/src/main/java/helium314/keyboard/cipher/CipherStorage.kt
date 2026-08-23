@@ -73,6 +73,9 @@ internal object CipherStorage {
     /** Ultimo uso di ogni contatto, per l'ordine dell'elenco. Vedi [CipherUsage]. */
     const val USAGE = "usage.bin"
 
+    /** I gruppi salvati (decisione K5). Vedi [CipherGroups]. */
+    const val GROUPS = "groups.bin"
+
     /**
      * Distingue "non c'e' ancora" da "c'e' ma non si legge". Il primo caso e'
      * il primo avvio, il secondo e' un guasto: confonderli significherebbe

@@ -517,10 +517,20 @@ object CipherCompose {
      */
     fun updateRecipient(appPackage: String) {
         val view = destinatario ?: return
-        val nome = if (CipherCore.available && appPackage.isNotEmpty()) {
-            CipherCore.nativeCurrentPeerName(appPackage)
-        } else {
-            null
+        // Il gruppo viene PRIMA della persona: se e' scelto, e' lui il
+        // destinatario, e mostrare il singolo che era selezionato prima
+        // direbbe a chi scrive che il messaggio va a una persona sola.
+        val contesto = view.context
+        val gruppo = if (appPackage.isNotEmpty()) CipherGroups.corrente(contesto, appPackage) else null
+        val nome = when {
+            gruppo != null -> contesto.getString(
+                R.string.cipher_recipient_group,
+                gruppo.nome,
+                gruppo.membri.size,
+            )
+            CipherCore.available && appPackage.isNotEmpty() ->
+                CipherCore.nativeCurrentPeerName(appPackage)
+            else -> null
         }
         val colori = Settings.getValues().mColors
         view.text = when {

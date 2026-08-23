@@ -449,4 +449,24 @@
         sembra che l\'interruttore si muova da solo.
     -->
     <string name="cipher_on_after_read" tools:ignore="MissingTranslation">Cifratura accesa: hai appena letto un messaggio cifrato, cosi\' puoi rispondere allo stesso modo</string>
+    <!--
+        La cifratura di gruppo non e\' riuscita. Le cause possibili sono poche e
+        tutte azionabili — un membro non e\' piu\' fra i contatti, oppure sono
+        troppi — quindi si dice dove guardare invece di un "non disponibile".
+    -->
+    <string name="cipher_group_failed" tools:ignore="MissingTranslation">Non riesco a cifrare per questo gruppo: controlla che tutti i membri siano ancora fra i contatti</string>
+    <!--
+        Il destinatario quando e\' un gruppo. Il numero c\'e\' apposta: «Famiglia»
+        da solo non dice a quante persone stai per mandare, e un gruppo che ha
+        acquisito o perso un membro si distingue solo cosi\'.
+    -->
+    <string name="cipher_recipient_group" tools:ignore="MissingTranslation">%1$s (%2$d)</string>
+    <!--
+        Un messaggio che veniva da un gruppo. Si dice il numero e si dice il
+        prezzo: un messaggio di gruppo NON ha forward secrecy, e la condizione
+        che accompagna quella decisione e\' che l\'interfaccia lo dica. Tacerlo
+        significherebbe far credere a chi legge di avere una garanzia che ha
+        solo nei messaggi a due.
+    -->
+    <string name="cipher_group_message" tools:ignore="MissingTranslation">Messaggio di gruppo, %1$d persone potevano leggerlo. I messaggi di gruppo restano leggibili se qualcuno perde il telefono</string>
 </resources>
