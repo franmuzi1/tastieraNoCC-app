@@ -29,14 +29,18 @@ in cloud e qualunque analisi automatica lato piattaforma vedono soltanto quello.
 
 ## Stato: sperimentale. Leggi prima di fidartene
 
-Questo software **non è stato controllato da nessuno** tranne chi lo ha
-scritto. Non ha ricevuto revisioni indipendenti né un audit di sicurezza.
+Questo software **non ha ricevuto un audit di sicurezza indipendente**. È stato
+passato al setaccio da una revisione interna a più agenti (23 agosto 2026), che
+ha trovato e fatto correggere una decina di difetti reali — fra cui chiavi
+private che finivano nell'interfaccia e testo in chiaro che entrava nel
+dizionario personale. Ma chi ha condotto la revisione lavorava allo stesso
+progetto: non sostituisce occhi esterni.
 
 Cosa è stato verificato, e come:
 
 | | |
 |---|---|
-| core crittografico | 104 test, analisi statica severa, ~187 milioni di input di fuzzing |
+| core crittografico | 107 test nel core e 11 nel ponte Android, analisi statica severa, ~187 milioni di input di fuzzing |
 | ciclo completo | osservato su emulatore Android 6, 12 e 14 |
 | percorsi d'errore | blob corrotto, troncato, versione futura, testo non cifrato |
 | cambio chiave di un contatto | tutti e tre gli esiti |
@@ -99,8 +103,11 @@ del messaggio cifrato, che viene rilevata.
 
 ## Come funziona, in breve
 
-Ognuno ha **una** identità, valida per tutti i contatti: non esiste una chiave
-per interlocutore, il segreto condiviso si calcola.
+Ognuno ha **una** identità, valida per tutti i contatti: non ci si scambia una
+chiave diversa per ogni persona, il segreto condiviso si ricalcola ogni volta
+dalle due identità. Sopra a questa base vivono le chiavi temporanee della
+forward secrecy e — a interruttore spento — una chiave per conversazione che
+rende possibile bruciarla.
 
 Il primo contatto si aggancia scambiandosi una **presentazione**, un messaggio
 che la tastiera scrive da sola nel campo. Chi la riceve e la decifra memorizza
@@ -123,14 +130,16 @@ chiave stabile non riaprirebbe quello che hai già mandato. Il prezzo è dichiar
 e non aggirabile: un messaggio si apre **una volta sola**, nemmeno per te, e non
 esiste cronologia. Si spegne per riavere i messaggi rileggibili.
 
-**Bruciare una conversazione**, dalla scheda del contatto e solo a forward
-secrecy spenta: da questo telefono le chiavi spariscono ed è definitivo,
+**Bruciare una conversazione**, dalla scheda del contatto. Ha senso soprattutto
+a forward secrecy spenta — accesa, i messaggi si aprono una volta sola e non
+resta quasi niente da bruciare, e l'app te lo dice prima di procedere. Da questo
+telefono le chiavi spariscono ed è definitivo,
 all'altra persona viene copiata negli appunti una richiesta da incollarle in
 chat. Se la sua app la onora, cancella anche lei — ma **non è imponibile**, e la
 piattaforma ha comunque il proprio cifrato.
 
-**Allegati**: si scelgono dalla tastiera con i tasti immagine e graffetta,
-oppure dalla scheda del contatto. Il file esce cifrato come documento — i
+**Allegati**: si scelgono dalla tastiera con la graffetta, oppure dalla scheda
+del contatto. Il file esce cifrato come documento — i
 documenti le chat non li ricomprimono — e il nome originale viaggia dentro il
 cifrato, non fuori. Chi riceve lo passa all'app e lo vede in una finestra che
 blocca gli screenshot; sul telefono finisce solo se lo salva apposta.
@@ -142,8 +151,14 @@ motivazioni: `CLAUDE.md` nel repository del core.
 
 ## Permessi
 
-**Nessuno in più rispetto a HeliBoard**, che a sua volta non ha accesso a
-internet — ed è la sua proprietà principale.
+**Niente accesso a internet**, che è la proprietà principale di HeliBoard e qui
+resta intatta: la tastiera non può mandare da nessuna parte quello che scrivi.
+
+Tre permessi in più rispetto a HeliBoard, tutti per il servizio che impedisce al
+telefono di chiudere la tastiera mentre la usi: `FOREGROUND_SERVICE`,
+`FOREGROUND_SERVICE_SPECIAL_USE` e le notifiche. Nessuno dei tre permette di far
+uscire dati dal telefono, e vanno via insieme a quel servizio se un giorno lo si
+toglie.
 
 In particolare **niente `CAMERA`**: il codice QR si mostra ma non si scansiona.
 Non serve, perché basta che una delle due persone inquadri, con un lettore QR
@@ -182,22 +197,31 @@ impostazioni della tastiera → Toolbar, oppure reinstallando da zero (che però
 
 ### Dove si scrive il messaggio
 
-Due modi, si sceglie in Cifratura → *Scrivi dentro la tastiera*.
+In una **riga della tastiera**, non nel campo dell'app. L'app riceve solo il
+messaggio cifrato, quando premi il lucchetto: fino a quel momento il suo campo
+resta vuoto, quindi non può salvare bozze del chiaro né annunciare che stai
+scrivendo.
 
-- **spento** (predefinito): scrivi nel campo dell'app come con qualunque
-  tastiera, e il lucchetto sostituisce quel testo con il messaggio cifrato;
-- **acceso**: scrivi in una riga della tastiera e l'app riceve **solo** il
-  messaggio cifrato, quando premi il lucchetto. Il campo dell'app resta vuoto
-  fino a quel momento, quindi non può salvare bozze del chiaro né annunciare
-  che stai scrivendo. È la modalità in cui esistono i tasti della cifratura,
-  compreso l'aeroplanino che consegna il testo **in chiaro**, per quando il
-  destinatario non ha questa tastiera.
+Lì vivono i tasti della cifratura, compreso l'aeroplanino che consegna il testo
+**in chiaro**, per quando il destinatario non ha questa tastiera.
 
-  Nella riga si seleziona come in qualunque campo: tocco per il cursore,
-  pressione lunga per la parola, trascinamento per un pezzo. **Copia e taglia
-  invece non funzionano** finché c'è del chiaro: dagli appunti lo leggerebbe
-  l'app di chat che ha il fuoco, e resterebbe nella cronologia appunti sul
-  telefono. Si può riaprire da Cifratura, sapendo cosa si apre.
+**La riga compare dove si compongono messaggi.** Su una barra di ricerca, un
+campo numerico o un indirizzo non compare da sola: lì il testo appartiene
+all'app e cifrarlo non ha senso. Se in un campo del genere la vuoi lo stesso,
+premi il tasto della cifratura e compare — e torna automatica appena cambi
+campo. L'unica eccezione che non si scavalca sono i **campi password**: la riga
+mostrerebbe a schermo quello che il campo nasconde con i pallini.
+
+Nella riga si seleziona come in qualunque campo: tocco per il cursore, pressione
+lunga per la parola, trascinamento per un pezzo. **Copia e taglia invece non
+funzionano** finché c'è del chiaro: dagli appunti lo leggerebbe l'app di chat che
+ha il fuoco, e resterebbe nella cronologia appunti sul telefono. Si può riaprire
+da Cifratura, sapendo cosa si apre.
+
+**Quello che scrivi lì non viene imparato.** Il dizionario personale della
+tastiera finisce nel backup di Android e riemerge come suggerimento nelle altre
+app: le parole della riga cifrata ne restano fuori. Si può riaccendere
+l'apprendimento da Cifratura, sapendo il prezzo.
 
 > **Attenzione al passaggio a una build firmata.** Gli APK pubblicati finora
 > sono build di **debug**: firmate con la chiave di debug di Android e con il
