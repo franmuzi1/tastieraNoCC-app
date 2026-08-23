@@ -19,7 +19,7 @@ blob → "decifra" → mittente, data e testo originale.
 
 | Piano | Copertura |
 |---|---|
-| core Rust + ponte JNI | 104 + 6 test, clippy pulito, ~187 M input di fuzzing |
+| core Rust + ponte JNI | 107 + 11 test, clippy pulito, ~187 M input di fuzzing |
 | percorsi felici | tutti, sul dispositivo |
 | percorsi negativi | blob corrotto, troncato, versione futura, tier ignoto, testo non nostro |
 | conflitto di etichetta | tutti e tre gli esiti |
@@ -933,9 +933,15 @@ modalita' di scrittura e contatti. Prima le preferenze stavano fra quelle
 generali e i contatti erano una voce a se': la funzione che distingue questa
 tastiera sembrava un dettaglio di configurazione.
 
-Le due preferenze stanno in `CipherSettings`, non in `Settings`/`Defaults` di
+Le preferenze stanno in `CipherSettings`, non in `Settings`/`Defaults` di
 HeliBoard: sono di una funzione che upstream non ha, e ogni riga aggiunta a un
 file di upstream e' un conflitto in attesa al prossimo merge.
+
+Erano due quando questa riga e' stata scritta; oggi sono sette:
+`cipher_enabled`, `cipher_auto_send`, `cipher_learn`, `cipher_block_copy`,
+`cipher_auto_open`, `cipher_forward_secrecy`, `cipher_keep_alive`. Tutte tranne
+la prima compaiono **solo a cifratura accesa**: mostrarle spente e inerti e' il
+modo piu' rapido di far credere che siano rotte.
 
 `cipher_enabled` spento fa comportare il fork come HeliBoard: i tasti spariscono
 dalla toolbar, la riga non c'e', e `CipherActions` rifiuta comunque ogni codice
@@ -1451,3 +1457,84 @@ costruisce: 24 MB contro i 33 della debug, senza il flag `debuggable`. Resta
 `helium314.keyboard` (senza `.debug`), quindi si installa **accanto** alla
 build attuale e non al suo posto. Identità e contatti non si portano dietro da
 soli: servono esportazione e importazione del backup.
+
+## L'audit del 23 agosto 2026, e cosa ha cambiato
+
+Quattro revisori in parallelo su due repository: cripto del core, confine JNI,
+sicurezza Android, correttezza Android. Rapporti integrali in
+`/home/user/audit-musyboard-2026-08-23/`, fuori dai repo perché contengono
+percorsi e note di macchina.
+
+I difetti confermati sono stati corretti dalla 0.9.4 alla 0.9.14. Qui non si
+ripete l'elenco — sta nei commit e nelle note di release — ma le **quattro cose
+che hanno insegnato qualcosa** sul modo di lavorare, perché quelle non stanno da
+nessun'altra parte.
+
+### 1. I difetti peggiori erano commenti sbagliati, non codice sbagliato
+
+Le chiavi private uscivano verso la schermata contatti perché la funzione che le
+serviva aveva un commento che diceva *"non contiene segreti — sono tutte chiavi
+pubbliche"*. Era falso, e chi ha scritto l'elenco dei contatti si è fidato della
+frase invece che del formato.
+
+Nella stessa giornata è capitato a me: ho proposto come lavoro da fare la chiave
+che avanza alla lettura — appoggiandomi a un messaggio di commit che la
+descriveva come "ogni risposta butta" — quando il codice la aveva da agosto.
+
+**Regola che ne esce:** un commento è una fonte secondaria. Si apre il file.
+
+### 2. L'audit non trova i difetti che stanno *fra* i pezzi
+
+Due dei guasti peggiori della giornata li ha trovati l'utente usando la
+tastiera, e nessuno dei quattro revisori li aveva visti:
+
+- il tasto della cifratura in toolbar era **muto** sui campi che non sono chat, e
+  annunciava comunque di aver funzionato;
+- forward secrecy e "brucia la conversazione" sono funzioni **opposte** — a
+  interruttore acceso non resta quasi niente da bruciare — e nessuna delle due
+  lo diceva.
+
+Ogni pezzo, letto da solo, era corretto e ben documentato. Il difetto stava nello
+spazio fra i pezzi, che si vede solo usando l'app.
+
+### 3. Correggere apre porte nuove sulla stessa stanza
+
+Impedire alla riga cifrata di accendersi sui campi di ricerca ha **riaperto** il
+tasto muto, per una strada diversa: la cifratura si accendeva davvero, ma la riga
+restava nascosta e il messaggio diceva che era comparsa. Corretto un difetto,
+introdotta la stessa bugia due ore dopo.
+
+Nei commit di quel giro c'è scritto esplicitamente, invece della sola
+correzione: quel punto è già scivoloso due volte, e chi ci tornerà deve saperlo.
+
+### 4. Una misura che non isola non è una misura
+
+La verifica che i file di stato stiano in memoria *credential encrypted* era già
+stata fatta una volta, su un emulatore dove l'app era installata da sessioni
+precedenti. Non valeva niente: quella cartella poteva essere il residuo di una
+build con flag diversi.
+
+Rifatta da zero — disinstalla, reinstalla, sonda temporanea che stampa il
+percorso vero, innescata dall'unica Activity esportata — e l'esito conferma
+l'affermazione: `/data/user/0/<pkg>/no_backup/cipher/`. L'albero
+device-protected esiste in parallelo e **non ha affatto un `no_backup`**.
+
+Registrato anche ciò che resta ignoto: *perché* `defaultToDeviceProtectedStorage`
+non tocchi `noBackupFilesDir` non è stato ricostruito. C'è l'esito, misurato, non
+la spiegazione — e chi cambiasse quel flag deve rifare la misura, non dedurla.
+
+### Cosa è rimasto aperto, e perché
+
+- **`ricorda_prekey` non guarda la data.** Dopo un rogo, rileggere un messaggio
+  vecchio reinstalla la chiave d'epoca pre-rogo dell'altra persona: i messaggi
+  successivi le arrivano illeggibili, in silenzio.
+- **Il rogo si può ripubblicare.** La data ora si vede (0.9.14), ma quando la si
+  legge la conversazione è già distrutta.
+
+Le due condividono lo stesso rimedio — ricordare *quando* si è vista ogni chiave
+— e quindi lo stesso cambio di formato su disco. **Vanno fatte insieme:**
+separate significherebbero migrare i dati due volte.
+
+Restano anche: il contratto "persistere subito" documentato male sulla firma JNI
+(anche la *decifratura* muta il portachiavi), un'eccezione Java che resta
+appesa dopo una `new_string` fallita, e tre segreti non azzerati all'uscita.
