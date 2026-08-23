@@ -55,23 +55,51 @@
             android:text="@string/cipher_panel_close" />
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/cipher_panel_when"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingBottom="6dp"
-        android:textSize="12sp" />
-
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <TextView
-            android:id="@+id/cipher_panel_text"
-            android:layout_width="match_parent"
+        <!--
+            Il fumetto. `marginEnd` generoso e non tutta la larghezza: e' cio'
+            che lo fa leggere come un messaggio ricevuto invece che come un
+            riquadro. `wrap_content` in larghezza con `layout_gravity=start`,
+            cosi' un messaggio corto e' un fumetto corto — un fumetto sempre
+            largo uguale sembra una casella di testo.
+        -->
+        <LinearLayout
+            android:id="@+id/cipher_panel_bubble"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textIsSelectable="false"
-            android:textSize="16sp" />
+            android:layout_gravity="start"
+            android:layout_marginEnd="40dp"
+            android:layout_marginBottom="4dp"
+            android:orientation="vertical"
+            android:background="@drawable/cipher_bubble"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:id="@+id/cipher_panel_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textIsSelectable="false"
+                android:textSize="16sp" />
+
+            <!--
+                L'ora sta DENTRO il fumetto e in basso a destra, come nelle app
+                di messaggistica: fuori sembrava un'intestazione, e leggeva
+                come se riguardasse la schermata invece del messaggio.
+            -->
+            <TextView
+                android:id="@+id/cipher_panel_when"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:paddingTop="2dp"
+                android:textSize="11sp" />
+        </LinearLayout>
     </ScrollView>
 </LinearLayout>

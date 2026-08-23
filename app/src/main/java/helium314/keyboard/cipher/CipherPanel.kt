@@ -5,6 +5,7 @@ import android.view.View
 import android.widget.TextView
 import androidx.core.view.isVisible
 import helium314.keyboard.latin.R
+import android.graphics.drawable.GradientDrawable
 import helium314.keyboard.latin.common.ColorType
 import helium314.keyboard.latin.settings.Settings
 
@@ -80,6 +81,25 @@ object CipherPanel {
         chi?.setTextColor(colori.get(ColorType.KEY_TEXT))
         quando?.setTextColor(colori.get(ColorType.KEY_HINT_TEXT))
         testo?.setTextColor(colori.get(ColorType.KEY_TEXT))
+        // Il fumetto prende il colore dei TASTI, non quello della striscia: e'
+        // la stessa relazione che c'e' fra un tasto e lo sfondo della tastiera,
+        // quindi il contrasto e' gia' garantito da chi ha disegnato il tema —
+        // e i temi qui sono decine. Si tinge il drawable invece di dipingere lo
+        // sfondo, altrimenti gli angoli arrotondati andrebbero persi.
+        //
+        // `mutate()` prima di tingere: senza, la tinta finirebbe sullo stato
+        // condiviso del drawable e macchierebbe ogni altra vista che usa lo
+        // stesso disegno.
+        val bolla = trovato.findViewById<View>(R.id.cipher_panel_bubble)
+            ?.background?.mutate() as? GradientDrawable
+        bolla?.setColor(colori.get(ColorType.KEY_BACKGROUND))
+        // Bordo sottile, ed e' quello che rende il fumetto affidabile invece
+        // che carino: in parecchi temi lo sfondo dei tasti coincide con quello
+        // della striscia, e un fumetto riempito con lo stesso colore su cui
+        // poggia semplicemente non si vede. Il bordo e' il colore del testo
+        // molto trasparente, quindi si legge su chiaro e su scuro senza che
+        // nessuno debba scegliere.
+        bolla?.setStroke(1.dp(trovato), colori.get(ColorType.KEY_TEXT) and 0x22FFFFFF.toInt())
         trovato.findViewById<TextView>(R.id.cipher_panel_close)?.apply {
             setTextColor(colori.get(ColorType.KEY_TEXT))
             setOnClickListener { chiudi() }
@@ -121,6 +141,11 @@ object CipherPanel {
         // solo se non serve piu' a nessuno.
         CipherSchermoProtetto.aggiorna(servizio)
     }
+
+    /** dp -> pixel. Il bordo va dichiarato in pixel e deve restare sottile
+     *  uguale su ogni densita'. */
+    private fun Int.dp(view: View): Int =
+        (this * view.resources.displayMetrics.density).toInt().coerceAtLeast(1)
 
     /** Aperto adesso? Serve a chi deve decidere se il tasto indietro lo chiude. */
     fun isAperto(): Boolean = pannello?.isVisible == true

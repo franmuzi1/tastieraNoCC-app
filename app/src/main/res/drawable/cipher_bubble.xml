@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    keyboard-cipher: il fumetto del messaggio decifrato.
+
+    Il colore pieno qui e' solo un segnaposto: CipherPanel lo tinge con il
+    colore dei tasti del tema attivo, perche' i temi di HeliBoard sono decine e
+    un colore fisso stonerebbe con quasi tutti.
+
+    Angoli uguali su tutti e quattro i lati, e non la punta storta dei fumetti
+    veri: la punta va da un lato solo, e da quale lato dipende dalla direzione
+    di scrittura. Con l'arabo o l'ebraico finirebbe dalla parte sbagliata, e le
+    shape drawable non conoscono start/end. Un rettangolo arrotondato che non
+    occupa tutta la larghezza si legge come fumetto lo stesso.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="18dp" />
+    <solid android:color="#FFFFFF" />
+</shape>
