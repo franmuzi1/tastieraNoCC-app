@@ -201,6 +201,14 @@
     <string name="cipher_keep_alive_channel" tools:ignore="MissingTranslation">Tastiera sempre viva</string>
     <string name="cipher_forward_secrecy" tools:ignore="MissingTranslation">Forward secrecy</string>
     <string name="cipher_forward_secrecy_summary" tools:ignore="MissingTranslation">Ogni messaggio porta una chiave nuova, e leggere una risposta butta le vecchie. Chi domani ti prendesse il telefono e la tua chiave non riaprirebbe quello che hai gia\' mandato. Il prezzo: i messaggi si aprono una volta sola, e riaprire una vecchia conversazione non sara\' piu\' possibile — nemmeno esportandola. Spegnila se ti serve poterla rileggere. Richiede che chi riceve abbia questa versione o piu\' recente e che tu sia gia\' fra i suoi contatti.</string>
+    <!--
+        Stesso nome, chiave diversa da una dimenticata. Non accusa nessuno: dice
+        che c'e' una contraddizione negli appunti dell'utente, e che l'unica
+        cosa che la scioglie e' confrontare l'impronta fuori banda.
+    -->
+    <string name="cipher_substitute_title" tools:ignore="MissingTranslation">Un altro %1$s?</string>
+    <string name="cipher_substitute_warning" tools:ignore="MissingTranslation">Avevi gia\' chiamato %1$s una chiave diversa, e poi l\'hai dimenticata. Questa e\' un\'altra chiave.\n\nPuo\' voler dire due cose, e da qui non si distinguono: ha cambiato telefono, oppure qualcun altro sta usando quel nome. L\'unico modo di saperlo e\' confrontare l\'impronta con lei, di persona o su un canale diverso da questa chat.</string>
+    <string name="cipher_substitute_ok" tools:ignore="MissingTranslation">Usa questo nome</string>
     <string name="cipher_rename" tools:ignore="MissingTranslation">Cambia nome</string>
     <string name="cipher_forget" tools:ignore="MissingTranslation">Dimentica questo contatto</string>
     <string name="cipher_burn" tools:ignore="MissingTranslation">Brucia la conversazione</string>

@@ -50,6 +50,8 @@ internal object CipherStorage {
     const val KEYRING = "keyring.bin"
     /** Destinatario corrente per app. Vedi [CipherRecipients]. */
     const val RECIPIENTS = "recipients.bin"
+    /** Contatti dimenticati, per riconoscerli se tornano. Vedi [CipherLapidi]. */
+    const val TOMBSTONES = "forgotten.bin"
 
     /**
      * Distingue "non c'e' ancora" da "c'e' ma non si legge". Il primo caso e'

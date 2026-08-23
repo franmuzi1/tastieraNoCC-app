@@ -59,6 +59,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import helium314.keyboard.latin.R
@@ -111,6 +114,23 @@ class ContactsActivity : ComponentActivity() {
     private var revisione by mutableIntStateOf(0)
 
     private var dialogo by mutableStateOf<Dialogo>(Dialogo.Nessuno)
+
+    /** L'impronta di una chiave: `Peer` porta la chiave, non la sua forma leggibile. */
+    private fun improntaDi(peer: Peer): String =
+        CipherCore.nativeFingerprintOf(peer.key).orEmpty()
+
+    /** Vero fra la conferma della sostituzione e la scrittura del nome. */
+    private var conflittoAccettato = false
+
+    /**
+     * L'app da cui e' arrivata la presentazione, dal gettone monouso.
+     *
+     * Un gettone e non un extra: gli extra li scrive chiunque, e da questo
+     * valore dipende per chi si cifrera'.
+     */
+    private fun appDiProvenienza(): String? =
+        CipherHandoff.consume(intent?.getStringExtra(CipherHandoff.extraName()))
+            ?.takeIf { it.isNotEmpty() }
 
     /**
      * Si e' arrivati qui dal tasto "allegato" della tastiera.
@@ -327,6 +347,7 @@ class ContactsActivity : ComponentActivity() {
             is Dialogo.Verifica -> Verifica(corrente.peer, chiudi)
             is Dialogo.Rogo -> ChiediDiBruciare(corrente.peer, chiudi)
             is Dialogo.Oblio -> ChiediDiDimenticare(corrente.peer, chiudi)
+            is Dialogo.Sostituzione -> ChiediSeSostituire(corrente, chiudi)
             Dialogo.Qr -> Qr(chiudi)
             is Dialogo.Passphrase -> ChiediPassphrase(corrente.esporta, chiudi)
             is Dialogo.ConfermaImport -> ConfermaImport(corrente, chiudi)
@@ -385,6 +406,12 @@ class ContactsActivity : ComponentActivity() {
                 Column {
                     Text(stringResource(R.string.cipher_assign_label_hint))
                     Spacer(Modifier.height(8.dp))
+                    val fuoco = remember { FocusRequester() }
+                    // Il cursore parte QUI. Senza, il primo tocco andava speso
+                    // per mettere il fuoco nel campo, e chi scriveva subito si
+                    // ritrovava le lettere nella riga di composizione della
+                    // tastiera: tre gesti per un nome, di cui uno per rimediare.
+                    LaunchedEffect(Unit) { fuoco.requestFocus() }
                     OutlinedTextField(
                         value = valore,
                         onValueChange = { valore = it },
@@ -407,7 +434,7 @@ class ContactsActivity : ComponentActivity() {
                                 }
                             },
                         ),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().focusRequester(fuoco),
                     )
                 }
             },
@@ -490,6 +517,28 @@ class ContactsActivity : ComponentActivity() {
      * vedrebbe se qualcuno si stesse spacciando per lei. Chi lo fa deve
      * saperlo prima, non scoprirlo dopo.
      */
+    /**
+     * Stai per dare a questa chiave il nome di una chiave diversa che avevi
+     * dimenticato.
+     *
+     * Non afferma che qualcuno stia mentendo: l'app conosce chiavi, non
+     * persone, e "ha cambiato telefono" e "si sta spacciando per lui" sono
+     * indistinguibili dall'interno. Dice di fermarsi e confrontare l'impronta
+     * fuori banda, che e' l'unica cosa che scioglie il dubbio.
+     */
+    @Composable
+    private fun ChiediSeSostituire(dati: Dialogo.Sostituzione, chiudi: () -> Unit) {
+        DialogoDistruttivo(
+            titolo = stringResource(R.string.cipher_substitute_title, dati.nomeVecchio),
+            corpo = stringResource(R.string.cipher_substitute_warning, dati.nomeVecchio),
+            azione = stringResource(R.string.cipher_substitute_ok),
+            chiudi = chiudi,
+        ) {
+            conflittoAccettato = true
+            assegnaNome(dati.peer, dati.nome)
+        }
+    }
+
     @Composable
     private fun ChiediDiDimenticare(peer: Peer, chiudi: () -> Unit) {
         val nome = peer.label ?: stringResource(R.string.cipher_unnamed_peer)
@@ -664,6 +713,17 @@ class ContactsActivity : ComponentActivity() {
 
     private fun assegnaNome(peer: Peer, nome: String) {
         if (nome.isEmpty()) return
+        // Stai per dare a questa chiave un nome che avevi gia' dato a una chiave
+        // DIVERSA, poi dimenticata. Non e' una prova di niente — l'app conosce
+        // chiavi, non persone — ma e' la contraddizione che il pin avrebbe
+        // segnalato con "la chiave e' cambiata", e che dimenticare aveva
+        // disarmato. Si mostra prima di scrivere, e si puo' proseguire.
+        val conflitto = CipherLapidi.conflitto(this, nome, improntaDi(peer))
+        if (conflitto != null && !conflittoAccettato) {
+            dialogo = Dialogo.Sostituzione(peer, nome, conflitto.nome)
+            return
+        }
+        conflittoAccettato = false
         val result = CipherCore.IncomingResult()
         if (CipherCore.nativeAssignLabel(peer.key, nome, result) != CipherCore.OK) {
             toast(R.string.cipher_unavailable)
@@ -740,6 +800,10 @@ class ContactsActivity : ComponentActivity() {
     }
 
     private fun dimentica(peer: Peer) {
+        // La lapide PRIMA: dopo `nativeForgetPeer` il nome non c'e' piu', e la
+        // lapide senza nome non servirebbe a niente — e' il nome il ponte che
+        // permette di riconoscere una sostituzione. Vedi CipherLapidi.
+        CipherLapidi.ricorda(this, improntaDi(peer), peer.label.orEmpty())
         if (CipherCore.nativeForgetPeer(peer.key) != CipherCore.OK) {
             toast(R.string.cipher_unavailable)
             return
@@ -961,6 +1025,13 @@ class ContactsActivity : ComponentActivity() {
         data class Verifica(val peer: Peer) : Dialogo
         data class Rogo(val peer: Peer) : Dialogo
         data class Oblio(val peer: Peer) : Dialogo
+
+        /** Stesso nome, chiave diversa da una che avevi dimenticato. */
+        data class Sostituzione(
+            val peer: Peer,
+            val nome: String,
+            val nomeVecchio: String,
+        ) : Dialogo
         data object Qr : Dialogo
         data class Passphrase(val esporta: Boolean) : Dialogo
         data object Reset : Dialogo

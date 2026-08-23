@@ -49,9 +49,17 @@ import java.util.Date
  */
 class DecryptActivity : ComponentActivity() {
 
-    private companion object {
+    companion object {
         /** Richiesta del selettore "dove salvo". */
-        const val RICHIESTA_SALVA = 1
+        private const val RICHIESTA_SALVA = 1
+
+        /**
+         * Marca gli intent costruiti da `CipherActions.autoDecrypt`, cioe' le
+         * aperture che partono da sole. Solo su quelle vale la guardia contro
+         * il duplicato: un utente che apre due volte lo stesso file sta
+         * chiedendo davvero due volte.
+         */
+        const val EXTRA_AUTOMATICO = "helium314.keyboard.cipher.AUTO"
     }
 
     /**
@@ -194,7 +202,13 @@ class DecryptActivity : ComponentActivity() {
         //
         // Un digest e non il testo: tenere il blob in un campo statico
         // significherebbe tenerlo in heap oltre la finestra che lo mostrava.
-        val testo = testoGrezzo(intent)
+        // SOLO sull'apertura automatica. Aprire due volte di fila lo stesso
+        // file e' un gesto legittimo dell'utente, e scartarlo faceva sembrare
+        // l'app rotta: il file si apriva la prima volta, la seconda no, e
+        // tornava ad aprirsi dopo averne aperto un altro. La guardia serve
+        // contro il ritentativo della scala di apertura, che e' automatico —
+        // non contro chi tocca due volte.
+        val testo = if (intent.getBooleanExtra(EXTRA_AUTOMATICO, false)) testoGrezzo(intent) else null
         if (testo != null && Duplicato.gia(testo)) {
             finish()
             return
