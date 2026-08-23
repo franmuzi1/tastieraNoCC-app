@@ -140,16 +140,41 @@ object CipherCompose {
     fun isEmpty(): Boolean = text().isEmpty()
 
     /**
-     * Svuota il buffer. `Editable.clear()` non e' un azzeramento della memoria —
-     * l'array interno resta allocato e il contenuto sopravvive fino a che non
-     * viene sovrascritto — ed e' lo stesso limite che vale per qualunque
-     * `CharSequence` da questo lato del confine. Vedi CLAUDE.md: la garanzia di
-     * zeroizzazione si ferma dove comincia la JVM.
+     * Svuota il buffer, sovrascrivendo prima cio' che conteneva. Vedi
+     * [svuotaSovrascrivendo] per cosa questo garantisce e cosa no.
      */
     fun clear() {
-        connection?.buffer?.clear()
+        svuotaSovrascrivendo(connection?.buffer)
         owner = ""
         updateRow()
+    }
+
+    /**
+     * Toglie il testo dal buffer dopo averci scritto sopra.
+     *
+     * `SpannableStringBuilder.clear()` da solo non azzera niente: sposta gli
+     * indici e lascia il chiaro dov'era, dentro l'array di caratteri che il
+     * buffer continua a tenersi. Il messaggio appena abbandonato — cambiando
+     * app, o entrando in un campo password — restava cosi' leggibile in heap
+     * per tutto il tempo che serviva alla GC o alla battuta successiva per
+     * coprirlo. In un progetto che azzera i `ByteArray` dei segreti appena
+     * finito di usarli, era l'unico segreto lasciato sul posto.
+     *
+     * La sostituzione ha la STESSA lunghezza apposta: il buffer non ha bisogno
+     * di ridimensionarsi, quindi i NUL finiscono nell'array che teneva il
+     * chiaro invece che in uno nuovo — che lascerebbe il vecchio intatto e
+     * peggiorerebbe le cose.
+     *
+     * Cio' che e' gia' uscito di qui resta fuori portata: ogni `String` prodotta
+     * da [text] e' immutabile e nessuno la puo' azzerare. Questo copre la copia
+     * di lavoro, non tutte le copie — la garanzia di zeroizzazione si ferma
+     * dove comincia la JVM, e questa e' la parte che si puo' fare.
+     */
+    private fun svuotaSovrascrivendo(buffer: Editable?) {
+        if (buffer == null) return
+        val lunghezza = buffer.length
+        if (lunghezza > 0) buffer.replace(0, lunghezza, String(CharArray(lunghezza)))
+        buffer.clear()
     }
 
     /**
@@ -176,14 +201,14 @@ object CipherCompose {
         // password, ed e' anche l'unico che non ha bisogno di essere cifrato.
         suppressed = editorInfo != null && InputTypeUtils.isPasswordInputType(editorInfo.inputType)
         if (suppressed) {
-            connection?.buffer?.clear()
+            svuotaSovrascrivendo(connection?.buffer)
             updateRow()
             return
         }
         if (editorInfo == null || editorInfo.inputType == InputType.TYPE_NULL) return
         if (app.isEmpty() || app == self) return
         if (owner.isNotEmpty() && owner != app) {
-            connection?.buffer?.clear()
+            svuotaSovrascrivendo(connection?.buffer)
         }
         owner = app
         updateRow()

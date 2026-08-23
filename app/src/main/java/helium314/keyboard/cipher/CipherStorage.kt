@@ -1,6 +1,8 @@
 package helium314.keyboard.cipher
 
 import android.content.Context
+import android.system.Os
+import android.system.OsConstants
 import java.io.File
 import java.io.FileOutputStream
 
@@ -66,7 +68,8 @@ internal object CipherStorage {
         runCatching { file(context, name).readBytes() }.getOrNull()
 
     /**
-     * Scrittura atomica: file temporaneo, `fsync`, rename. Senza,
+     * Scrittura atomica: file temporaneo, `fsync`, rename, `fsync` della
+     * directory (vedi [syncDir], che e' il pezzo che mancava). Senza,
      * un'interruzione a meta' — batteria, kill dell'OOM killer — lascerebbe un
      * file troncato, che dopo la cifratura autenticata e' indistinguibile da
      * un file manomesso. L'utente vedrebbe "identita' corrotta" per un calo di
@@ -81,12 +84,54 @@ internal object CipherStorage {
             out.fd.sync()
         }
         if (tmp.renameTo(target)) {
+            syncDir(target.parentFile)
             true
         } else {
             tmp.delete()
             false
         }
     }.getOrDefault(false)
+
+    /**
+     * `fsync` sulla directory, che e' l'unica cosa che rende durevole il
+     * rename.
+     *
+     * Il `sync()` qui sopra riguarda il CONTENUTO del temporaneo; la voce di
+     * directory che il rename sposta e' un'altra cosa, e senza questa chiamata
+     * puo' restare solo in cache. Il rename e' atomico — non si vede mai un
+     * file mezzo rinominato — ma atomico non vuol dire durevole: dopo un crash
+     * del kernel o un calo di corrente subito dopo la scrittura la directory
+     * puo' tornare com'era, con il solo `.tmp` e nessun file al suo posto. Su
+     * ext4 con le opzioni di default il journal commit arriva comunque entro
+     * pochi secondi e in pratica regge, ma qui dentro ci sono identita' e
+     * portachiavi, e "in pratica regge" non e' la garanzia che il resto di
+     * questa funzione promette.
+     *
+     * Si passa da `Os.open` e non da `FileInputStream`: su Android aprire una
+     * directory con quelle classi fallisce sempre — `IoBridge` rifiuta con
+     * `EISDIR` anche in sola lettura — quindi l'unico modo di avere un
+     * descrittore di directory e' la open(2) diretta.
+     *
+     * Un fallimento qui NON fa fallire la scrittura, ed e' il motivo per cui
+     * ha il suo `runCatching` invece di appoggiarsi a quello del chiamante:
+     * `fsync` su un descrittore di directory non e' garantito su tutti i
+     * filesystem che Android monta, e restituire `false` direbbe al chiamante
+     * che il file non c'e' — mentre c'e', completo e al suo posto. In
+     * [CipherIdentity] quel `false` significa "portachiavi non salvato" e fa
+     * comparire un avviso: trasformare un fsync opzionale in quell'avviso
+     * sarebbe una bugia.
+     */
+    private fun syncDir(dir: File?) {
+        if (dir == null) return
+        runCatching {
+            val fd = Os.open(dir.absolutePath, OsConstants.O_RDONLY, 0)
+            try {
+                Os.fsync(fd)
+            } finally {
+                Os.close(fd)
+            }
+        }
+    }
 
     fun delete(context: Context, name: String) {
         runCatching { file(context, name).delete() }

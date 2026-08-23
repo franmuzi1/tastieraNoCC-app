@@ -242,6 +242,15 @@
     -->
     <string name="cipher_not_our_blob" tools:ignore="MissingTranslation">Questo testo non e\' cifrato</string>
     <!--
+        Uno stream con uno schema diverso da content:// viene rifiutato senza
+        nemmeno provare ad aprirlo (vedi DecryptActivity.extractStream). Il
+        messaggio dice cosa fare e non perche\', perche\' l\'utente che lo legge
+        non ha sbagliato niente: da un\'app conforme un file arriva sempre come
+        content://, quindi o e\' un\'app molto vecchia o e\' qualcuno che ci sta
+        provando, e in nessuno dei due casi serve spiegargli il confused deputy.
+    -->
+    <string name="cipher_uri_rejected" tools:ignore="MissingTranslation">Questo file non si puo\' aprire da qui. Condividilo dalla chat, oppure aprilo dal selettore dei documenti.</string>
+    <!--
         Un blob prodotto da una versione futura deve dire "aggiorna", non
         "non e\' cifrato". E\' la ragione per cui la versione sta nel primo byte
         del body e non nel sentinel: con la versione nel sentinel il

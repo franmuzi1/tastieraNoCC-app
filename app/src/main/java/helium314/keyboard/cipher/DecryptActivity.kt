@@ -3,6 +3,7 @@ package helium314.keyboard.cipher
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
+import android.content.ContentResolver
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
@@ -128,6 +129,9 @@ class DecryptActivity : ComponentActivity() {
         // nell'intent porterebbe al massimo al nome del file.
         val stream = extractStream(intent)
         if (stream != null) {
+            if (stream.scheme != ContentResolver.SCHEME_CONTENT) {
+                return showNotice(R.string.cipher_uri_rejected)
+            }
             handleFile(stream)
             return
         }
@@ -214,6 +218,37 @@ class DecryptActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * L'URI dell'allegato, cosi' come arriva. Chi chiama tiene solo i
+     * `content://` — vedi la guardia in [handle], e qui sotto il perche'.
+     *
+     * Questa Activity e' esportata, e deve esserlo: e' il modo in cui le altre
+     * app ci passano testo e file. Ma cio' che ci passano lo apriamo con il
+     * NOSTRO uid, e finche' lo schema non si guardava questo bastava a farne un
+     * confused deputy: qualunque app poteva mandarci un `file://` che lei non
+     * ha il permesso di leggere — dentro la nostra `filesDir`, per dire — e
+     * farselo aprire da noi.
+     *
+     * Con `content://` il problema non si pone: non e' un percorso ma un
+     * riferimento a un provider, e il permesso di lettura viaggia con l'intent
+     * (`FLAG_GRANT_READ_URI_PERMISSION`). Chi ce lo manda ci sta dando accesso a
+     * roba sua, che e' esattamente il caso che vogliamo servire; passarci
+     * qualcosa di altrui non gli aggiunge nessun potere.
+     *
+     * Rifiutare il resto non toglie nessun flusso reale, ed e' il motivo per cui
+     * si puo' fare: la chat condivide l'allegato dal proprio `FileProvider`,
+     * "Apri con" di un file manager fa lo stesso, il selettore dei documenti
+     * restituisce sempre un URI di `DocumentsProvider`. Da Android 7 un `file://`
+     * che attraversa il confine fra due app fa terminare CHI LO MANDA con
+     * `FileUriExposedException`, quindi non e' un caso in uso che si sta
+     * togliendo: e' un caso che nessuna app conforme puo' piu' produrre, e a
+     * costruirlo a mano resta solo chi lo fa apposta.
+     *
+     * Cosa NON era gia' aperto, verificato e non supposto: il chiaro non torna
+     * mai al chiamante (`setResult` non c'e', vedi `neverReturnPlaintext`) e un
+     * file che non e' nostro produce solo un avviso a schermo. Si chiude il
+     * deputy, non una perdita in corso.
+     */
     private fun extractStream(intent: Intent): Uri? = when (intent.action) {
         Intent.ACTION_SEND -> @Suppress("DEPRECATION") intent.getParcelableExtra(Intent.EXTRA_STREAM)
         Intent.ACTION_VIEW -> intent.data
