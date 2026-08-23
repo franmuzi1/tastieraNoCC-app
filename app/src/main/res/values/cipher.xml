@@ -438,4 +438,6 @@
         niente lo manderebbe a cercare il difetto dalla parte sbagliata.
     -->
     <string name="cipher_clipboard_unreadable" tools:ignore="MissingTranslation">Non riesco a leggere gli appunti. Prova a incollare il messaggio nel campo di testo e premi di nuovo</string>
+    <!-- Descrizione per chi usa TalkBack: il tasto e\' un'icona muta. -->
+    <string name="cipher_encrypt_action" tools:ignore="MissingTranslation">Cifra e invia</string>
 </resources>
