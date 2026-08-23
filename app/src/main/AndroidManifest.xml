@@ -199,6 +199,21 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
 
   launchMode         una sola istanza viva: evita piu' finestre che tengono
   =singleTask        plaintext in memoria contemporaneamente.
+
+  configChanges      ruotando lo schermo Android distruggerebbe e ricreerebbe
+                     l'Activity con lo STESSO intent, e onCreate rielaborerebbe
+                     il blob. Ma decifrare non e' un'operazione di sola lettura:
+                     fa avanzare la catena, fissa la chiave, e su una richiesta
+                     di rogo BRUCIA. Rifarlo significa una richiesta di rogo
+                     eseguita due volte (la seconda fallisce e mostra un guasto
+                     al posto dell'avviso) e una presentazione che cambia
+                     schermata da sola, perche' alla seconda passata la chiave
+                     risulta gia' fissata.
+
+                     Si gestisce il cambio invece di ricrearsi: Compose rifa' il
+                     layout da solo. E' la strada giusta anche perche' l'altra —
+                     salvare cosa mostrare in savedInstanceState — metterebbe il
+                     chiaro in un Bundle, cioe' in mano al sistema.
 -->
 <activity
     android:name="helium314.keyboard.cipher.DecryptActivity"
@@ -207,6 +222,7 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
     android:excludeFromRecents="true"
     android:taskAffinity=""
     android:launchMode="singleTask"
+    android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|keyboard|uiMode|density|fontScale"
     android:theme="@style/TransparentActivityTheme">
 
     <!-- Via 2: barra di selezione del testo. Compare solo nelle app che usano

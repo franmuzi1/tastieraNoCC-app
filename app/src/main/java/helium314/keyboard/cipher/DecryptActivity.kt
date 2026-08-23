@@ -98,6 +98,23 @@ class DecryptActivity : ComponentActivity() {
             WindowManager.LayoutParams.FLAG_SECURE,
         )
         super.onCreate(savedInstanceState)
+        // `savedInstanceState != null` significa che questa e' una rinascita:
+        // il sistema ci aveva distrutti e ci rimette in piedi con lo stesso
+        // intent. Non si rielabora: decifrare non e' di sola lettura — fa
+        // avanzare la catena, fissa la chiave, e su una richiesta di rogo
+        // brucia — quindi la seconda passata non e' una ripetizione innocua ma
+        // un secondo effetto.
+        //
+        // La rotazione, che era il caso normale, non arriva nemmeno piu' qui:
+        // la gestisce `configChanges` nel manifest. Restano i casi in cui
+        // Android ci uccide comunque (memoria, "non mantenere le attivita'"), e
+        // li' non si puo' ricostruire cosa mostrare: il chiaro non si salva in
+        // un Bundle, che e' memoria del sistema e non nostra. Quindi si dice di
+        // riaprire, che e' l'unica cosa vera che si possa dire.
+        if (savedInstanceState != null) {
+            showNotice(R.string.cipher_reopen_needed)
+            return
+        }
         handle(intent)
     }
 

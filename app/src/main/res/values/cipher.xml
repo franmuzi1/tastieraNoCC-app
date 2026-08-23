@@ -412,4 +412,11 @@
         rotto. Vedi CipherFields per quali campi restano fuori.
     -->
     <string name="cipher_compose_on_not_here" tools:ignore="MissingTranslation">Cifratura accesa. In questo campo la riga non compare: non e\' un campo da messaggi</string>
+    <!--
+        L\'Activity e\' stata ricreata dal sistema e il messaggio non si rifa\':
+        rifarlo avrebbe effetti veri (catena, pin, rogo). Non si spiega il
+        perche\', si dice cosa fare: l\'utente non ha sbagliato niente e il gesto
+        da rifare e\' quello che ha appena fatto.
+    -->
+    <string name="cipher_reopen_needed" tools:ignore="MissingTranslation">Riapri il messaggio per leggerlo</string>
 </resources>
