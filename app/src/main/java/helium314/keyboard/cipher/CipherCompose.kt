@@ -145,7 +145,17 @@ object CipherCompose {
      */
     fun clear() {
         svuotaSovrascrivendo(connection?.buffer)
-        owner = ""
+        // `owner` NON si azzera qui, ed e' il difetto che questa riga aveva.
+        //
+        // Il proprietario dice a quale app appartiene il testo nel buffer.
+        // Svuotare il buffer non cambia quale app ha il fuoco: e' ancora
+        // quella, ed e' sua anche la prossima battuta. Azzerando, restava un
+        // buffer senza proprietario proprio nell'istante che segue OGNI invio
+        // riuscito — e la guardia in [onInputStarted] non svuota quando il
+        // proprietario e' vuoto. Chi scriveva subito dopo un invio e cambiava
+        // chat si portava dietro quel testo, che veniva cifrato per il
+        // destinatario dell'ALTRA app: il fallimento peggiore che questo
+        // sistema possa produrre, per la strada piu' battuta che ci sia.
         updateRow()
     }
 
@@ -207,7 +217,11 @@ object CipherCompose {
         }
         if (editorInfo == null || editorInfo.inputType == InputType.TYPE_NULL) return
         if (app.isEmpty() || app == self) return
-        if (owner.isNotEmpty() && owner != app) {
+        // Nessuna scorciatoia su `owner` vuoto: un buffer che non si sa a chi
+        // appartenga non va ereditato da un'app nuova. Svuotare quando e' gia'
+        // vuoto non costa niente, mentre tenerlo per attribuirlo poi a
+        // chiunque arrivi costa il messaggio mandato alla persona sbagliata.
+        if (owner != app) {
             svuotaSovrascrivendo(connection?.buffer)
         }
         owner = app
