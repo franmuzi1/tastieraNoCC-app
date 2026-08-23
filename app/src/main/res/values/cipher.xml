@@ -397,4 +397,11 @@
         perche\' e\' l\'occasione buona per riconoscere la propria.
     -->
     <string name="cipher_own_card" tools:ignore="MissingTranslation">Questa e\' la TUA chiave (%1$s), non quella di un contatto. Non e\' stato aggiunto niente alla rubrica.</string>
+    <!--
+        Non e\' un errore e non e\' un rifiuto: la cifratura si e\' accesa davvero,
+        semplicemente questo campo non e\' un posto dove si compongono messaggi.
+        Dirlo qui evita che l\'utente prema il tasto tre volte convinto che sia
+        rotto. Vedi CipherFields per quali campi restano fuori.
+    -->
+    <string name="cipher_compose_on_not_here" tools:ignore="MissingTranslation">Cifratura accesa. In questo campo la riga non compare: non e\' un campo da messaggi</string>
 </resources>

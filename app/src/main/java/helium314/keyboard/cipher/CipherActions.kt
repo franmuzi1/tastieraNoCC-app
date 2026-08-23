@@ -439,6 +439,19 @@ object CipherActions {
         prefs.edit().putBoolean(CipherSettings.PREF_ENABLED, wanted).apply()
         CipherCompose.reload(ime)
         KeyboardSwitcher.getInstance().setThemeNeedsReload()
+        // Su un campo dove la riga non si usa — una ricerca, una password, un
+        // numero — accendere la cifratura NON la fa comparire, e dire "la riga
+        // e' comparsa" sarebbe falso. E' lo stesso tasto che si dichiarava
+        // riuscito senza fare niente prima che scrivesse la preferenza giusta:
+        // qui non e' piu' muto, ma senza questo ramo tornerebbe a mentire.
+        //
+        // La preferenza si scrive lo stesso, ed e' voluto: e' globale, e
+        // accenderla da una barra di ricerca per la chat dopo e' un gesto
+        // sensato. Cambia cosa si risponde, non cosa si fa.
+        if (wanted && CipherCompose.isSuppressed()) {
+            toast(ime, R.string.cipher_compose_on_not_here)
+            return
+        }
         // La riga che compare o sparisce e' gia' la risposta: la spiegazione
         // serve solo la prima volta.
         avvisoUnaVolta(
