@@ -212,6 +212,14 @@
     <string name="cipher_rename" tools:ignore="MissingTranslation">Cambia nome</string>
     <string name="cipher_forget" tools:ignore="MissingTranslation">Dimentica questo contatto</string>
     <string name="cipher_burn" tools:ignore="MissingTranslation">Brucia la conversazione</string>
+    <!--
+        Va PRIMA dell\'avvertenza normale, non dopo: chi legge due paragrafi si
+        ferma spesso al primo, e questa e\' l\'informazione che cambia la
+        decisione — non c\'e\' quasi niente da bruciare. Non dice "non farlo":
+        il gesto ha ancora un effetto, butta lo stato e manda la richiesta
+        all\'altra persona.
+    -->
+    <string name="cipher_burn_warning_fs" tools:ignore="MissingTranslation">Hai la forward secrecy accesa: i messaggi gia\' scambiati con questa persona sono in buona parte irrecuperabili da soli, perche\' si aprono una volta sola. Qui c\'e\' poco da distruggere.</string>
     <string name="cipher_burn_title" tools:ignore="MissingTranslation">Bruciare la conversazione con %1$s?</string>
     <string name="cipher_burn_warning" tools:ignore="MissingTranslation">Da questo telefono e\' definitivo: i messaggi scambiati con questa persona non si riapriranno piu\', nemmeno per te. Il contatto resta e potete continuare a scrivervi: il prossimo messaggio riparte da capo.\n\nAll\'altra persona viene copiata negli appunti una richiesta da incollarle in chat: se la sua app la onora, cancella anche lei. Non e\' imponibile — chi vuole tenersi i messaggi puo\' farlo, e la piattaforma ha comunque il proprio cifrato.\n\nIl primo messaggio che vi siete scritti non brucia: quando e\' partito non c\'era ancora niente di condiviso da distruggere.</string>
     <string name="cipher_burn_done" tools:ignore="MissingTranslation">Bruciata. La richiesta per l\'altra persona e\' negli appunti: incollagliela in chat.</string>

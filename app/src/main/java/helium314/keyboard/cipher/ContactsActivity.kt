@@ -500,9 +500,20 @@ class ContactsActivity : ComponentActivity() {
     @Composable
     private fun ChiediDiBruciare(peer: Peer, chiudi: () -> Unit) {
         val nome = peer.label ?: stringResource(R.string.cipher_unnamed_peer)
+        // A forward secrecy accesa il rogo distrugge qualcosa che se n'era gia'
+        // andato da solo: i messaggi si aprono una volta sola e la cronologia
+        // non esiste. L'azione resta — butta comunque lo stato, e nasconderla
+        // senza spiegare perche' fa sembrare l'app rotta — ma il testo lo dice,
+        // altrimenti si promette una distruzione che e' gia' avvenuta.
+        val corpo = if (CipherSettings.isForwardSecrecy(this)) {
+            stringResource(R.string.cipher_burn_warning_fs) +
+                "\n\n" + stringResource(R.string.cipher_burn_warning)
+        } else {
+            stringResource(R.string.cipher_burn_warning)
+        }
         DialogoDistruttivo(
             titolo = stringResource(R.string.cipher_burn_title, nome),
-            corpo = stringResource(R.string.cipher_burn_warning),
+            corpo = corpo,
             azione = stringResource(R.string.cipher_burn),
             chiudi = chiudi,
         ) { brucia(peer) }
