@@ -21,7 +21,6 @@ import helium314.keyboard.latin.R
 import helium314.keyboard.latin.common.Constants
 import helium314.keyboard.latin.common.ColorType
 import helium314.keyboard.latin.settings.Settings
-import helium314.keyboard.latin.utils.InputTypeUtils
 
 /**
  * Riga di composizione: il chiaro si scrive **dentro la tastiera**, e l'app
@@ -217,7 +216,11 @@ object CipherCompose {
         // a schermo cio' che il campo nasconde con i pallini, e lo terrebbe in
         // un buffer nostro. Il campo dell'app e' l'unico posto giusto per una
         // password, ed e' anche l'unico che non ha bisogno di essere cifrato.
-        suppressed = editorInfo != null && InputTypeUtils.isPasswordInputType(editorInfo.inputType)
+        // La password era l'unica esclusione, e non bastava: vedi [CipherFields]
+        // per l'elenco dei campi che non sono compositori di messaggi e per il
+        // motivo per cui il criterio e' "spegni su prova contraria" e non
+        // "accendi su prova a favore".
+        suppressed = editorInfo != null && CipherFields.nonComponeMessaggi(editorInfo)
         if (suppressed) {
             svuotaSovrascrivendo(connection?.buffer)
             updateRow()
