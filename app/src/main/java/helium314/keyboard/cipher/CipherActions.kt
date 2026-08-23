@@ -901,15 +901,29 @@ object CipherActions {
                 if (field.text.isNotEmpty()) return field.text
             }
         }
-        // La descrizione prima del contenuto: e' l'unica chiamata che non fa
-        // comparire il toast di sistema. Vedi CipherClipboard.
-        if (!CipherClipboard.hasText(ime)) {
-            toast(ime, R.string.cipher_nothing_to_decrypt)
-            return null
-        }
+        // La descrizione degli appunti prima del contenuto: e' l'unica chiamata
+        // che non fa comparire il toast di sistema "ha incollato dagli
+        // appunti". Vedi CipherClipboard.
+        //
+        // Ma e' un'OTTIMIZZAZIONE, e non deve poter uccidere la funzione. Prima
+        // era una condizione d'uscita: se la descrizione diceva di no si
+        // rinunciava senza nemmeno provare a leggere — e l'utente con il blob
+        // negli appunti si vedeva "niente da decifrare". La descrizione puo'
+        // dire di no per motivi che non c'entrano con l'esserci del testo: un
+        // tipo MIME diverso da text/plain messo da chi ha copiato, o una
+        // restrizione della ROM su chi puo' interrogare gli appunti.
+        //
+        // Quindi si prova a leggere lo stesso. Il prezzo del tentativo in piu'
+        // e' il toast di sistema nel caso in cui davvero non ci sia niente —
+        // dopo che l'utente ha premuto "decifra" apposta, cioe' proprio quando
+        // e' disposto a pagarlo.
         val clip = CipherClipboard.read(ime)
         if (clip.isNullOrEmpty()) {
-            toast(ime, R.string.cipher_nothing_to_decrypt)
+            toast(
+                ime,
+                if (CipherClipboard.hasText(ime)) R.string.cipher_clipboard_unreadable
+                else R.string.cipher_nothing_to_decrypt,
+            )
             return null
         }
         return clip

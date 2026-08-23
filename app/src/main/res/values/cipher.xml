@@ -431,4 +431,11 @@
         senza una ragione sembrerebbe rotto, e la ragione qui e\' buona.
     -->
     <string name="cipher_compose_password" tools:ignore="MissingTranslation">Qui la riga non compare: e\' un campo password, e mostrerebbe a schermo quello che il campo nasconde</string>
+    <!--
+        Gli appunti dicono di contenere del testo ma la lettura non lo
+        restituisce. E\' un caso diverso da "appunti vuoti" e va detto diverso:
+        l\'utente SA di avere copiato qualcosa, e sentirsi dire che non c\'e\'
+        niente lo manderebbe a cercare il difetto dalla parte sbagliata.
+    -->
+    <string name="cipher_clipboard_unreadable" tools:ignore="MissingTranslation">Non riesco a leggere gli appunti. Prova a incollare il messaggio nel campo di testo e premi di nuovo</string>
 </resources>
