@@ -1,5 +1,6 @@
 package helium314.keyboard.cipher
 
+import android.content.Context
 import android.text.InputType
 import android.view.inputmethod.EditorInfo
 import helium314.keyboard.latin.utils.InputTypeUtils
@@ -40,6 +41,21 @@ import helium314.keyboard.latin.utils.InputTypeUtils
  * dove il testo e' un parametro e non un discorso.
  */
 internal object CipherFields {
+
+    /**
+     * La riga di composizione si accendera' su questo campo.
+     *
+     * Serve a chi deve decidere PRIMA che la riga si sia accesa, e quindi non
+     * puo' guardare lo stato di [CipherCompose]: si ricava dalle stesse due
+     * cose da cui dipende la riga — la preferenza e il tipo di campo — invece
+     * di leggere uno stato che potrebbe non essere ancora aggiornato. Un
+     * predicato che dipende dall'ordine delle chiamate e' un predicato che un
+     * giorno risponde male senza che nessuno abbia cambiato niente.
+     */
+    fun rigaPrevistaSu(context: Context, editorInfo: EditorInfo?): Boolean =
+        CipherSettings.isEnabled(context) &&
+            editorInfo != null &&
+            !nonComponeMessaggi(editorInfo)
 
     /**
      * `true` se la riga di composizione NON deve accendersi su questo campo.

@@ -23,6 +23,7 @@ import helium314.keyboard.latin.common.StringUtils
 import helium314.keyboard.latin.common.getTouchedWordRange
 import helium314.keyboard.latin.dictionary.Dictionary
 import helium314.keyboard.latin.dictionary.ReadOnlyBinaryDictionary
+import helium314.keyboard.cipher.CipherFields
 import helium314.keyboard.latin.settings.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -175,6 +176,18 @@ private fun isBackgroundGatheringUsed(context: Context, editorInfo: EditorInfo):
     if (!JniUtils.sHaveGestureLib) return false
     if (!GestureDataGatheringSettings.isBackgroundGatheringEnabled(context.prefs())) return false
     if (Settings.getValues().mIncognitoModeEnabled) return false
+    // keyboard-cipher: cio' che si scrive nella riga cifrata non si dona.
+    //
+    // NON si guarda l'interruttore "impara dalle parole cifrate": quello e' il
+    // permesso di tenere le parole SU QUESTO TELEFONO, e non e' il permesso di
+    // spedirle a dei ricercatori per email. Chi accende il primo non ha detto
+    // niente sul secondo, e trattare i due consensi come uno solo sarebbe il
+    // modo piu' silenzioso di tradirlo.
+    //
+    // Si passa da `rigaPrevistaSu` e non dallo stato della riga: questa
+    // funzione gira quando il campo prende il fuoco, e la riga potrebbe non
+    // essersi ancora aggiornata.
+    if (CipherFields.rigaPrevistaSu(context, editorInfo)) return false
     val inputAttributes = InputAttributes(editorInfo, false, "")
     if (inputAttributes.mInputType and InputType.TYPE_CLASS_TEXT == 0)
         return false // undefined (e.g. terminal apps) type should work, but will likely not allow to track corrections

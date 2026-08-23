@@ -26,6 +26,7 @@ import helium314.keyboard.latin.utils.Log
 import helium314.keyboard.latin.utils.BackgroundGatheringCache
 import helium314.keyboard.latin.utils.SuggestionResults
 import helium314.keyboard.latin.utils.WordData
+import helium314.keyboard.cipher.CipherCompose
 import helium314.keyboard.latin.utils.useBackgroundGathering
 import java.util.Locale
 import kotlin.math.max
@@ -334,7 +335,14 @@ class Suggest(private val mDictionaryFacilitator: DictionaryFacilitator) {
             suggestionsContainer
         }
 
-        if (useBackgroundGathering && inputStyle == SuggestedWords.INPUT_STYLE_TAIL_BATCH) {
+        // keyboard-cipher: seconda guardia, e non e' ridondante. `useBackgroundGathering`
+        // si calcola quando il campo prende il fuoco; la cifratura si puo'
+        // accendere DOPO, dal tasto in toolbar, senza che quel campo venga
+        // rivalutato. Qui si guarda lo stato adesso, che e' l'unico momento che
+        // conta: e' il punto in cui la parola verrebbe presa.
+        if (useBackgroundGathering && !CipherCompose.rigaASchermo() &&
+            inputStyle == SuggestedWords.INPUT_STYLE_TAIL_BATCH
+        ) {
             val wordData = WordData(null, suggestionResults, wordComposer.composedDataSnapshot,
                 ngramContext, keyboard, inputStyle, false, pseudoTypedWordInfo)
             BackgroundGatheringCache.addWord(wordData)
