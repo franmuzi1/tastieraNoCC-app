@@ -509,6 +509,26 @@ object CipherActions {
      * (e allora chi chiama non deve fare NIENTE, o rielaborerebbe il blob), o
      * non nostro da gestire qui.
      */
+    /**
+     * Aver letto un messaggio cifrato accende la cifratura, se era spenta.
+     *
+     * Chi apre un blob e' in una conversazione cifrata, punto: rispondere in
+     * chiaro non e' quasi mai cio' che vuole, e con la cifratura spenta non
+     * troverebbe nemmeno la riga in cui scrivere. Prima toccava accorgersi da
+     * soli che serviva un interruttore, e cercarlo.
+     *
+     * Accende e basta: non spegne mai da sola. Un automatismo che toglie una
+     * protezione e' un'altra categoria di cosa, e non la fa questa funzione.
+     */
+    private fun accendiPerLaRisposta(ime: InputMethodService) {
+        val prefs = ime.prefs()
+        if (CipherSettings.isEnabled(prefs)) return
+        prefs.edit().putBoolean(CipherSettings.PREF_ENABLED, true).apply()
+        CipherCompose.reload(ime)
+        KeyboardSwitcher.getInstance().setThemeNeedsReload()
+        avvisoUnaVolta(ime, "accesa_leggendo", R.string.cipher_on_after_read)
+    }
+
     private enum class Esito { PANNELLO, GESTITO, NO }
 
     private fun mostraNelPannello(ime: InputMethodService, blob: String): Esito {
@@ -521,6 +541,7 @@ object CipherActions {
             result,
         )
         if (code != CipherCore.OK) return Esito.NO
+        accendiPerLaRisposta(ime)
         // ## La presentazione mai vista non si puo' rielaborare
         //
         // `nativeHandleIncomingText` NON e' senza effetti: una chiave mai vista

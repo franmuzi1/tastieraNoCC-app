@@ -307,9 +307,12 @@ object CipherCompose {
         // decifrato copre i tasti, quindi si toglie di mezzo da solo.
         found.onToccata = { CipherPanel.chiudi() }
 
-        // Il lucchetto dentro la riga. `servizio` e' gia' assegnato qui sopra.
+        // I due tasti dentro la riga. `servizio` e' gia' assegnato qui sopra.
         view.findViewById<android.widget.ImageButton>(R.id.cipher_compose_send)?.apply {
             setOnClickListener { servizio?.let { CipherActions.encrypt(it) } }
+        }
+        view.findViewById<android.widget.ImageButton>(R.id.cipher_compose_plain)?.apply {
+            setOnClickListener { servizio?.let { CipherActions.sendPlain(it) } }
         }
         barreTasti = listOfNotNull(
             view.findViewById<ViewGroup>(R.id.toolbar),
@@ -321,8 +324,10 @@ object CipherCompose {
         found.setTextColor(colors.get(ColorType.KEY_TEXT))
         found.setHintTextColor(colors.get(ColorType.KEY_HINT_TEXT))
         found.setCaretColor(colors.get(ColorType.KEY_TEXT))
-        view.findViewById<android.widget.ImageButton>(R.id.cipher_compose_send)
-            ?.setColorFilter(colors.get(ColorType.KEY_ICON))
+        for (id in intArrayOf(R.id.cipher_compose_send, R.id.cipher_compose_plain)) {
+            view.findViewById<android.widget.ImageButton>(id)
+                ?.setColorFilter(colors.get(ColorType.KEY_ICON))
+        }
         collegaMenu(view, colors)
         updateRow()
         updateRecipient(owner)

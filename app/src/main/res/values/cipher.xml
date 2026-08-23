@@ -65,7 +65,7 @@
         mezzo tutta la classe di problema; il testo piu' lungo scorre, e lo
         scorrimento insegue il cursore.
     -->
-    <dimen name="cipher_compose_row_height">56dp</dimen>
+    <dimen name="cipher_compose_row_height">74dp</dimen>
     <!-- Nome del tasto per TalkBack: deve chiamarsi come la voce dell'enum. -->
     <string name="compose" tools:ignore="MissingTranslation">Scrivi dentro la tastiera</string>
     <string name="cipher_compose_on" tools:ignore="MissingTranslation">Ora scrivi dentro la tastiera: l\'app vedra\' solo il messaggio cifrato</string>
@@ -440,4 +440,13 @@
     <string name="cipher_clipboard_unreadable" tools:ignore="MissingTranslation">Non riesco a leggere gli appunti. Prova a incollare il messaggio nel campo di testo e premi di nuovo</string>
     <!-- Descrizione per chi usa TalkBack: il tasto e\' un'icona muta. -->
     <string name="cipher_encrypt_action" tools:ignore="MissingTranslation">Cifra e invia</string>
+    <!-- Descrizione per chi usa TalkBack: il tasto e\' un'icona muta. -->
+    <string name="cipher_send_plain_action" tools:ignore="MissingTranslation">Invia in chiaro</string>
+    <!--
+        La cifratura si e\' accesa da sola dopo aver letto un messaggio. Si dice
+        una volta e poi mai piu\': la prima volta sorprende, dalla seconda e\'
+        il comportamento che ci si aspetta. E si dice PERCHE\', altrimenti
+        sembra che l\'interruttore si muova da solo.
+    -->
+    <string name="cipher_on_after_read" tools:ignore="MissingTranslation">Cifratura accesa: hai appena letto un messaggio cifrato, cosi\' puoi rispondere allo stesso modo</string>
 </resources>

@@ -73,8 +73,18 @@ object CipherSettings {
     const val PREF_AUTO_OPEN = "cipher_auto_open"
     const val DEFAULT_AUTO_OPEN = true
 
+    /**
+     * **Non dipende da [isEnabled]**, ed e' l'unica preferenza della cifratura
+     * che non ci dipende.
+     *
+     * L'interruttore generale dice "non voglio scrivere cifrato". Non dice "non
+     * voglio LEGGERE cio' che mi arriva cifrato": chi riceve un messaggio e ha
+     * la cifratura spenta — perche' non l'ha ancora accesa, o l'aveva spenta
+     * per scrivere altrove — si trovava un blob illeggibile e nessun indizio su
+     * cosa fare. La chiave per leggerlo ce l'ha.
+     */
     fun isAutoOpen(prefs: SharedPreferences): Boolean =
-        isEnabled(prefs) && prefs.getBoolean(PREF_AUTO_OPEN, DEFAULT_AUTO_OPEN)
+        prefs.getBoolean(PREF_AUTO_OPEN, DEFAULT_AUTO_OPEN)
 
     fun isAutoOpen(context: Context): Boolean = isAutoOpen(context.prefs())
 

@@ -28,67 +28,84 @@
         android:id="@+id/cipher_compose_bar"
         android:layout_width="match_parent"
         android:layout_height="@dimen/cipher_compose_row_height"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:visibility="gone">
 
-        <helium314.keyboard.cipher.CipherComposeView
-            android:id="@+id/cipher_compose_row"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="match_parent"
-            android:gravity="center_vertical"
-            android:paddingStart="12dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp"
-            android:textSize="16sp"
-            android:hint="@string/cipher_compose_hint"
-            android:textDirection="locale" />
-
         <!--
-            Cifra e consegna, senza passare dalla toolbar.
-
-            Sta QUI e non solo in barra perche' la barra sparisce: aprendo le
-            emoji o la cronologia appunti, la striscia con i tasti viene
+            Sopra: il testo e i due tasti che si premono di piu' — invia in
+            chiaro e invia cifrato. Stanno QUI e non solo in barra perche' la
+            barra sparisce: aprendo le emoji o la cronologia appunti viene
             sostituita da quella delle categorie, e con essa se ne va il modo di
-            spedire. Chi finisce un messaggio con una faccina — cosa comune —
-            si trovava senza uscita e doveva tornare alle lettere per premere il
-            lucchetto.
+            spedire. Chi finisce un messaggio con una faccina si trovava senza
+            uscita.
 
-            L'azione sta accanto al testo su cui agisce, che e' anche il posto
-            in cui ha piu' senso cercarla.
+            Sono piu' grandi degli altri tasti perche' sono i due che si usano
+            di continuo, e perche' qui non competono con i suggerimenti: nella
+            striscia ogni pixel e' larghezza tolta alle parole, in questa riga
+            no.
         -->
-        <ImageButton
-            android:id="@+id/cipher_compose_send"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:paddingStart="10dp"
-            android:paddingEnd="6dp"
-            android:scaleType="fitCenter"
-            android:adjustViewBounds="true"
-            android:background="?android:attr/selectableItemBackground"
-            android:src="@drawable/ic_cipher_encrypt"
-            android:contentDescription="@string/cipher_encrypt_action" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <helium314.keyboard.cipher.CipherComposeView
+                android:id="@+id/cipher_compose_row"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="8dp"
+                android:textSize="16sp"
+                android:hint="@string/cipher_compose_hint"
+                android:textDirection="locale" />
+
+            <ImageButton
+                android:id="@+id/cipher_compose_plain"
+                android:layout_width="44dp"
+                android:layout_height="match_parent"
+                android:padding="8dp"
+                android:scaleType="fitCenter"
+                android:background="?android:attr/selectableItemBackground"
+                android:src="@drawable/ic_cipher_plain"
+                android:contentDescription="@string/cipher_send_plain_action" />
+
+            <ImageButton
+                android:id="@+id/cipher_compose_send"
+                android:layout_width="44dp"
+                android:layout_height="match_parent"
+                android:paddingStart="6dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:scaleType="fitCenter"
+                android:background="?android:attr/selectableItemBackground"
+                android:src="@drawable/ic_cipher_encrypt"
+                android:contentDescription="@string/cipher_encrypt_action" />
+        </LinearLayout>
 
         <!--
-            Per chi si sta cifrando. Toccandolo si cambia.
+            Sotto: per chi si sta cifrando. Toccandolo si cambia.
 
-            Sta qui e non altrove perche' e' l'unica informazione che l'utente
-            non ha modo di conoscere prima di premere il lucchetto: la tastiera
-            non sa con chi stai parlando, quindi il destinatario e' una scelta
-            sua, e una scelta invisibile e' una scelta che sorprende.
+            E' l'unica informazione che l'utente non ha modo di conoscere prima
+            di premere il lucchetto — la tastiera non sa con chi stai parlando —
+            e una scelta invisibile e' una scelta che sorprende. Sta su una riga
+            sua, sotto i tasti, perche' e' uno stato e non un'azione: mescolarlo
+            ai due tasti lo faceva sembrare un terzo pulsante.
         -->
         <TextView
             android:id="@+id/cipher_recipient"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:gravity="center_vertical|end"
-            android:paddingStart="8dp"
+            android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:maxWidth="160dp"
+            android:paddingBottom="2dp"
             android:maxLines="1"
             android:ellipsize="end"
-            android:textSize="14sp" />
+            android:textSize="12sp" />
     </LinearLayout>
 
     <include
