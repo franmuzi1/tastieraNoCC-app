@@ -469,4 +469,21 @@
         solo nei messaggi a due.
     -->
     <string name="cipher_group_message" tools:ignore="MissingTranslation">Messaggio di gruppo, %1$d persone potevano leggerlo. I messaggi di gruppo restano leggibili se qualcuno perde il telefono</string>
+    <string name="cipher_group_new" tools:ignore="MissingTranslation">+ Scrivi a piu\' persone</string>
+    <string name="cipher_group_forget" tools:ignore="MissingTranslation">Elimina</string>
+    <string name="cipher_group_save" tools:ignore="MissingTranslation">Avanti</string>
+    <!--
+        Si dice il minimo: due persone. Sotto non e\' un gruppo, e\' un
+        destinatario singolo, che si sceglie con un tocco solo dalla schermata
+        di prima.
+    -->
+    <string name="cipher_group_pick_members" tools:ignore="MissingTranslation">Tocca le persone che devono poter leggere. Almeno due.</string>
+    <string name="cipher_group_name_title" tools:ignore="MissingTranslation">Come si chiama questo gruppo?</string>
+    <!--
+        Il nome resta su questo telefono, e va detto: chi lo sceglie potrebbe
+        credere che gli altri lo vedano, e regolarsi di conseguenza su cosa
+        scriverci dentro.
+    -->
+    <string name="cipher_group_name_hint" tools:ignore="MissingTranslation">Il nome resta su questo telefono: gli altri non sanno di essere in un gruppo che si chiama cosi\'</string>
+    <string name="cipher_group_not_saved" tools:ignore="MissingTranslation">Non riesco a salvare il gruppo</string>
 </resources>

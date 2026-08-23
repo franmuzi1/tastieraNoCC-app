@@ -20,6 +20,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -27,6 +30,12 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.utils.Theme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.setValue
+import helium314.keyboard.settings.dialogs.TextInputDialog
 import helium314.keyboard.settings.dialogs.ThreeButtonAlertDialog
 
 /**
@@ -106,6 +115,12 @@ internal class RecipientActivity : ComponentActivity() {
                 CipherCore.nativeListPeers()?.let { PeerList.parse(it) }.orEmpty(),
             )
         }
+        var revisione by remember { mutableIntStateOf(0) }
+        val gruppi = remember(revisione) { CipherGroups.tutti(this) }
+        var multiplo by remember { mutableStateOf(false) }
+        val scelti = remember { mutableStateListOf<Int>() }
+        var chiediNome by remember { mutableStateOf(false) }
+
         val senzaNome = stringResource(R.string.cipher_unnamed_peer)
         val righe = peers.map { peer ->
             val nome = peer.label ?: senzaNome
@@ -114,7 +129,68 @@ internal class RecipientActivity : ComponentActivity() {
                 impronta = CipherCore.nativeFingerprintOf(peer.key).orEmpty(),
             )
         }
-        SceltaDestinatario(righe, onChiudi = { finish() }, onScegli = { scegli(peers[it]) })
+
+        if (chiediNome) {
+            TextInputDialog(
+                onDismissRequest = { chiediNome = false },
+                onConfirmed = { nome -> salvaGruppo(nome, scelti.map { peers[it].key }) },
+                title = { Text(stringResource(R.string.cipher_group_name_title)) },
+                description = { Text(stringResource(R.string.cipher_group_name_hint)) },
+                checkTextValid = { it.isNotBlank() },
+            )
+            return
+        }
+
+        SceltaDestinatario(
+            righe = righe,
+            gruppi = gruppi.map {
+                stringResource(R.string.cipher_recipient_group, it.nome, it.membri.size)
+            },
+            multiplo = multiplo,
+            scelti = scelti.toSet(),
+            onChiudi = { finish() },
+            onScegli = { indice ->
+                if (multiplo) {
+                    if (!scelti.remove(indice)) scelti.add(indice)
+                } else {
+                    scegli(peers[indice])
+                }
+            },
+            onScegliGruppo = { indice -> scegliGruppo(gruppi[indice].nome) },
+            onDimenticaGruppo = { indice ->
+                CipherGroups.dimentica(this, gruppi[indice].nome)
+                revisione++
+            },
+            onMultiplo = {
+                multiplo = true
+                scelti.clear()
+            },
+            onConferma = { chiediNome = true },
+        )
+    }
+
+    /**
+     * Salva il gruppo e lo sceglie subito come destinatario.
+     *
+     * Sceglierlo subito e' il punto: chi ha appena spuntato tre persone e dato
+     * un nome vuole scrivere a quelle tre, non tornare all'elenco e sceglierle
+     * di nuovo. Salvare senza selezionare sarebbe una schermata che chiede due
+     * volte la stessa cosa.
+     */
+    private fun salvaGruppo(nome: String, membri: List<ByteArray>) {
+        if (!CipherGroups.salva(this, nome, membri)) {
+            Toast.makeText(this, R.string.cipher_group_not_saved, Toast.LENGTH_SHORT).show()
+            return
+        }
+        scegliGruppo(nome)
+    }
+
+    private fun scegliGruppo(nome: String) {
+        if (!CipherGroups.scegli(this, appDiProvenienza, nome)) {
+            Toast.makeText(this, R.string.cipher_unavailable, Toast.LENGTH_SHORT).show()
+            return
+        }
+        finish()
     }
 
     @Composable
@@ -138,6 +214,11 @@ internal class RecipientActivity : ComponentActivity() {
         // che e' il guasto che questo progetto ha gia' pagato una volta.
         CipherRecipients.remember(this, appDiProvenienza, peer.key)
         CipherUsage.nota(this, peer.key)
+        // Via il gruppo, se ce n'era uno scelto per questa app. Il gruppo vince
+        // sul singolo quando si cifra — e' l'ordine giusto — quindi lasciarlo
+        // qui significherebbe che scegliere una persona non ha nessun effetto:
+        // il tasto sembra funzionare e il messaggio va ancora a tutti.
+        CipherGroups.scegli(this, appDiProvenienza, null)
         // Nessun avviso: diceva "ora in questa app cifri per questo contatto",
         // e non e' cosi'. Il destinatario corrente lo stabilisce anche —
         // e soprattutto — l'ultimo messaggio decifrato in quell'app, quindi
@@ -171,14 +252,26 @@ private fun SceltaDestinatario(
     righe: List<VoceDestinatario>,
     onChiudi: () -> Unit,
     onScegli: (Int) -> Unit,
+    gruppi: List<String> = emptyList(),
+    multiplo: Boolean = false,
+    scelti: Set<Int> = emptySet(),
+    onScegliGruppo: (Int) -> Unit = {},
+    onDimenticaGruppo: (Int) -> Unit = {},
+    onMultiplo: () -> Unit = {},
+    onConferma: () -> Unit = {},
 ) {
     ThreeButtonAlertDialog(
         onDismissRequest = onChiudi,
-        onConfirmed = { },
-        // Nessun pulsante di conferma: non c'e' niente da confermare, la scelta
-        // e' il tocco sul nome. Un "OK" chiederebbe due gesti per una decisione
-        // sola.
-        confirmButtonText = null,
+        onConfirmed = onConferma,
+        // A scelta singola non c'e' niente da confermare: la scelta e' il tocco
+        // sul nome, e un "OK" chiederebbe due gesti per una decisione sola. A
+        // selezione multipla invece il pulsante serve, perche' i tocchi sono
+        // molti e la fine la decide chi sceglie.
+        confirmButtonText = if (multiplo && scelti.size >= 2) {
+            stringResource(R.string.cipher_group_save)
+        } else {
+            null
+        },
         cancelButtonText = stringResource(android.R.string.cancel),
         scrollContent = true,
         reducePadding = true,
@@ -199,6 +292,48 @@ private fun SceltaDestinatario(
                         )
                     }
                 } else {
+                    // I gruppi in cima, e solo fuori dalla selezione multipla:
+                    // mentre si sta costruendo un gruppo, sceglierne un altro
+                    // butterebbe via la selezione a meta'.
+                    if (!multiplo) {
+                        gruppi.forEachIndexed { indice, nome ->
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onScegliGruppo(indice) }
+                                    .padding(horizontal = 8.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = nome,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                TextButton(onClick = { onDimenticaGruppo(indice) }) {
+                                    Text(stringResource(R.string.cipher_group_forget))
+                                }
+                            }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        }
+                        TextButton(onClick = onMultiplo) {
+                            Text(stringResource(R.string.cipher_group_new))
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    } else {
+                        // Si dice cosa si sta facendo: senza, una schermata con
+                        // le spunte al posto della scelta diretta sembra la
+                        // stessa di prima, rotta.
+                        CompositionLocalProvider(
+                            LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant
+                        ) {
+                            Text(
+                                text = stringResource(R.string.cipher_group_pick_members),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                            )
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
                     righe.forEachIndexed { indice, riga ->
                         if (indice > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         Column(
@@ -207,7 +342,10 @@ private fun SceltaDestinatario(
                                 .clickable { onScegli(indice) }
                                 .padding(horizontal = 8.dp, vertical = 10.dp),
                         ) {
-                            Text(text = riga.nome, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = if (multiplo && indice in scelti) "✓  ${riga.nome}" else riga.nome,
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
                             // L'impronta sotto il nome, sempre: due contatti
                             // senza nome sono distinguibili solo da quella, ed
                             // e' anche cio' che si confronta di persona. Non
