@@ -425,40 +425,42 @@ object CipherActions {
      */
     fun toggleCompose(ime: InputMethodService) {
         val prefs = ime.prefs()
-        // Scrive PREF_ENABLED, non PREF_COMPOSE_MODE. Da quando i due
-        // interruttori sono diventati uno — erano lo stesso, vedi
-        // `CipherSettings.isComposeMode` — quella preferenza non la legge piu'
-        // nessuno: il tasto la scriveva, `reload` non vedeva cambiare niente, e
-        // il toast annunciava un cambio che non era avvenuto. Un tasto muto che
-        // si dichiarava riuscito.
-        //
-        // Niente uscita anticipata su `isEnabled`: questo tasto e' proprio
-        // quello che riaccende, e rifiutare di funzionare da spento lo
-        // renderebbe un interruttore a senso unico.
-        val wanted = !CipherSettings.isEnabled(prefs)
-        prefs.edit().putBoolean(CipherSettings.PREF_ENABLED, wanted).apply()
-        CipherCompose.reload(ime)
-        KeyboardSwitcher.getInstance().setThemeNeedsReload()
-        // Su un campo dove la riga non si usa — una ricerca, una password, un
-        // numero — accendere la cifratura NON la fa comparire, e dire "la riga
-        // e' comparsa" sarebbe falso. E' lo stesso tasto che si dichiarava
-        // riuscito senza fare niente prima che scrivesse la preferenza giusta:
-        // qui non e' piu' muto, ma senza questo ramo tornerebbe a mentire.
-        //
-        // La preferenza si scrive lo stesso, ed e' voluto: e' globale, e
-        // accenderla da una barra di ricerca per la chat dopo e' un gesto
-        // sensato. Cambia cosa si risponde, non cosa si fa.
-        if (wanted && CipherCompose.isSuppressed()) {
-            toast(ime, R.string.cipher_compose_on_not_here)
+
+        // Se la riga c'e', il tasto la spegne — e spegne la cifratura, che e'
+        // cio' che ha sempre fatto.
+        if (CipherCompose.rigaASchermo()) {
+            prefs.edit().putBoolean(CipherSettings.PREF_ENABLED, false).apply()
+            CipherCompose.reload(ime)
+            KeyboardSwitcher.getInstance().setThemeNeedsReload()
+            avvisoUnaVolta(ime, "riga_spenta", R.string.cipher_compose_off)
             return
         }
-        // La riga che compare o sparisce e' gia' la risposta: la spiegazione
-        // serve solo la prima volta.
-        avvisoUnaVolta(
-            ime,
-            if (wanted) "riga_accesa" else "riga_spenta",
-            if (wanted) R.string.cipher_compose_on else R.string.cipher_compose_off,
-        )
+
+        // Se la riga NON c'e', il tasto la vuole qui. Prima si accende la
+        // cifratura se era spenta: e' proprio il tasto che la riaccende, e
+        // rifiutare di funzionare da spento lo renderebbe a senso unico.
+        if (!CipherSettings.isEnabled(prefs)) {
+            prefs.edit().putBoolean(CipherSettings.PREF_ENABLED, true).apply()
+            CipherCompose.reload(ime)
+            KeyboardSwitcher.getInstance().setThemeNeedsReload()
+        }
+        if (CipherCompose.rigaASchermo()) {
+            avvisoUnaVolta(ime, "riga_accesa", R.string.cipher_compose_on)
+            return
+        }
+
+        // La riga ancora non c'e': questo campo non e' classificato come campo
+        // da messaggi. La classificazione e' un'ipotesi nostra, non un divieto:
+        // se l'utente preme il tasto qui, sa dov'e' e la sua richiesta vale di
+        // piu'. Una cifratura accesa senza la riga in cui scrivere non e' una
+        // modalita', e' un guasto.
+        if (!CipherCompose.forza(ime)) {
+            // L'unico caso che non si scavalca: mostrerebbe a schermo cio' che
+            // il campo nasconde con i pallini.
+            toast(ime, R.string.cipher_compose_password)
+            return
+        }
+        toast(ime, R.string.cipher_compose_forced)
     }
 
     /**

@@ -71,6 +71,18 @@ object CipherCompose {
     /** Vedi `CipherSettings.PREF_LEARN`. Riletta in [reload]. */
     private var apprendi = false
 
+    /**
+     * Il campo su cui l'utente ha chiesto la riga **a mano**, scavalcando la
+     * classificazione automatica. `null` quando non c'e' nessuna forzatura.
+     *
+     * Si ricorda il campo preciso — pacchetto piu' `fieldId` — e non un
+     * semplice booleano: una forzatura che sopravvive al cambio di campo
+     * farebbe comparire la riga dove non l'ha chiesta nessuno, e il posto piu'
+     * probabile dove finirebbe e' il campo successivo di quella stessa app.
+     * Chiedere la riga su una barra di ricerca non e' chiederla per sempre.
+     */
+    private var forzataSu: Pair<String, Int>? = null
+
     /** Il nostro, per non farci mai possedere il buffer. Vedi [onInputStarted]. */
     private var self: String = ""
 
@@ -220,7 +232,18 @@ object CipherCompose {
         // per l'elenco dei campi che non sono compositori di messaggi e per il
         // motivo per cui il criterio e' "spegni su prova contraria" e non
         // "accendi su prova a favore".
-        suppressed = editorInfo != null && CipherFields.nonComponeMessaggi(editorInfo)
+        // Tre casi, non due. Vietata: password, e non si discute. Forzata a mano
+        // su QUESTO campo: l'utente ha premuto il tasto qui, e la sua richiesta
+        // vale piu' della nostra classificazione. Altrimenti decide
+        // [CipherFields].
+        val identita = editorInfo?.let { app to it.fieldId }
+        if (forzataSu != null && forzataSu != identita) forzataSu = null
+        suppressed = when {
+            editorInfo == null -> false
+            CipherFields.vietata(editorInfo) -> true
+            forzataSu != null -> false
+            else -> CipherFields.nonComponeMessaggi(editorInfo)
+        }
         if (suppressed) {
             svuotaSovrascrivendo(connection?.buffer)
             updateRow()
@@ -561,6 +584,40 @@ object CipherCompose {
      * il pannello di lettura sulla stessa finestra e' protetto da sempre.
      */
     fun rigaASchermo(): Boolean = enabled && !suppressed
+
+    /**
+     * La riga e' vietata sul campo corrente: nessuna forzatura la fara'
+     * comparire. Serve al tasto in toolbar per dire il vero invece di
+     * promettere una riga che non arrivera'.
+     */
+    fun rigaVietataQui(ime: InputMethodService): Boolean =
+        ime.currentInputEditorInfo?.let { CipherFields.vietata(it) } ?: false
+
+    /**
+     * L'utente chiede la riga su questo campo, scavalcando la classificazione.
+     *
+     * Ritorna `false` se il campo la vieta — password — cosi' chi chiama puo'
+     * spiegarlo invece di far finta di niente. La forzatura vale per QUESTO
+     * campo e cade da sola al primo cambio, vedi [forzataSu].
+     */
+    fun forza(ime: InputMethodService): Boolean {
+        val editorInfo = ime.currentInputEditorInfo ?: return false
+        if (CipherFields.vietata(editorInfo)) return false
+        val app = editorInfo.packageName.orEmpty()
+        // Il proprietario va aggiornato QUI, e saltarlo sarebbe un difetto
+        // grave: su un campo sospeso `onInputStarted` esce prima di assegnarlo,
+        // quindi `owner` e' ancora quello dell'app di prima. Senza questa riga
+        // il testo scritto nella riga appena forzata risulterebbe di
+        // quell'altra app — e tornandoci, la guardia sul cambio non lo
+        // svuoterebbe: si cifrerebbe per il destinatario sbagliato.
+        if (owner.isNotEmpty() && owner != app) svuotaSovrascrivendo(connection?.buffer)
+        owner = app
+        forzataSu = app to editorInfo.fieldId
+        suppressed = false
+        updateRow()
+        updateRecipient(app)
+        return true
+    }
 
     private fun updateRow() {
         val view = row ?: return

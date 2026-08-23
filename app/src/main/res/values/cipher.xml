@@ -406,13 +406,6 @@
     -->
     <string name="cipher_own_card" tools:ignore="MissingTranslation">Questa e\' la TUA chiave (%1$s), non quella di un contatto. Non e\' stato aggiunto niente alla rubrica.</string>
     <!--
-        Non e\' un errore e non e\' un rifiuto: la cifratura si e\' accesa davvero,
-        semplicemente questo campo non e\' un posto dove si compongono messaggi.
-        Dirlo qui evita che l\'utente prema il tasto tre volte convinto che sia
-        rotto. Vedi CipherFields per quali campi restano fuori.
-    -->
-    <string name="cipher_compose_on_not_here" tools:ignore="MissingTranslation">Cifratura accesa. In questo campo la riga non compare: non e\' un campo da messaggi</string>
-    <!--
         L\'Activity e\' stata ricreata dal sistema e il messaggio non si rifa\':
         rifarlo avrebbe effetti veri (catena, pin, rogo). Non si spiega il
         perche\', si dice cosa fare: l\'utente non ha sbagliato niente e il gesto
@@ -425,4 +418,17 @@
         l\'ordine inverso farebbe leggere il messaggio come un fallimento.
     -->
     <string name="cipher_burn_done_no_request" tools:ignore="MissingTranslation">Bruciata da questo telefono. Non e\' stato possibile preparare la richiesta per l\'altra persona: da lei i messaggi restano.</string>
+    <!--
+        L\'utente ha chiesto la riga su un campo che la classificazione
+        automatica non considera da messaggi. Si dice che e\' fatto e che dura
+        poco: la forzatura vale per questo campo e cade cambiando campo, quindi
+        chi se lo aspetta permanente va avvisato subito, non quando sparisce.
+    -->
+    <string name="cipher_compose_forced" tools:ignore="MissingTranslation">Riga accesa anche qui. Cambiando campo torna automatica</string>
+    <!--
+        L\'unico rifiuto che resta. Si dice il MOTIVO e non solo il no, perche\'
+        e\' l\'unico caso in cui il tasto non fa quello che l\'utente ha chiesto:
+        senza una ragione sembrerebbe rotto, e la ragione qui e\' buona.
+    -->
+    <string name="cipher_compose_password" tools:ignore="MissingTranslation">Qui la riga non compare: e\' un campo password, e mostrerebbe a schermo quello che il campo nasconde</string>
 </resources>

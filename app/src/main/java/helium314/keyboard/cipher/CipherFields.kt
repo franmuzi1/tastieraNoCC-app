@@ -58,7 +58,23 @@ internal object CipherFields {
             !nonComponeMessaggi(editorInfo)
 
     /**
-     * `true` se la riga di composizione NON deve accendersi su questo campo.
+     * `true` se la riga e' **vietata** su questo campo, non solo non prevista.
+     *
+     * E' l'unica esclusione che l'utente non puo' scavalcare, e la differenza
+     * con [nonComponeMessaggi] e' tutta qui. Una barra di ricerca non e' un
+     * posto *previsto* per comporre messaggi, ma se qualcuno ci vuole la riga
+     * sono affari suoi. Un campo password e' un'altra cosa: la riga mostrerebbe
+     * a schermo cio' che il campo nasconde con i pallini, e lo terrebbe in un
+     * buffer nostro. Non e' una preferenza, e' il motivo per cui la riga li'
+     * non esiste.
+     */
+    fun vietata(editorInfo: EditorInfo): Boolean =
+        InputTypeUtils.isPasswordInputType(editorInfo.inputType) ||
+            InputTypeUtils.isVisiblePasswordInputType(editorInfo.inputType)
+
+    /**
+     * `true` se la riga di composizione non si accende **da sola** su questo
+     * campo. Scavalcabile a mano, tranne dove [vietata] dice di no.
      *
      * Il parametro e' NON nullo apposta. Un [EditorInfo] nullo non significa
      * "campo che non compone messaggi", significa "non si sa ancora niente", e
@@ -70,13 +86,8 @@ internal object CipherFields {
     fun nonComponeMessaggi(editorInfo: EditorInfo): Boolean {
         val inputType = editorInfo.inputType
 
-        // Le password hanno la loro ragione, che viene prima di questa: la riga
-        // mostrerebbe a schermo cio' che il campo nasconde con i pallini.
-        if (InputTypeUtils.isPasswordInputType(inputType) ||
-            InputTypeUtils.isVisiblePasswordInputType(inputType)
-        ) {
-            return true
-        }
+        // Le password vengono prima, e sono l'unico caso non scavalcabile.
+        if (vietata(editorInfo)) return true
 
         // Numeri, telefono, date. Non sono discorsi, e cifrarli non ha senso —
         // ma soprattutto sono campi che l'app legge per farci qualcosa, non per
