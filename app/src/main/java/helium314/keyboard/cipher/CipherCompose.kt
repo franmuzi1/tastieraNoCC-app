@@ -555,10 +555,21 @@ object CipherCompose {
         if (fine <= inizio) chiudiMenu()
     }
 
+    /**
+     * La riga e' a schermo adesso. La usa [CipherSchermoProtetto] per decidere
+     * se la finestra va protetta dagli screenshot: qui si scrive del chiaro, e
+     * il pannello di lettura sulla stessa finestra e' protetto da sempre.
+     */
+    fun rigaASchermo(): Boolean = enabled && !suppressed
+
     private fun updateRow() {
         val view = row ?: return
         barra?.isVisible = enabled && !suppressed
         view.isVisible = enabled && !suppressed
+        // La riga puo' essere appena comparsa o appena sparita: il flag della
+        // finestra si ricalcola qui e non nei singoli chiamanti, che sono
+        // tanti e ne dimenticherebbero uno.
+        CipherSchermoProtetto.aggiorna(servizio)
         if (!enabled || suppressed) return
         val buffer = connection?.buffer
         val text = buffer?.toString().orEmpty()

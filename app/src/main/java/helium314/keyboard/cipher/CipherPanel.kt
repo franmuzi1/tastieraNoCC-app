@@ -2,7 +2,6 @@ package helium314.keyboard.cipher
 
 import android.inputmethodservice.InputMethodService
 import android.view.View
-import android.view.WindowManager
 import android.widget.TextView
 import androidx.core.view.isVisible
 import helium314.keyboard.latin.R
@@ -36,10 +35,15 @@ import helium314.keyboard.latin.settings.Settings
  * ## FLAG_SECURE
  *
  * La finestra dell'IME non ce l'ha, e finche' mostra tasti va benissimo. Mentre
- * mostra un messaggio decifrato no: si mette all'apertura e si toglie alla
- * chiusura. Toglierlo conta quanto metterlo — lasciarlo acceso significherebbe
- * una tastiera che impedisce gli screenshot a tutte le app, per sempre, senza
- * che nulla lo spieghi.
+ * mostra un messaggio decifrato no.
+ *
+ * Ma il flag NON si mette e non si toglie da qui: la finestra e' una sola e la
+ * condivide con la riga di composizione, che ora e' protetta anche lei.
+ * Togliendolo alla chiusura del pannello si scoprirebbe la riga, se e' ancora a
+ * schermo. Si dichiara il cambiamento e decide [CipherSchermoProtetto], che
+ * ricalcola da capo — anche perche' toglierlo conta quanto metterlo: lasciarlo
+ * acceso significherebbe una tastiera che impedisce gli screenshot a tutte le
+ * app, per sempre, senza che nulla lo spieghi.
  *
  * ## Cosa NON fa
  *
@@ -91,17 +95,15 @@ object CipherPanel {
     fun mostra(intestazione: String, data: String, messaggio: String) {
         val vista = pannello ?: return
         val ime = servizio ?: return
-        // Prima di qualunque cosa che possa finire sullo schermo.
-        runCatching {
-            ime.window?.window?.setFlags(
-                WindowManager.LayoutParams.FLAG_SECURE,
-                WindowManager.LayoutParams.FLAG_SECURE,
-            )
-        }
+        // Prima di qualunque cosa che possa finire sullo schermo. Il flag e'
+        // condiviso con la riga di composizione: lo decide un arbitro solo,
+        // vedi [CipherSchermoProtetto]. Si dichiara aperto PRIMA di chiedere il
+        // ricalcolo, altrimenti l'arbitro non saprebbe ancora che serve.
+        vista.isVisible = true
+        CipherSchermoProtetto.aggiorna(ime)
         chi?.text = intestazione
         quando?.text = data
         testo?.text = messaggio
-        vista.isVisible = true
     }
 
     /**
@@ -114,9 +116,10 @@ object CipherPanel {
         chi?.text = ""
         quando?.text = ""
         testo?.text = ""
-        runCatching {
-            servizio?.window?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        }
+        // NON si toglie il flag qui: la riga di composizione puo' essere ancora
+        // a schermo e resterebbe scoperta. Si ricalcola, e l'arbitro lo toglie
+        // solo se non serve piu' a nessuno.
+        CipherSchermoProtetto.aggiorna(servizio)
     }
 
     /** Aperto adesso? Serve a chi deve decidere se il tasto indietro lo chiude. */
