@@ -854,6 +854,20 @@ object CipherActions {
         if (!ready(ime)) return
         val text = source(ime, clipboardOnly) ?: return
 
+        // ## Prima il pannello dentro la tastiera, come per l'apertura automatica
+        //
+        // Questo tasto e' nato prima del pannello e non era mai stato
+        // ricollegato: apriva sempre l'Activity, cioe' una finestra separata,
+        // mentre copiare un blob mostrava il messaggio dentro la tastiera. Due
+        // strade per lo stesso gesto, e quella manuale era la peggiore.
+        //
+        // Il pannello copre il caso comune — un messaggio di testo — e lascia
+        // all'Activity tutto il resto: allegati, presentazioni, roghi, esiti
+        // d'errore. Cosi' i sei esiti restano implementati una volta sola.
+        if (CipherPanel.disponibile() && mostraNelPannello(ime, text.toString()) != Esito.NO) {
+            return
+        }
+
         // ACTION_SEND e non un'azione nostra: DecryptActivity la gestisce gia'
         // per lo share sheet, e avere una via sola dentro l'Activity significa
         // una sola implementazione dei sei esiti.
@@ -891,6 +905,19 @@ object CipherActions {
      */
     private fun source(ime: InputMethodService, clipboardOnly: Boolean): CharSequence? {
         if (!clipboardOnly) {
+            // ## La riga di composizione viene PRIMA del campo dell'app
+            //
+            // Con la riga attiva un blob incollato finisce li', non nel campo:
+            // e' tutto il punto della riga. Guardare prima il campo — che in
+            // quella modalita' e' vuoto per costruzione — significava saltare
+            // l'unico posto dove il testo poteva essere, e finire sugli appunti
+            // anche quando l'utente aveva appena incollato il messaggio sotto i
+            // propri occhi.
+            //
+            // Non si svuota la riga dopo: quel testo e' dell'utente, e chi ha
+            // incollato un blob per leggerlo potrebbe volerlo ancora li'.
+            val composto = CipherCompose.text()
+            if (composto.isNotEmpty()) return composto
             val ic = appConnection(ime)
             if (ic != null) {
                 // Distinzione che conta: `null` qui vuol dire "campo troppo
