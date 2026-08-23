@@ -219,7 +219,18 @@ class DecryptActivity : ComponentActivity() {
         when (result.kind) {
             // Un rogo non ha testo: si dice cosa e' successo e si chiude.
             CipherCore.KIND_BURNED -> showNotice(
-                getString(R.string.cipher_burned_incoming, senderLine(result))
+                getString(
+                    R.string.cipher_burned_incoming,
+                    senderLine(result),
+                    // La data della richiesta. Un rogo composto mesi fa e
+                    // arrivato adesso e' un blob che qualcuno ha ripubblicato,
+                    // non una richiesta nuova — e a quel punto la conversazione
+                    // e' gia' distrutta. Rifiutarlo per la data e' vietato
+                    // (decisione C: il timestamp e' autenticato ma non
+                    // verificabile), quindi mostrarla e' tutta la difesa che
+                    // c'e'. Prima non si mostrava affatto.
+                    formatTimestamp(result.sentAtUnix),
+                )
             )
             CipherCore.KIND_MESSAGE -> showMessage(result)
             CipherCore.KIND_OWN_MESSAGE -> showMessage(result, mio = true)
