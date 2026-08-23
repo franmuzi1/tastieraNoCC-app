@@ -9,6 +9,7 @@ import android.text.Selection
 import android.text.SpannableStringBuilder
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.TextView
 import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
@@ -20,6 +21,7 @@ import helium314.keyboard.latin.LatinIME
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.common.Constants
 import helium314.keyboard.latin.common.ColorType
+import helium314.keyboard.latin.utils.ToolbarKey
 import helium314.keyboard.latin.settings.Settings
 
 /**
@@ -68,6 +70,15 @@ object CipherCompose {
     /** Il package a cui appartiene il testo nel buffer. */
     private var owner: String = ""
 
+    /** I tasti che seguono la riga. `COMPOSE` non c'e': quello resta sempre. */
+    private val TASTI_CIFRATURA = setOf(
+        ToolbarKey.ENCRYPT,
+        ToolbarKey.DECRYPT,
+        ToolbarKey.SEND_PLAIN,
+        ToolbarKey.ATTACH,
+        ToolbarKey.CONTACTS,
+    )
+
     /** Vedi `CipherSettings.PREF_LEARN`. Riletta in [reload]. */
     private var apprendi = false
 
@@ -101,6 +112,13 @@ object CipherCompose {
      * silenzio — il nome si toccava e non succedeva niente.
      */
     private var servizio: InputMethodService? = null
+
+    /**
+     * Le due barre dei tasti della toolbar — quella espandibile e quella dei
+     * tasti fissati. Servono a nascondere i tasti della cifratura sui campi
+     * dove la riga non c'e': vedi [aggiornaTastiCifratura].
+     */
+    private var barreTasti: List<ViewGroup> = emptyList()
 
     /**
      * Sospesa per il campo corrente. Vedi [onInputStarted]: su una password la
@@ -289,6 +307,10 @@ object CipherCompose {
         // decifrato copre i tasti, quindi si toglie di mezzo da solo.
         found.onToccata = { CipherPanel.chiudi() }
 
+        barreTasti = listOfNotNull(
+            view.findViewById<ViewGroup>(R.id.toolbar),
+            view.findViewById<ViewGroup>(R.id.pinned_keys),
+        )
         val colors = Settings.getValues().mColors
         barra?.let { colors.setBackground(it, ColorType.STRIP_BACKGROUND) }
         colors.setBackground(found, ColorType.STRIP_BACKGROUND)
@@ -579,6 +601,36 @@ object CipherCompose {
     }
 
     /**
+     * I tasti della cifratura seguono la riga: dove la riga non c'e', spariscono
+     * anche loro — tranne l'interruttore, che e' l'unico modo di richiamarla.
+     *
+     * Su una barra di ricerca una tastiera con i lucchetti e senza la riga in
+     * cui scrivere non e' "modalita' cifrata": e' un pannello di comandi che
+     * non comandano niente. "Cifra" prenderebbe cio' che c'e' nel campo
+     * dell'app, che li' e' la ricerca dell'utente.
+     *
+     * Si nascondono le VISTE invece di rifare la toolbar. La toolbar si
+     * costruisce una volta sola, quando nasce la vista della tastiera, e per
+     * cambiarne l'elenco servirebbe ricostruire tutto a ogni passaggio fra una
+     * chat e una ricerca: molto piu' caro, e proprio nel momento in cui
+     * l'utente sta aprendo un campo.
+     *
+     * I tasti si riconoscono dal `tag`, che e' la `ToolbarKey` con cui sono
+     * stati creati.
+     */
+    private fun aggiornaTastiCifratura() {
+        val mostra = enabled && !suppressed
+        for (barra in barreTasti) {
+            for (i in 0 until barra.childCount) {
+                val figlio = barra.getChildAt(i) ?: continue
+                val chiave = figlio.tag as? ToolbarKey ?: continue
+                if (chiave == ToolbarKey.COMPOSE) continue
+                if (chiave in TASTI_CIFRATURA) figlio.isVisible = mostra
+            }
+        }
+    }
+
+    /**
      * La riga e' a schermo adesso. La usa [CipherSchermoProtetto] per decidere
      * se la finestra va protetta dagli screenshot: qui si scrive del chiaro, e
      * il pannello di lettura sulla stessa finestra e' protetto da sempre.
@@ -627,6 +679,7 @@ object CipherCompose {
         // finestra si ricalcola qui e non nei singoli chiamanti, che sono
         // tanti e ne dimenticherebbero uno.
         CipherSchermoProtetto.aggiorna(servizio)
+        aggiornaTastiCifratura()
         if (!enabled || suppressed) return
         val buffer = connection?.buffer
         val text = buffer?.toString().orEmpty()
