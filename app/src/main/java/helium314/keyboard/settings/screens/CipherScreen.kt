@@ -57,6 +57,10 @@ fun CipherScreen(
         // Stessa ragione: senza la riga il chiaro sta gia' nel campo dell'app, e
         // un divieto di copiarlo non proteggerebbe niente.
         if (enabled) CipherSettings.PREF_BLOCK_COPY else null,
+        // Accanto al divieto di copia perche' rispondono alla stessa domanda —
+        // dove finisce il chiaro oltre al campo dell'app — e questa e' la via
+        // che non si vede: il dizionario personale entra nel backup di Android.
+        if (enabled) CipherSettings.PREF_LEARN else null,
         if (enabled) CipherSettings.PREF_AUTO_OPEN else null,
         if (enabled) CipherSettings.PREF_FORWARD_SECRECY else null,
         // Le due risposte a "il telefono ferma la tastiera e copiare non fa
@@ -98,6 +102,12 @@ fun createCipherSettings(context: Context) = listOf(
         R.string.cipher_block_copy, R.string.cipher_block_copy_summary
     ) {
         SwitchPreference(it, CipherSettings.DEFAULT_BLOCK_COPY)
+    },
+    Setting(
+        context, CipherSettings.PREF_LEARN,
+        R.string.cipher_learn, R.string.cipher_learn_summary
+    ) {
+        SwitchPreference(it, CipherSettings.DEFAULT_LEARN)
     },
     Setting(
         context, CipherSettings.PREF_AUTO_OPEN,

@@ -69,6 +69,9 @@ object CipherCompose {
     /** Il package a cui appartiene il testo nel buffer. */
     private var owner: String = ""
 
+    /** Vedi `CipherSettings.PREF_LEARN`. Riletta in [reload]. */
+    private var apprendi = false
+
     /** Il nostro, per non farci mai possedere il buffer. Vedi [onInputStarted]. */
     private var self: String = ""
 
@@ -103,6 +106,11 @@ object CipherCompose {
         // modalita' composizione, e cambiare il solo interruttore del copia non
         // la muove — la preferenza nuova non verrebbe mai riletta.
         bloccaCopia = CipherSettings.isBlockCopy(context)
+        // Come sopra, fuori dall'uscita anticipata: e' una preferenza sua e
+        // cambiarla non muove la modalita' composizione. E si tiene in un campo
+        // invece di leggerla al volo perche' [apprendimentoVietato] viene
+        // chiamata a ogni parola composta.
+        apprendi = CipherSettings.isLearn(context)
         val wanted = CipherSettings.isComposeMode(context)
         if (wanted == enabled) return
         enabled = wanted
@@ -337,8 +345,14 @@ object CipherCompose {
      *
      * NON copre la raccolta dati dei gesti (`GestureDataGathering`), che ha una
      * sua decisione separata ed e' spenta di default.
+     *
+     * L'utente puo' riaprire l'apprendimento con `CipherSettings.PREF_LEARN`,
+     * spento di default. Il divieto e' il default e non l'unica strada, perche'
+     * il costo e' reale — la tastiera non migliora sul vocabolario di chi
+     * scrive spesso cifrato — ma chi non apre le impostazioni deve avere la
+     * promessa mantenuta.
      */
-    fun apprendimentoVietato(): Boolean = connection() != null
+    fun apprendimentoVietato(): Boolean = connection() != null && !apprendi
 
     /**
      * Il dito ha spostato il cursore o selezionato un pezzo di testo.

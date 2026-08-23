@@ -382,4 +382,12 @@
         una finestra trasparente. Tenerlo qui come risorsa morta avrebbe fatto
         credere a chi legge che esistano due strade.
     -->
+    <!--
+        Il titolo dice cosa fa, il sommario dice il prezzo. La voce e\' accesa da
+        spenta: quindi il titolo descrive l\'apprendimento, non il divieto —
+        un interruttore che si chiama "non imparare" e che va acceso per NON
+        imparare e\' un doppio negativo che fa sbagliare.
+    -->
+    <string name="cipher_learn" tools:ignore="MissingTranslation">Impara dalle parole cifrate</string>
+    <string name="cipher_learn_summary" tools:ignore="MissingTranslation">Migliora i suggerimenti anche con cio\' che scrivi nella riga cifrata. Da spento (consigliato) quelle parole non entrano nel dizionario personale, che finisce nel backup di Android e ricompare come suggerimento nelle altre app</string>
 </resources>

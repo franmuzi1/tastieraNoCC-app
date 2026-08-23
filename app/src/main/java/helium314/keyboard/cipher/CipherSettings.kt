@@ -130,6 +130,42 @@ object CipherSettings {
      * Vale **solo** dentro la riga di composizione: senza, il chiaro sta gia'
      * nel campo dell'app e non c'e' niente da proteggere.
      */
+    /**
+     * Imparare le parole scritte nella riga cifrata. **Spento di default.**
+     *
+     * Il resto della tastiera non sa che quel testo sara' cifrato: lo impara nel
+     * dizionario personale come qualunque altro. E il dizionario vive in
+     * `filesDir`, che il manifest lascia dentro il backup automatico di Android
+     * — quindi il chiaro parte per Google **senza** che la tastiera abbia il
+     * permesso di rete, perche' a copiarlo e' il sistema. Poi ritorna come
+     * suggerimento mentre si scrive in chiaro in un'altra app.
+     *
+     * Peggio: il dizionario personale impara proprio le parole che NON conosce
+     * gia' — nomi, cognomi, luoghi. Cioe' il contenuto che identifica le
+     * persone; le parole comuni ci sono gia'.
+     *
+     * L'interruttore esiste perche' il divieto ha un costo vero: la tastiera
+     * non migliora sul vocabolario di chi scrive spesso cifrato. Ed e' un costo
+     * piu' piccolo di quel che sembra — i suggerimenti nella riga continuano a
+     * funzionare, il dizionario si legge ancora, si smette solo di scriverci.
+     *
+     * Perche' non basta l'interruttore dei dizionari personalizzati che
+     * HeliBoard ha gia': quello e' tutto o niente e spegne l'apprendimento
+     * ovunque, anche dove e' utile e innocuo. Qui il taglio e' piu' fine.
+     *
+     * Spento di default perche' la promessa deve valere per chi non apre le
+     * impostazioni: chi cifra un messaggio non si aspetta di ritrovarne le
+     * parole altrove, e un default che tradisce quell'attesa e' peggio di
+     * un'opzione che manca.
+     */
+    const val PREF_LEARN = "cipher_learn"
+    const val DEFAULT_LEARN = false
+
+    fun isLearn(prefs: SharedPreferences): Boolean =
+        isComposeMode(prefs) && prefs.getBoolean(PREF_LEARN, DEFAULT_LEARN)
+
+    fun isLearn(context: Context): Boolean = isLearn(context.prefs())
+
     const val PREF_BLOCK_COPY = "cipher_block_copy"
     const val DEFAULT_BLOCK_COPY = true
 
