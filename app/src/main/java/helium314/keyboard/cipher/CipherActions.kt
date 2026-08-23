@@ -550,6 +550,20 @@ object CipherActions {
         // scritto tu apre una schermata mentre leggere quello di un altro no.
         val mio = result.kind == CipherCore.KIND_OWN_MESSAGE
         if (result.kind != CipherCore.KIND_MESSAGE && !mio) return Esito.NO
+        // Il destinatario corrente su disco, come fa gia' `DecryptActivity`.
+        //
+        // Il core lo sceglie in memoria appena decifra — leggere un messaggio
+        // dice per chi cifrare la risposta — ma quella scelta muore col
+        // processo. `CipherRecipients` esiste apposta, ed e' stato scritto
+        // quando la via primaria era l'Activity. Da quando lo e' il pannello
+        // dentro la tastiera, quel guasto si era riaperto qui: rispondere
+        // funzionava, e dopo un riavvio della tastiera il destinatario non
+        // c'era piu'.
+        val letturaDa = result.senderKey
+        if (letturaDa != null) {
+            val app = ime.currentInputEditorInfo?.packageName.orEmpty()
+            if (app.isNotEmpty()) CipherRecipients.remember(ime, app, letturaDa)
+        }
         val bytes = result.plaintext ?: return Esito.NO
         // Il core consegna ByteArray e non String proprio per poterlo azzerare.
         // Per mostrarlo serve una CharSequence, quindi una copia non azzerabile

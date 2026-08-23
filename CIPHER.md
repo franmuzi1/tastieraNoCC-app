@@ -1284,10 +1284,19 @@ non verificato spacciato per verificato no.
 
 ## Vincoli da non violare
 
-- **Zero permessi, `CAMERA` compresa.** HeliBoard non ha `INTERNET` ed è la sua
-  proprietà principale. Il QR si mostra e non si scansiona: decisione chiusa,
-  non un residuo. Se una sessione futura trova comodo aggiungere lo scanner,
-  non è una svista da correggere.
+- **Niente `INTERNET` e niente `CAMERA`.** L'assenza di `INTERNET` è la
+  proprietà principale di HeliBoard e non si tocca. Il QR si mostra e non si
+  scansiona: decisione chiusa, non un residuo. Se una sessione futura trova
+  comodo aggiungere lo scanner, non è una svista da correggere.
+
+  Qui c'era scritto **"zero permessi"**, e non è più vero: il fork ne ha
+  aggiunti tre — `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE` e
+  `POST_NOTIFICATIONS`, quest'ultimo chiesto a runtime. Servono al servizio che
+  tiene viva la tastiera. Vanno via insieme a quello, se e quando si decide di
+  toglierlo: è una decisione aperta, non un dato di fatto.
+
+  La differenza che conta resta: nessuno dei tre permette di far uscire dati
+  dal telefono.
 - **`ACTION_PROCESS_TEXT` non deve mai restituire il plaintext al chiamante.**
   Il contratto di quell'intent prevede `setResult` con un testo sostitutivo, ed
   è l'implementazione naturale — che qui consegnerebbe il chiaro proprio
@@ -1408,7 +1417,10 @@ erano tre approssimazioni diverse dello stesso elenco, costruite con viste a
 mano.
 
 Tutte e tre hanno `FLAG_SECURE`, quindi **la cattura schermo dà un'immagine
-vuota**: per guardarle esistono anteprime Compose con dati finti
+vuota**. E non sono più le uniche: la finestra della tastiera lo prende quando
+mostra il pannello di lettura **o la riga di composizione**, e a deciderlo è
+`CipherSchermoProtetto` — con due proprietari sulla stessa finestra, chi mette e
+chi toglie non può essere lo stesso che apre e chiude. Per le tre schermate: per guardarle esistono anteprime Compose con dati finti
 (`AnteprimaContatti`, `AnteprimaDestinatario`, `AnteprimaDecifrato`), che non
 toccano il keyring. Vanno aperte con la variante `debugNoMinify`, perché R8
 toglie ciò che nessuno chiama per nome:

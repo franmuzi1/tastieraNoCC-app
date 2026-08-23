@@ -53,13 +53,6 @@ class DecryptActivity : ComponentActivity() {
         /** Richiesta del selettore "dove salvo". */
         private const val RICHIESTA_SALVA = 1
 
-        /**
-         * Marca gli intent costruiti da `CipherActions.autoDecrypt`, cioe' le
-         * aperture che partono da sole. Solo su quelle vale la guardia contro
-         * il duplicato: un utente che apre due volte lo stesso file sta
-         * chiedendo davvero due volte.
-         */
-        const val EXTRA_AUTOMATICO = "helium314.keyboard.cipher.AUTO"
     }
 
     /**

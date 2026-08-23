@@ -140,6 +140,18 @@ object CipherIdentity {
             CipherStorage.delete(app, CipherStorage.IDENTITY)
             CipherStorage.delete(app, CipherStorage.KEYRING)
             CipherRecipients.forget(app)
+            // Anche le lapidi e le statistiche d'uso. Non sono chiavi e non
+            // rendono leggibile niente, ma sono due elenchi di CON CHI hai
+            // parlato — il metadato che tutto il progetto esiste per non
+            // regalare — e restavano su disco dopo un gesto che si chiama
+            // "cancella tutto". Una promessa mantenuta solo in parte e'
+            // peggio di una promessa piu' modesta: chi rivende il telefono
+            // dopo aver premuto quel pulsante crede di aver finito.
+            //
+            // Le lapidi in particolare: contengono il NOME che l'utente aveva
+            // dato a ogni contatto dimenticato, in chiaro dopo la decifratura.
+            CipherStorage.delete(app, CipherStorage.TOMBSTONES)
+            CipherStorage.delete(app, CipherStorage.USAGE)
             // Dopo i file: cancellare prima la chiave lascerebbe su disco due
             // blob non piu' decifrabili se la cancellazione dei file fallisse.
             CipherKeystore.deleteKey()

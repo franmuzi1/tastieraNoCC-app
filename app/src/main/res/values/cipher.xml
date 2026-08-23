@@ -419,4 +419,10 @@
         da rifare e\' quello che ha appena fatto.
     -->
     <string name="cipher_reopen_needed" tools:ignore="MissingTranslation">Riapri il messaggio per leggerlo</string>
+    <!--
+        Il rogo e\' avvenuto ma la richiesta da incollare non c\'e\'. Si dice
+        prima cosa E\' successo — la parte irreversibile — e poi cosa manca:
+        l\'ordine inverso farebbe leggere il messaggio come un fallimento.
+    -->
+    <string name="cipher_burn_done_no_request" tools:ignore="MissingTranslation">Bruciata da questo telefono. Non e\' stato possibile preparare la richiesta per l\'altra persona: da lei i messaggi restano.</string>
 </resources>

@@ -797,8 +797,17 @@ class ContactsActivity : ComponentActivity() {
         // Su disco SUBITO: da questo lato il rogo e' gia' avvenuto in memoria,
         // e un processo che muore adesso lascerebbe le chiavi al loro posto.
         if (!CipherIdentity.persistKeyring(this)) toast(R.string.cipher_keyring_not_saved)
+        // Tre esiti, non due. `null`: il rogo non e' avvenuto. Stringa vuota: e'
+        // avvenuto ma la richiesta per l'altra persona non si e' potuta
+        // costruire — dirgli "non disponibile" sarebbe falso su un'operazione
+        // irreversibile che ha funzionato.
         if (richiesta == null) {
             toast(R.string.cipher_unavailable)
+            ricarica()
+            return
+        }
+        if (richiesta.isEmpty()) {
+            toast(R.string.cipher_burn_done_no_request)
             ricarica()
             return
         }
