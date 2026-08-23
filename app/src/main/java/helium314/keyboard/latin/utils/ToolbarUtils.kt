@@ -221,7 +221,13 @@ val defaultPinnedToolbarPref by lazy {
     // COMPOSE resta in fondo a sinistra: e' l'interruttore che porta fuori da
     // qui, non un'azione sul messaggio, e sta lontano da cio' che si preme di
     // continuo.
-    val pinned = listOf(COMPOSE, CLIPBOARD, ATTACH, CONTACTS, DECRYPT, ENCRYPT, SEND_PLAIN)
+    // DECRYPT non e' qui, ed e' l'unico della cifratura a mancare: la striscia
+    // sempre in vista e' la stessa che mostra i suggerimenti, e ogni tasto che
+    // ci sta e' larghezza tolta alle parole. "Decifra" e' anche il piu'
+    // rinunciabile — un blob copiato si apre da solo, e con la riga attiva il
+    // lucchetto per rileggere sta nella riga. Resta nella barra completa, a un
+    // tocco di distanza per chi lo cerca.
+    val pinned = listOf(COMPOSE, CLIPBOARD, ATTACH, CONTACTS, ENCRYPT, SEND_PLAIN)
     val others = entries.filterNot { it in pinned || it == CLOSE_HISTORY }
     pinned.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
@@ -309,8 +315,16 @@ private fun withCipherKeys(prefs: SharedPreferences, pref: String, default: Stri
     val composizione = CipherSettings.isComposeMode(prefs)
     // COMPOSE resta anche a modalita' spenta: e' l'interruttore, cioe' l'unico
     // modo per riaccenderla. Tutto il resto della cifratura vive dentro la riga.
-    val wanted = if (composizione) listOf(COMPOSE, ATTACH, CONTACTS, DECRYPT, ENCRYPT, SEND_PLAIN)
-        else listOf(COMPOSE)
+    // Elenchi diversi per le due barre, e la differenza non e' cosmetica: senza,
+    // l'aggiunta automatica qui sotto rimetterebbe DECRYPT fra i tasti sempre in
+    // vista subito dopo averlo tolto dai predefiniti, e la modifica sembrerebbe
+    // non aver funzionato.
+    val fissati = pref == Settings.PREF_PINNED_TOOLBAR_KEYS
+    val wanted = when {
+        !composizione -> listOf(COMPOSE)
+        fissati -> listOf(COMPOSE, ATTACH, CONTACTS, ENCRYPT, SEND_PLAIN)
+        else -> listOf(COMPOSE, ATTACH, CONTACTS, DECRYPT, ENCRYPT, SEND_PLAIN)
+    }
     val result = keys.filterNot { !composizione && it in cipherKeys && it != COMPOSE }
         .toMutableList()
     // Aggiunti se la preferenza salvata non li nomina affatto: le preferenze
