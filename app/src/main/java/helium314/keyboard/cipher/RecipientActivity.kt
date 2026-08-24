@@ -148,7 +148,14 @@ internal class RecipientActivity : ComponentActivity() {
             },
             multiplo = multiplo,
             scelti = scelti.toSet(),
-            onChiudi = { finish() },
+            // NON si chiude se stiamo passando al nome del gruppo.
+            // `ThreeButtonAlertDialog` chiama `onConfirmed()` e SUBITO DOPO
+            // `onDismissRequest()` sullo stesso tocco: senza questo controllo
+            // premere "Avanti" chiudeva l'Activity prima che il dialogo del
+            // nome potesse comparire, e il gruppo non si poteva salvare in
+            // nessun modo. Il difetto era invisibile — nessun errore, la
+            // schermata semplicemente spariva.
+            onChiudi = { if (!chiediNome) finish() },
             onScegli = { indice ->
                 if (multiplo) {
                     if (!scelti.remove(indice)) scelti.add(indice)
