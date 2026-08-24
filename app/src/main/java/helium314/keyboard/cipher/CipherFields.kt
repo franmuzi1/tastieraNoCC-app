@@ -96,6 +96,25 @@ internal object CipherFields {
         // Le password vengono prima, e sono l'unico caso non scavalcabile.
         if (vietata(editorInfo)) return true
 
+        // ## Multiriga vuol dire prosa, e la prosa e' un messaggio
+        //
+        // Questa prova viene PRIMA di tutte le altre e le annulla, ed e' una
+        // correzione: allargando le esclusioni ai moduli — "avanti", "fatto",
+        // completamento automatico — si e' preso dentro anche Telegram, dove la
+        // riga ha smesso di comparire. Cioe' proprio il posto per cui esiste.
+        //
+        // Un campo che accetta gli a capo e' fatto per un testo che si scrive,
+        // non per un parametro che si compila: le barre di ricerca, i codici e
+        // le caselle dei moduli sono a riga singola per costruzione, perche' li'
+        // l'invio serve a confermare. Percio' e' un segnale piu' forte di
+        // qualunque azione dichiarata sul tasto invio, e la vince.
+        //
+        // Il prezzo: una casella "note" multiriga dentro un modulo avra' la
+        // riga cifrata senza che serva. E' un fastidio, mentre una chat senza
+        // riga e' la funzione che non c'e' — e la bilancia, qui, pende da
+        // quella parte.
+        if (inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE != 0) return false
+
         // Numeri, telefono, date. Non sono discorsi, e cifrarli non ha senso —
         // ma soprattutto sono campi che l'app legge per farci qualcosa, non per
         // spedirli. Nota: la classe si estrae con TYPE_MASK_CLASS, non
