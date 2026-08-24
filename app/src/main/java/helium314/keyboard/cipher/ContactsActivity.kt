@@ -351,6 +351,7 @@ class ContactsActivity : ComponentActivity() {
             Dialogo.Qr -> Qr(chiudi)
             is Dialogo.Passphrase -> ChiediPassphrase(corrente.esporta, chiudi)
             is Dialogo.ConfermaImport -> ConfermaImport(corrente, chiudi)
+            is Dialogo.ImportFatto -> ImportFatto(corrente, chiudi)
             Dialogo.Reset -> ChiediReset(chiudi)
         }
     }
@@ -670,6 +671,42 @@ class ContactsActivity : ComponentActivity() {
         ) { eseguiImport(richiesta.blob, richiesta.pass) }
     }
 
+    /**
+     * Cosa si e' appena adottato, dopo un import riuscito.
+     *
+     * Un backup **non prova la propria provenienza**: chi fornisce file e
+     * passphrase impianta un'identita' di cui conosce la chiave privata e dei
+     * contatti gia' marcati "verificato di persona" — che e' l'unico segnale
+     * anti-MITM del sistema, ottenuto senza nessun confronto fuori banda.
+     *
+     * Non si puo' impedire, perche' importare un backup E' adottare uno stato
+     * altrui: e' il senso della funzione. Si puo' rendere visibile, che e' la
+     * stessa difesa scelta contro il replay. L'impronta e' l'unica cosa che
+     * l'utente puo' confrontare con quella che aveva; il numero di contatti
+     * gia' verificati e' il dato che sorprende, ed e' quello che un backup
+     * ostile userebbe.
+     */
+    @Composable
+    private fun ImportFatto(dati: Dialogo.ImportFatto, chiudi: () -> Unit) {
+        ThreeButtonAlertDialog(
+            onDismissRequest = chiudi,
+            onConfirmed = { },
+            confirmButtonText = null,
+            cancelButtonText = stringResource(android.R.string.ok),
+            reducePadding = true,
+            title = { Text(stringResource(R.string.cipher_backup_importato)) },
+            content = {
+                Text(
+                    stringResource(
+                        R.string.cipher_backup_importato_dettaglio,
+                        dati.impronta,
+                        dati.verificati,
+                    )
+                )
+            },
+        )
+    }
+
     @Composable
     private fun ChiediReset(chiudi: () -> Unit) {
         DialogoDistruttivo(
@@ -956,7 +993,26 @@ class ContactsActivity : ComponentActivity() {
         val esito = CipherIdentity.importBackup(this, blob, pass)
         azzeraPassphrase()
         if (esito == CipherState.Ready) {
-            toast(R.string.cipher_backup_importato)
+            // ## Non basta dire "importato"
+            //
+            // Un backup non prova la propria provenienza: chi fornisce file e
+            // passphrase impianta un'identita' di cui conosce la chiave privata
+            // e dei contatti gia' marcati "verificato di persona" — che e'
+            // l'unico segnale anti-MITM del sistema, ottenuto senza nessun
+            // confronto fuori banda.
+            //
+            // Non si puo' impedire, perche' importare un backup e' proprio
+            // adottare uno stato altrui: e' il senso della funzione. Si puo'
+            // pero' renderlo VISIBILE, che e' la stessa difesa scelta contro il
+            // replay. L'impronta e' l'unica cosa che l'utente puo' confrontare
+            // con quella che aveva, e i contatti verificati sono il dato che
+            // sorprende.
+            val impronta = CipherCore.nativeMyFingerprint().orEmpty()
+            val verificati = CipherCore.nativeListPeers()
+                ?.let { PeerList.parse(it) }
+                ?.count { it.verified }
+                ?: 0
+            dialogo = Dialogo.ImportFatto(impronta, verificati)
             ricarica()
         } else {
             // Passphrase sbagliata e file manomesso danno lo stesso messaggio:
@@ -1067,6 +1123,14 @@ class ContactsActivity : ComponentActivity() {
         ) : Dialogo
 
         class ConfermaImport(val blob: ByteArray, val pass: ByteArray) : Dialogo
+
+        /**
+         * Cosa e' stato adottato. Non e' una ricevuta: un backup non prova la
+         * propria provenienza, quindi questa schermata e' l'unico momento in
+         * cui l'utente puo' accorgersi di aver adottato lo stato di qualcun
+         * altro.
+         */
+        data class ImportFatto(val impronta: String, val verificati: Int) : Dialogo
     }
 
     companion object {

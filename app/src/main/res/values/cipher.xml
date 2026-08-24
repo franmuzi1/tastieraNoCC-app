@@ -500,4 +500,13 @@
         fallito: l\'utente deve sapere dove sta per finire il prossimo messaggio.
     -->
     <string name="cipher_group_still_selected" tools:ignore="MissingTranslation">Attenzione: il gruppo e\' ancora selezionato, il prossimo messaggio andrebbe a tutti</string>
+    <!--
+        Dopo un import riuscito. Dice cosa si e\' adottato, non "e\' andata
+        bene": un backup non prova la propria provenienza, e questo e\' l\'unico
+        momento in cui chi ha importato il file di qualcun altro puo\'
+        accorgersene. L\'impronta e\' l\'unica cosa confrontabile con quella che
+        aveva prima; il numero di contatti gia\' verificati e\' il dato che
+        sorprende, ed e\' quello che un backup ostile userebbe.
+    -->
+    <string name="cipher_backup_importato_dettaglio" tools:ignore="MissingTranslation">Da ora la tua identita\' e\' questa:\n\n%1$s\n\nSe non riconosci questo codice, il backup non era tuo: da adesso scrivi con la chiave di chi te lo ha dato.\n\nContatti gia\' segnati come verificati di persona: %2$d. Non li hai confrontati tu su questo telefono.</string>
 </resources>
