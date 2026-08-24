@@ -239,6 +239,22 @@ object CipherCompose {
      *    che si stava componendo — proprio nel flusso piu' comune, leggere e
      *    rispondere.
      */
+    /**
+     * Riallinea al campo che ha il fuoco adesso. Va chiamata **subito dopo aver
+     * acceso** la modalita', ed e' una correzione di un difetto vero.
+     *
+     * [onInputStarted] esce alla prima riga quando la modalita' e' spenta,
+     * quindi `owner` e `suppressed` restano congelati sull'ultima app in cui
+     * era accesa — attraverso qualunque numero di cambi di app. Riaccendendo,
+     * la riga si ridipingeva con quel proprietario vecchio: l'etichetta diceva
+     * il destinatario di **un'altra chat**, mentre cifrare legge il campo di
+     * quella corrente. Nome di uno, messaggio all'altro, ed e' il fallimento
+     * peggiore che questo sistema possa produrre.
+     */
+    fun risincronizza(ime: InputMethodService) {
+        onInputStarted(ime.currentInputEditorInfo)
+    }
+
     fun onInputStarted(editorInfo: EditorInfo?) {
         if (!enabled) return
         val app = editorInfo?.packageName.orEmpty()

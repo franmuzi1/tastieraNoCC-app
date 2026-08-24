@@ -71,6 +71,28 @@ object CipherActions {
     private const val OVERHEAD_BYTES = 116
 
     /**
+     * Involucro di un messaggio di GRUPPO, senza gli slot: 4 di prefisso, 32 di
+     * effimera, 24 di nonce, 1 di conteggio, 16 di tag e 8 di marca temporale.
+     *
+     * Manca la prechiave dentro il cifrato — un gruppo non ha forward secrecy —
+     * quindi e' piu' piccolo di [OVERHEAD_BYTES] di 31 byte. Ma poi ci sono gli
+     * slot, ed e' li' che il conto cambia davvero.
+     */
+    private const val OVERHEAD_GRUPPO_BYTES = 85
+
+    /**
+     * Uno slot: 32 byte di chiave di contenuto incapsulata piu' 16 di tag.
+     *
+     * **Senza contarli il tetto non protegge, ed e' il difetto che questa
+     * costante ripara.** Un gruppo di otto porta 432 byte di soli slot: la
+     * stima usciva corta di circa 690 caratteri, quindi un messaggio che
+     * sembrava passare produceva un blob oltre i 4096 di Telegram — e a quel
+     * punto la riga era gia' stata svuotata. La regola resta quella scritta
+     * sopra: si sbaglia per eccesso, mai per difetto.
+     */
+    private const val SLOT_BYTES = 48
+
+    /**
      * `kc/`, tre caratteri. La versione NON ci sta dentro: il core la tiene
      * fuori di proposito, cosi' un blob di una versione futura resta
      * riconoscibile come nostro invece di sembrare testo qualunque.
@@ -134,7 +156,11 @@ object CipherActions {
         // Il limite si dice prima di cifrare, con quanto tagliare: dopo, il
         // campo sarebbe gia' stato svuotato per far posto a un blob che la
         // chat rifiuta.
-        val stimato = stimaBlob(field.text)
+        // Per un gruppo si contano anche gli slot, e il mittente e' uno di
+        // loro. Se l'utente si fosse messo fra i membri, il core toglie il
+        // doppione e gli slot saranno uno meno: sbagliare di uno per eccesso e'
+        // la direzione giusta.
+        val stimato = stimaBlob(field.text, if (gruppo != null) gruppo.membri.size + 1 else 0)
         if (stimato > MAX_BLOB_CHARS) {
             val daTogliere = ((stimato - MAX_BLOB_CHARS) * 5 / 8).coerceAtLeast(1)
             toast(ime, R.string.cipher_message_too_long)
@@ -486,6 +512,11 @@ object CipherActions {
         if (!CipherSettings.isEnabled(prefs)) {
             prefs.edit().putBoolean(CipherSettings.PREF_ENABLED, true).apply()
             CipherCompose.reload(ime)
+            // Riallineare al campo corrente PRIMA di ridipingere: da spenta la
+            // riga aveva congelato proprietario e sospensione sull'ultima app
+            // in cui era accesa, e senza questa riga l'etichetta mostrerebbe il
+            // destinatario di quella mentre si cifra per questa.
+            CipherCompose.risincronizza(ime)
             KeyboardSwitcher.getInstance().setThemeNeedsReload()
         }
         if (CipherCompose.rigaASchermo()) {
@@ -569,6 +600,11 @@ object CipherActions {
         if (CipherSettings.isEnabled(prefs)) return
         prefs.edit().putBoolean(CipherSettings.PREF_ENABLED, true).apply()
         CipherCompose.reload(ime)
+        // Come nel tasto in toolbar: da spenta la riga aveva congelato
+        // proprietario e sospensione sull'ultima app in cui era accesa, e
+        // questa accensione arriva proprio dopo aver letto un messaggio —
+        // cioe' quasi sempre in un'app diversa da quella di prima.
+        CipherCompose.risincronizza(ime)
         KeyboardSwitcher.getInstance().setThemeNeedsReload()
         avvisoUnaVolta(ime, "accesa_leggendo", R.string.cipher_on_after_read)
     }
@@ -688,8 +724,17 @@ object CipherActions {
      * aver gia' toccato il campo. La stima e' esatta a meno di un carattere,
      * perche' z-base-32 e' deterministico: otto caratteri ogni cinque byte.
      */
-    private fun stimaBlob(testo: String): Int {
-        val byte = testo.toByteArray().size + OVERHEAD_BYTES
+    /**
+     * @param slot quanti slot avra' il blob, mittente compreso. `0` per un
+     *   messaggio a due, che di slot non ne ha.
+     */
+    private fun stimaBlob(testo: String, slot: Int = 0): Int {
+        val involucro = if (slot > 0) {
+            OVERHEAD_GRUPPO_BYTES + slot * SLOT_BYTES
+        } else {
+            OVERHEAD_BYTES
+        }
+        val byte = testo.toByteArray().size + involucro
         return SENTINEL_LEN + (byte * 8 + 4) / 5
     }
 
