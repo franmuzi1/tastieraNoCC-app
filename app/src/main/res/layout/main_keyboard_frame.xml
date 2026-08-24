@@ -63,17 +63,17 @@
                 android:textDirection="locale" />
 
             <ImageButton
-                android:id="@+id/cipher_compose_plain"
+                android:id="@+id/cipher_compose_send"
                 android:layout_width="44dp"
                 android:layout_height="match_parent"
                 android:padding="8dp"
                 android:scaleType="fitCenter"
                 android:background="?android:attr/selectableItemBackground"
-                android:src="@drawable/ic_cipher_plain"
-                android:contentDescription="@string/cipher_send_plain_action" />
+                android:src="@drawable/ic_cipher_encrypt"
+                android:contentDescription="@string/cipher_encrypt_action" />
 
             <ImageButton
-                android:id="@+id/cipher_compose_send"
+                android:id="@+id/cipher_compose_plain"
                 android:layout_width="44dp"
                 android:layout_height="match_parent"
                 android:paddingStart="6dp"
@@ -82,8 +82,8 @@
                 android:paddingBottom="8dp"
                 android:scaleType="fitCenter"
                 android:background="?android:attr/selectableItemBackground"
-                android:src="@drawable/ic_cipher_encrypt"
-                android:contentDescription="@string/cipher_encrypt_action" />
+                android:src="@drawable/ic_cipher_plain"
+                android:contentDescription="@string/cipher_send_plain_action" />
         </LinearLayout>
 
         <!--
