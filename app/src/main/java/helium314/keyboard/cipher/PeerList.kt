@@ -58,12 +58,13 @@ internal data class Peer(
  */
 internal object PeerList {
 
-    // La 3 aggiunge la chiave d'epoca in coda a ogni record della catena. Non
+    // La 4 aggiunge in coda a ogni record della catena l'epoca del contatto e
+    // due date. La 3 aveva aggiunto la nostra epoca. Non
     // cambia niente da questo lato — si legge fino ai peer e la coda si ignora —
     // ma il numero va aggiunto lo stesso, altrimenti il blob viene rifiutato in
     // blocco e la schermata contatti dice "Cifratura non disponibile": il
     // guasto che sembra della crypto ed e' del parser, descritto qui sopra.
-    private val VERSIONI_NOTE = byteArrayOf(1, 2, 3)
+    private val VERSIONI_NOTE = byteArrayOf(1, 2, 3, 4)
     private const val KEY_LEN = 32
 
     fun parse(blob: ByteArray): List<Peer>? {
