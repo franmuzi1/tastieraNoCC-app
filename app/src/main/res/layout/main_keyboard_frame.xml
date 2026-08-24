@@ -60,7 +60,11 @@
                 android:paddingEnd="8dp"
                 android:textSize="16sp"
                 android:hint="@string/cipher_compose_hint"
-                android:textDirection="locale" />
+                android:textDirection="locale"
+                android:scrollbars="vertical"
+                android:fadeScrollbars="false"
+                android:requiresFadingEdge="vertical"
+                android:fadingEdgeLength="12dp" />
 
             <ImageButton
                 android:id="@+id/cipher_compose_send"

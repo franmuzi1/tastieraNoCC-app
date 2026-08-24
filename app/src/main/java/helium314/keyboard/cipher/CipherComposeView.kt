@@ -5,7 +5,9 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.MotionEvent
+import android.view.VelocityTracker
 import android.view.ViewConfiguration
+import android.widget.OverScroller
 import android.widget.TextView
 import kotlin.math.abs
 
@@ -133,13 +135,153 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
      */
     var onToccata: (() -> Unit)? = null
 
+    /**
+     * Cosa sta facendo il dito.
+     *
+     * ## Perche' il trascinamento SCORRE e non seleziona
+     *
+     * Prima ogni trascinamento era una selezione, e questo lasciava la riga
+     * senza il gesto piu' ovvio: quello per leggere cio' che non ci sta. In una
+     * casella alta due o tre righe il testo sotto era irraggiungibile, perche'
+     * una selezione arriva solo dove arriva il dito e sotto il bordo non c'e'
+     * spazio per andare.
+     *
+     * Il modello dei campi di testo di Android e' un altro, ed e' quello giusto
+     * anche qui: **trascinare scorre**, si seleziona con la pressione lunga o
+     * con il doppio tocco, e poi si aggiustano gli estremi con le maniglie. Da
+     * qui vengono, tutte insieme, l'inerzia e lo scorrimento al bordo mentre si
+     * trascina una maniglia.
+     */
+    private enum class Gesto { NESSUNO, ATTESA, SCORRIMENTO, MANIGLIA_INIZIO, MANIGLIA_FINE, ESTENDE }
+
+    private var gesto = Gesto.NESSUNO
+    private val scroller = OverScroller(context)
+    private var velocita: VelocityTracker? = null
+    private var yPrecedente = 0f
+    private var ultimoRilascio = 0L
+    private var xUltimoRilascio = 0f
+    private var yUltimoRilascio = 0f
+
+    /** Le maniglie prendono il colore del cursore: sono la stessa cosa. */
+    private val manigliePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    private fun raggioManiglia(): Float = RAGGIO_MANIGLIA_DP * resources.displayMetrics.density
+
+    /** Il centro della maniglia di un estremo, in coordinate della vista. */
+    private fun centroManiglia(offset: Int): Pair<Float, Float>? {
+        val l = layout ?: return null
+        val riga = l.getLineForOffset(offset.coerceIn(0, text?.length ?: 0))
+        val x = l.getPrimaryHorizontal(offset) + totalPaddingLeft - scrollX
+        val y = l.getLineBottom(riga).toFloat() + totalPaddingTop - scrollY + raggioManiglia()
+        return x to y
+    }
+
+    private fun manigliaToccata(x: Float, y: Float): Gesto {
+        if (selectionEnd <= selectionStart) return Gesto.NESSUNO
+        // Il bersaglio e' il doppio del disegno: una pallina di sette punti e'
+        // facile da vedere e difficile da centrare.
+        val tolleranza = raggioManiglia() * 2f
+        centroManiglia(selectionStart)?.let { (cx, cy) ->
+            if (abs(x - cx) < tolleranza && abs(y - cy) < tolleranza) return Gesto.MANIGLIA_INIZIO
+        }
+        centroManiglia(selectionEnd)?.let { (cx, cy) ->
+            if (abs(x - cx) < tolleranza && abs(y - cy) < tolleranza) return Gesto.MANIGLIA_FINE
+        }
+        return Gesto.NESSUNO
+    }
+
+    /** Quanto si puo' scorrere in tutto, in pixel. */
+    private fun scorrimentoMassimo(): Int {
+        val l = layout ?: return 0
+        val visibile = (if (height > 0) height else measuredHeight) -
+            totalPaddingTop - totalPaddingBottom
+        return (l.height - visibile).coerceAtLeast(0)
+    }
+
+    override fun computeScroll() {
+        if (scroller.computeScrollOffset()) {
+            scrollTo(0, scroller.currY)
+            postInvalidateOnAnimation()
+        }
+    }
+
+    /**
+     * Le due palline agli estremi della selezione.
+     *
+     * Servono a **correggere** una selezione senza rifarla: prima, sbagliata la
+     * parola, si doveva ricominciare il gesto da capo.
+     */
+    private fun disegnaManiglie(canvas: Canvas, left: Float, top: Float) {
+        if (selectionEnd <= selectionStart) return
+        val l = layout ?: return
+        val raggio = raggioManiglia()
+        for (offset in intArrayOf(selectionStart, selectionEnd)) {
+            val riga = l.getLineForOffset(offset)
+            canvas.drawCircle(
+                left + l.getPrimaryHorizontal(offset),
+                top + l.getLineBottom(riga) + raggio,
+                raggio,
+                manigliePaint,
+            )
+        }
+    }
+
+    /** Ultima posizione del dito, per lo scorrimento al bordo. */
+    private var xCorrente = 0f
+    private var yCorrente = 0f
+
+    /**
+     * Scorre di una riga mentre il dito sta sul bordo, e allunga la selezione
+     * fin dove e' arrivato.
+     *
+     * E' il comportamento standard della selezione di testo su Android — il
+     * dito al bordo fa scorrere — e serve perche' una selezione arriva solo
+     * dove arriva il dito: senza, il testo fuori dalla finestra non si puo'
+     * selezionare, in una casella alta due o tre righe.
+     */
+    private val scorrimentoAlBordo = object : Runnable {
+        override fun run() {
+            if (gesto == Gesto.NESSUNO || gesto == Gesto.SCORRIMENTO) return
+            val margine = MARGINE_BORDO_DP * resources.displayMetrics.density
+            val giu = yCorrente > height - margine
+            val su = yCorrente < margine
+            if (!giu && !su) return
+
+            val passo = lineHeight.coerceAtLeast(1)
+            val nuovo = if (giu) {
+                (scrollY + passo).coerceAtMost(scorrimentoMassimo())
+            } else {
+                (scrollY - passo).coerceAtLeast(0)
+            }
+            if (nuovo != scrollY) {
+                scrollTo(0, nuovo)
+                // La selezione segue: il punto sotto il dito e' cambiato perche'
+                // e' cambiato cio' che c'e' sotto, non il dito.
+                val offset = getOffsetForPosition(xCorrente, yCorrente)
+                    .coerceIn(0, text?.length ?: 0)
+                when (gesto) {
+                    Gesto.MANIGLIA_INIZIO ->
+                        onSelezione?.invoke(minOf(offset, parolaFine), maxOf(offset, parolaFine))
+                    Gesto.MANIGLIA_FINE ->
+                        onSelezione?.invoke(minOf(parolaInizio, offset), maxOf(parolaInizio, offset))
+                    Gesto.ESTENDE ->
+                        onSelezione?.invoke(minOf(parolaInizio, offset), maxOf(parolaFine, offset))
+                    else -> {}
+                }
+            }
+            postDelayed(this, INTERVALLO_BORDO_MS)
+        }
+    }
+
     private val pressioneLunga = Runnable {
         val (inizio, fine) = parolaIntorno(ancora)
         if (fine > inizio) {
+            gesto = Gesto.ESTENDE
             giaSelezionato = true
             parolaInizio = inizio
             parolaFine = fine
             onSelezione?.invoke(inizio, fine)
+            invalidate()
         }
     }
 
@@ -161,6 +303,8 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
         // La selezione e' lo stesso colore molto trasparente: sotto ci deve
         // restare leggibile il testo.
         selectionPaint.color = (color and 0x00FFFFFF) or (SELECTION_ALPHA shl 24)
+        // Le maniglie sono il cursore con un'altra forma: stesso colore pieno.
+        manigliePaint.color = color
         invalidate()
     }
 
@@ -192,67 +336,155 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
         if (event.actionMasked == MotionEvent.ACTION_DOWN) onToccata?.invoke()
         if (text.isNullOrEmpty()) return super.onTouchEvent(event)
         val offset = offsetDelTocco(event)
+        if (velocita == null) velocita = VelocityTracker.obtain()
+        velocita?.addMovement(event)
+
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 parent?.requestDisallowInterceptTouchEvent(true)
+                scroller.forceFinished(true)
+                gestoInCorso = true
+                xIniziale = event.x
+                yIniziale = event.y
+                xCorrente = event.x
+                yCorrente = event.y
+                yPrecedente = event.y
+                ancora = offset
+                trascinando = false
+                giaSelezionato = false
+
+                // Una maniglia ha la precedenza su tutto: se il dito parte da
+                // li', si sta aggiustando una selezione che esiste gia'.
+                val maniglia = manigliaToccata(event.x, event.y)
+                if (maniglia != Gesto.NESSUNO) {
+                    gesto = maniglia
+                    parolaInizio = selectionStart
+                    parolaFine = selectionEnd
+                    return true
+                }
+
                 // Un tocco nuovo annulla quello di prima: la tendina rimasta
                 // aperta si riferirebbe a una selezione che sta per cambiare.
                 onMenuDaChiudere?.invoke()
-                ancora = offset
-                gestoInCorso = true
-                trascinando = false
-                giaSelezionato = false
+
+                // Doppio tocco: seleziona la parola, e da li' si allarga
+                // trascinando. E' il gesto piu' usato per selezionare, e prima
+                // funzionava solo la pressione lunga.
+                val slop = ViewConfiguration.get(context).scaledTouchSlop
+                val doppio = event.eventTime - ultimoRilascio <=
+                    ViewConfiguration.getDoubleTapTimeout() &&
+                    abs(event.x - xUltimoRilascio) < slop &&
+                    abs(event.y - yUltimoRilascio) < slop
+                if (doppio) {
+                    val (i, f) = parolaIntorno(offset)
+                    if (f > i) {
+                        gesto = Gesto.ESTENDE
+                        giaSelezionato = true
+                        parolaInizio = i
+                        parolaFine = f
+                        onSelezione?.invoke(i, f)
+                        invalidate()
+                        return true
+                    }
+                }
+
+                gesto = Gesto.ATTESA
                 parolaInizio = -1
                 parolaFine = -1
-                xIniziale = event.x
-                yIniziale = event.y
                 postDelayed(pressioneLunga, ViewConfiguration.getLongPressTimeout().toLong())
                 return true
             }
+
             MotionEvent.ACTION_MOVE -> {
-                if (!trascinando && !giaSelezionato) {
+                xCorrente = event.x
+                yCorrente = event.y
+                if (gesto == Gesto.ATTESA) {
                     val slop = ViewConfiguration.get(context).scaledTouchSlop
                     if (abs(event.x - xIniziale) > slop || abs(event.y - yIniziale) > slop) {
-                        trascinando = true
+                        // Il dito si e' mosso senza aver selezionato niente:
+                        // vuole leggere, non scegliere. Via la pressione lunga,
+                        // che a questo punto sarebbe una sorpresa.
                         removeCallbacks(pressioneLunga)
+                        gesto = Gesto.SCORRIMENTO
+                        trascinando = true
                     }
                 }
-                when {
-                    giaSelezionato -> {
+                when (gesto) {
+                    Gesto.SCORRIMENTO -> {
+                        val dy = (yPrecedente - event.y).toInt()
+                        val nuovo = (scrollY + dy).coerceIn(0, scorrimentoMassimo())
+                        if (nuovo != scrollY) scrollTo(0, nuovo)
+                        yPrecedente = event.y
+                    }
+                    Gesto.MANIGLIA_INIZIO -> {
+                        onSelezione?.invoke(minOf(offset, parolaFine), maxOf(offset, parolaFine))
+                        avviaScorrimentoAlBordo()
+                    }
+                    Gesto.MANIGLIA_FINE -> {
+                        onSelezione?.invoke(minOf(parolaInizio, offset), maxOf(parolaInizio, offset))
+                        avviaScorrimentoAlBordo()
+                    }
+                    Gesto.ESTENDE -> {
                         onSelezione?.invoke(minOf(parolaInizio, offset), maxOf(parolaFine, offset))
-                        portaInVista(offset)
+                        avviaScorrimentoAlBordo()
                     }
-                    trascinando -> {
-                        onSelezione?.invoke(minOf(ancora, offset), maxOf(ancora, offset))
-                        portaInVista(offset)
-                    }
+                    else -> {}
                 }
                 return true
             }
+
             MotionEvent.ACTION_UP -> {
                 removeCallbacks(pressioneLunga)
-                // Un tocco secco che non ha ne' trascinato ne' selezionato una
-                // parola vuol dire una cosa sola: il cursore va li'.
-                if (!trascinando && !giaSelezionato) onSelezione?.invoke(offset, offset)
-                val avevaSelezionato = trascinando || giaSelezionato
-                gestoInCorso = false
-                trascinando = false
-                giaSelezionato = false
-                // Solo se il gesto ha davvero prodotto una selezione. Un tocco
-                // secco sposta il cursore e basta: li' non c'e' niente da
-                // tagliare o copiare, e la tendina sarebbe di intralcio.
-                if (avevaSelezionato && selectionEnd > selectionStart) onMenu?.invoke(event.x)
+                removeCallbacks(scorrimentoAlBordo)
+                when (gesto) {
+                    // Tocco secco: il cursore va li'.
+                    Gesto.ATTESA -> onSelezione?.invoke(offset, offset)
+                    Gesto.SCORRIMENTO -> lanciaInerzia()
+                    // Un gesto che ha prodotto una selezione apre la tendina.
+                    else -> if (selectionEnd > selectionStart) onMenu?.invoke(event.x)
+                }
+                ultimoRilascio = event.eventTime
+                xUltimoRilascio = event.x
+                yUltimoRilascio = event.y
+                chiudiGesto()
+                invalidate()
                 return true
             }
+
             MotionEvent.ACTION_CANCEL -> {
                 removeCallbacks(pressioneLunga)
-                gestoInCorso = false
-                trascinando = false
-                giaSelezionato = false
+                removeCallbacks(scorrimentoAlBordo)
+                chiudiGesto()
                 return true
             }
         }
         return super.onTouchEvent(event)
+    }
+
+    private fun avviaScorrimentoAlBordo() {
+        // Si riarma a ogni movimento e si ferma da solo quando il dito rientra:
+        // cosi' non c'e' uno stato "sto gia' scorrendo" da tenere allineato, ed
+        // e' proprio quel tipo di stato che resta acceso quando il gesto
+        // finisce male.
+        removeCallbacks(scorrimentoAlBordo)
+        post(scorrimentoAlBordo)
+    }
+
+    private fun lanciaInerzia() {
+        velocita?.computeCurrentVelocity(1000)
+        val vy = velocita?.yVelocity ?: 0f
+        if (abs(vy) <= ViewConfiguration.get(context).scaledMinimumFlingVelocity) return
+        scroller.fling(0, scrollY, 0, -vy.toInt(), 0, 0, 0, scorrimentoMassimo())
+        postInvalidateOnAnimation()
+    }
+
+    private fun chiudiGesto() {
+        gesto = Gesto.NESSUNO
+        gestoInCorso = false
+        trascinando = false
+        giaSelezionato = false
+        velocita?.recycle()
+        velocita = null
     }
 
     private fun offsetDelTocco(event: MotionEvent): Int {
@@ -312,6 +544,25 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
      * guardando **li'**, e inseguire la fine del testo lo porterebbe via
      * proprio dal punto che gli interessa.
      */
+    /**
+     * L'offset che sta una riga sopra o sotto, alla stessa altezza orizzontale.
+     *
+     * Serve al cursore su/giu': la riga gestiva solo sinistra e destra, quindi
+     * con tre righe piene ci si spostava di un carattere alla volta. Si tiene
+     * la x della colonna corrente, come fa qualunque campo di testo — muoversi
+     * in verticale non deve far saltare il cursore a inizio riga.
+     */
+    fun offsetDiRiga(offset: Int, delta: Int): Int {
+        val l = layout ?: return offset
+        val lunghezza = text?.length ?: 0
+        val corrente = l.getLineForOffset(offset.coerceIn(0, lunghezza))
+        val destinazione = corrente + delta
+        if (destinazione < 0) return 0
+        if (destinazione >= l.lineCount) return lunghezza
+        val x = l.getPrimaryHorizontal(offset.coerceIn(0, lunghezza))
+        return l.getOffsetForHorizontal(destinazione, x).coerceIn(0, lunghezza)
+    }
+
     private fun scrollToCaret() = portaInVista(selectionEnd)
 
     /**
@@ -461,11 +712,21 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
                 selectionPaint,
             )
         }
+        disegnaManiglie(canvas, left, top)
     }
 
     private companion object {
         const val BLINK_MILLIS = 500L
         const val CARET_WIDTH_PX = 2f
         const val SELECTION_ALPHA = 0x40
+
+        /** Raggio della pallina che si trascina per aggiustare la selezione. */
+        const val RAGGIO_MANIGLIA_DP = 7f
+
+        /** Quanto vicino al bordo deve stare il dito perche' si scorra. */
+        const val MARGINE_BORDO_DP = 16f
+
+        /** Un passo ogni tanto: piu' fitto scorrerebbe troppo in fretta. */
+        const val INTERVALLO_BORDO_MS = 60L
     }
 }

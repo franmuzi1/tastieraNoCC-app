@@ -807,12 +807,24 @@ object CipherCompose {
                 KeyEvent.KEYCODE_ENTER -> commitText("\n", 1)
                 KeyEvent.KEYCODE_DPAD_LEFT -> moveCursor(-1)
                 KeyEvent.KEYCODE_DPAD_RIGHT -> moveCursor(1)
+                // Su e giu' mancavano: con piu' righe ci si spostava solo di un
+                // carattere alla volta. La riga alla stessa altezza la sa
+                // calcolare solo la vista, che ha il layout del testo.
+                KeyEvent.KEYCODE_DPAD_UP -> muoviDiRiga(-1)
+                KeyEvent.KEYCODE_DPAD_DOWN -> muoviDiRiga(1)
                 else -> {
                     val unicode = event.unicodeChar
                     if (unicode != 0) commitText(unicode.toChar().toString(), 1)
                 }
             }
             return true
+        }
+
+        private fun muoviDiRiga(delta: Int) {
+            val vista = row ?: return
+            val posizione = vista.offsetDiRiga(Selection.getSelectionEnd(buffer), delta)
+            Selection.setSelection(buffer, posizione.coerceIn(0, buffer.length))
+            onChanged()
         }
 
         private fun moveCursor(delta: Int) {
