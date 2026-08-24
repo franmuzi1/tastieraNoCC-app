@@ -56,4 +56,15 @@
         android:id="@+id/cipher_menu_select_all"
         style="@style/CipherMenuItem"
         android:text="@string/select_all" />
+
+    <!--
+        "Elimina tutto" non e' "seleziona tutto" seguito da "elimina": svuota il
+        buffer SOVRASCRIVENDOLO, che e' la stessa strada che il messaggio fa
+        dopo un invio riuscito. Passare dalla selezione lascerebbe il chiaro
+        nell'array finche' qualcosa non ci scrive sopra.
+    -->
+    <TextView
+        android:id="@+id/cipher_menu_delete_all"
+        style="@style/CipherMenuItem"
+        android:text="@string/cipher_menu_delete_all" />
 </LinearLayout>

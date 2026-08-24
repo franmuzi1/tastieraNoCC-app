@@ -124,6 +124,13 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
     var onMenuDaChiudere: (() -> Unit)? = null
 
     /**
+     * Pressione lunga sulla riga VUOTA. Serve a offrire "incolla": prima non
+     * succedeva niente, e l'unico modo di incollare era il tasto in barra —
+     * che pero' sparisce quando si aprono le emoji.
+     */
+    var onMenuVuoto: ((Float) -> Unit)? = null
+
+    /**
      * Il dito ha toccato la riga, qualunque cosa stia per fare.
      *
      * Serve a togliere di mezzo il pannello del messaggio decifrato: toccare la
@@ -158,6 +165,9 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
     private val scroller = OverScroller(context)
     private var velocita: VelocityTracker? = null
     private var yPrecedente = 0f
+
+    /** Il dito si e' mosso durante questo gesto. Vedi il rilascio di una maniglia. */
+    private var mossoDurante = false
     private var ultimoRilascio = 0L
     private var xUltimoRilascio = 0f
     private var yUltimoRilascio = 0f
@@ -195,12 +205,32 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
         val l = layout ?: return 0
         val visibile = (if (height > 0) height else measuredHeight) -
             totalPaddingTop - totalPaddingBottom
-        return (l.height - visibile).coerceAtLeast(0)
+        // Si puo' scorrere un po' OLTRE l'ultima riga, quanto basta per la
+        // maniglia: quella si disegna sotto la riga, e sull'ultima finiva fuori
+        // dal contenuto scorribile — visibile a meta' e impossibile da
+        // afferrare. E' anche il motivo per cui non serve una riga vuota in
+        // fondo: il testo dell'utente non si tocca, si allarga lo spazio.
+        val perLaManiglia = (raggioManiglia() * 3f).toInt()
+        return (l.height + perLaManiglia - visibile).coerceAtLeast(0)
+    }
+
+    /**
+     * Lo scorrimento comandato dal dito **disarma** quello che insegue il
+     * cursore.
+     *
+     * [applicaScorrimento] e' un invariante e si riapplica a ogni disegno: senza
+     * questa riga, ogni trascinamento, inerzia o scorrimento al bordo veniva
+     * annullato al frame successivo. Da fuori sembrava che lo scorrimento
+     * manuale non esistesse — ed era proprio cosi', durava un fotogramma.
+     */
+    private fun scorriAMano(y: Int) {
+        daPortareInVista = -1
+        scrollTo(0, y)
     }
 
     override fun computeScroll() {
         if (scroller.computeScrollOffset()) {
-            scrollTo(0, scroller.currY)
+            scorriAMano(scroller.currY)
             postInvalidateOnAnimation()
         }
     }
@@ -245,7 +275,15 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
             val margine = MARGINE_BORDO_DP * resources.displayMetrics.density
             val giu = yCorrente > height - margine
             val su = yCorrente < margine
-            if (!giu && !su) return
+            if (!giu && !su) {
+                // Il dito non e' al bordo ADESSO, ma il gesto e' ancora in
+                // corso: si resta armati. Uscendo senza riprogrammarsi, bastava
+                // fermare il dito un attimo lontano dal bordo perche' lo
+                // scorrimento non ripartisse piu' — e senza nuovi movimenti
+                // nessuno lo avrebbe riacceso.
+                postDelayed(this, INTERVALLO_BORDO_MS)
+                return
+            }
 
             val passo = lineHeight.coerceAtLeast(1)
             val nuovo = if (giu) {
@@ -254,7 +292,7 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
                 (scrollY - passo).coerceAtLeast(0)
             }
             if (nuovo != scrollY) {
-                scrollTo(0, nuovo)
+                scorriAMano(nuovo)
                 // La selezione segue: il punto sotto il dito e' cambiato perche'
                 // e' cambiato cio' che c'e' sotto, non il dito.
                 val offset = getOffsetForPosition(xCorrente, yCorrente)
@@ -272,6 +310,8 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
             postDelayed(this, INTERVALLO_BORDO_MS)
         }
     }
+
+    private val menuVuoto = Runnable { onMenuVuoto?.invoke(xIniziale) }
 
     private val pressioneLunga = Runnable {
         val (inizio, fine) = parolaIntorno(ancora)
@@ -334,7 +374,25 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
      */
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.actionMasked == MotionEvent.ACTION_DOWN) onToccata?.invoke()
-        if (text.isNullOrEmpty()) return super.onTouchEvent(event)
+        if (text.isNullOrEmpty()) {
+            // Riga vuota: l'unico gesto che ha senso e' la pressione lunga per
+            // incollare. Il resto — selezione, maniglie, scorrimento — non ha
+            // niente su cui lavorare.
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    xIniziale = event.x
+                    postDelayed(menuVuoto, ViewConfiguration.getLongPressTimeout().toLong())
+                }
+                MotionEvent.ACTION_MOVE ->
+                    if (abs(event.x - xIniziale) >
+                        ViewConfiguration.get(context).scaledTouchSlop
+                    ) {
+                        removeCallbacks(menuVuoto)
+                    }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> removeCallbacks(menuVuoto)
+            }
+            return true
+        }
         val offset = offsetDelTocco(event)
         if (velocita == null) velocita = VelocityTracker.obtain()
         velocita?.addMovement(event)
@@ -358,6 +416,7 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
                 val maniglia = manigliaToccata(event.x, event.y)
                 if (maniglia != Gesto.NESSUNO) {
                     gesto = maniglia
+                    mossoDurante = false
                     parolaInizio = selectionStart
                     parolaFine = selectionEnd
                     return true
@@ -398,6 +457,7 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
             MotionEvent.ACTION_MOVE -> {
                 xCorrente = event.x
                 yCorrente = event.y
+                mossoDurante = true
                 if (gesto == Gesto.ATTESA) {
                     val slop = ViewConfiguration.get(context).scaledTouchSlop
                     if (abs(event.x - xIniziale) > slop || abs(event.y - yIniziale) > slop) {
@@ -413,7 +473,7 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
                     Gesto.SCORRIMENTO -> {
                         val dy = (yPrecedente - event.y).toInt()
                         val nuovo = (scrollY + dy).coerceIn(0, scorrimentoMassimo())
-                        if (nuovo != scrollY) scrollTo(0, nuovo)
+                        if (nuovo != scrollY) scorriAMano(nuovo)
                         yPrecedente = event.y
                     }
                     Gesto.MANIGLIA_INIZIO -> {
@@ -440,6 +500,20 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
                     // Tocco secco: il cursore va li'.
                     Gesto.ATTESA -> onSelezione?.invoke(offset, offset)
                     Gesto.SCORRIMENTO -> lanciaInerzia()
+                    // Una maniglia toccata e rilasciata SENZA muoversi non e'
+                    // un aggiustamento: e' un tocco, e un tocco sposta il
+                    // cursore. Senza questo caso, toccando altrove per uscire
+                    // dalla selezione il dito finiva spesso su una maniglia — le
+                    // due palline stanno proprio dove si e' appena guardato — e
+                    // il cursore restava dov'era mentre la tendina si riapriva:
+                    // da fuori sembrava che il cursore saltasse a caso.
+                    Gesto.MANIGLIA_INIZIO, Gesto.MANIGLIA_FINE ->
+                        if (!mossoDurante) {
+                            onSelezione?.invoke(offset, offset)
+                            onMenuDaChiudere?.invoke()
+                        } else if (selectionEnd > selectionStart) {
+                            onMenu?.invoke(event.x)
+                        }
                     // Un gesto che ha prodotto una selezione apre la tendina.
                     else -> if (selectionEnd > selectionStart) onMenu?.invoke(event.x)
                 }

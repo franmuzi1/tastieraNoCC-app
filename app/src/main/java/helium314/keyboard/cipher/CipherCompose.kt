@@ -339,6 +339,7 @@ object CipherCompose {
         if (connection == null) connection = CipherConnection(view) { updateRow() }
         found.onSelezione = { inizio, fine -> spostaSelezione(inizio, fine) }
         found.onMenu = { x -> mostraMenu(x) }
+        found.onMenuVuoto = { x -> mostraMenu(x, soloIncolla = true) }
         found.onMenuDaChiudere = { chiudiMenu() }
         // Toccare la riga vuol dire "rispondo": il pannello del messaggio
         // decifrato copre i tasti, quindi si toglie di mezzo da solo.
@@ -603,6 +604,17 @@ object CipherCompose {
             R.id.cipher_menu_delete to KeyCode.DELETE,
             R.id.cipher_menu_select_all to KeyCode.CLIPBOARD_SELECT_ALL,
         )
+        // "Elimina tutto" non passa da un codice tasto: svuota il buffer
+        // sovrascrivendolo, come dopo un invio riuscito. "Seleziona tutto" piu'
+        // "elimina" darebbe lo stesso risultato a schermo lasciando il chiaro
+        // nell'array finche' qualcosa non ci scrive sopra.
+        tendina.findViewById<TextView>(R.id.cipher_menu_delete_all)?.apply {
+            setTextColor(colori.get(ColorType.KEY_TEXT))
+            setOnClickListener {
+                chiudiMenu()
+                clear()
+            }
+        }
         for ((id, codice) in voci) {
             val voce = tendina.findViewById<TextView>(id) ?: continue
             voce.setTextColor(colori.get(ColorType.KEY_TEXT))
@@ -628,9 +640,22 @@ object CipherCompose {
      * 56dp e sta in cima, quindi la tendina scende sempre da li' sui tasti, che
      * e' l'unico spazio disponibile: sopra c'e' l'app.
      */
-    private fun mostraMenu(x: Float) {
+    private fun mostraMenu(x: Float, soloIncolla: Boolean = false) {
         val tendina = menu ?: return
         val riga = row ?: return
+        // Sulla riga vuota le uniche voci sensate sono zero, tranne una: non
+        // c'e' niente da copiare, tagliare, eliminare o selezionare. Prima
+        // tenendo premuto non si apriva niente, e l'unico modo di incollare era
+        // il tasto in barra — che pero' sparisce con le emoji aperte.
+        for (id in intArrayOf(
+            R.id.cipher_menu_copy,
+            R.id.cipher_menu_cut,
+            R.id.cipher_menu_delete,
+            R.id.cipher_menu_select_all,
+            R.id.cipher_menu_delete_all,
+        )) {
+            tendina.findViewById<View>(id)?.isVisible = !soloIncolla
+        }
         tendina.visibility = View.VISIBLE
         // Misurata prima di poterla posizionare: a vista appena mostrata la
         // larghezza e' ancora zero, e rientrare qualcosa di largo zero non

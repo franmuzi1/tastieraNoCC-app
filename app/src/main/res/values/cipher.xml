@@ -509,4 +509,5 @@
         sorprende, ed e\' quello che un backup ostile userebbe.
     -->
     <string name="cipher_backup_importato_dettaglio" tools:ignore="MissingTranslation">Da ora la tua identita\' e\' questa:\n\n%1$s\n\nSe non riconosci questo codice, il backup non era tuo: da adesso scrivi con la chiave di chi te lo ha dato.\n\nContatti gia\' segnati come verificati di persona: %2$d. Non li hai confrontati tu su questo telefono.</string>
+    <string name="cipher_menu_delete_all" tools:ignore="MissingTranslation">Elimina tutto</string>
 </resources>
