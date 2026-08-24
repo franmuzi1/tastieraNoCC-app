@@ -92,7 +92,7 @@ object CipherCompose {
      * probabile dove finirebbe e' il campo successivo di quella stessa app.
      * Chiedere la riga su una barra di ricerca non e' chiederla per sempre.
      */
-    private var forzataSu: Pair<String, Int>? = null
+    private var forzataSu: Triple<String, Int, Int>? = null
 
     /** Il nostro, per non farci mai possedere il buffer. Vedi [onInputStarted]. */
     private var self: String = ""
@@ -270,7 +270,14 @@ object CipherCompose {
         // su QUESTO campo: l'utente ha premuto il tasto qui, e la sua richiesta
         // vale piu' della nostra classificazione. Altrimenti decide
         // [CipherFields].
-        val identita = editorInfo?.let { app to it.fieldId }
+        // Identita' del campo: pacchetto, id della vista e tipo. L'id da solo
+        // non basta — due schermate della stessa app possono riusare lo stesso
+        // id di layout — e il tipo lo distingue nei casi comuni. Non e' una
+        // garanzia: due campi davvero identici in due schermate diverse
+        // restano indistinguibili, e li' la riga forzata puo' ricomparire dove
+        // non l'ha chiesta nessuno. E' fastidio, non un errore di destinatario:
+        // il proprietario viene comunque riallineato all'app corrente.
+        val identita = editorInfo?.let { Triple(app, it.fieldId, it.inputType) }
         if (forzataSu != null && forzataSu != identita) forzataSu = null
         suppressed = when {
             editorInfo == null -> false
@@ -701,7 +708,7 @@ object CipherCompose {
         // svuoterebbe: si cifrerebbe per il destinatario sbagliato.
         if (owner.isNotEmpty() && owner != app) svuotaSovrascrivendo(connection?.buffer)
         owner = app
-        forzataSu = app to editorInfo.fieldId
+        forzataSu = Triple(app, editorInfo.fieldId, editorInfo.inputType)
         suppressed = false
         updateRow()
         updateRecipient(app)

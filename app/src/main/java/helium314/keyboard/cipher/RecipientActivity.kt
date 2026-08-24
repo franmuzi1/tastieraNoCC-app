@@ -158,7 +158,13 @@ internal class RecipientActivity : ComponentActivity() {
             onChiudi = { if (!chiediNome) finish() },
             onScegli = { indice ->
                 if (multiplo) {
-                    if (!scelti.remove(indice)) scelti.add(indice)
+                    // Il tetto si applica QUI, non al salvataggio: lasciar
+                    // spuntare dieci nomi per poi rifiutare tutto vorrebbe dire
+                    // far rifare la selezione da capo. Togliere resta sempre
+                    // possibile, anche da pieno.
+                    if (!scelti.remove(indice) && scelti.size < CipherGroups.MAX_MEMBRI) {
+                        scelti.add(indice)
+                    }
                 } else {
                     scegli(peers[indice])
                 }

@@ -42,7 +42,14 @@ internal object CipherGroups {
 
     private const val VERSION: Byte = 1
     private const val KEY_LEN = 32
-    private const val MAX_MEMBRI = 8
+    /**
+     * Il tetto della decisione K3: otto destinatari, piu' lo slot del mittente
+     * che il core aggiunge da solo. Pubblico perche' **l'interfaccia lo deve
+     * rispettare prima di arrivare qui**: fermare la selezione a otto e' un
+     * limite; accettarne dieci e poi rifiutare il salvataggio e' una schermata
+     * che fa perdere il lavoro fatto.
+     */
+    const val MAX_MEMBRI = 8
     private val AAD = "keyboard-cipher/v1/storage/groups".toByteArray()
 
     fun tutti(context: Context): List<CipherGroup> = load(context).gruppi

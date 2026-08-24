@@ -26,16 +26,6 @@ object CipherSettings {
     const val PREF_ENABLED = "cipher_enabled"
     const val DEFAULT_ENABLED = true
 
-    /**
-     * Modalita' con barra testuale autonoma: il chiaro si scrive nella riga
-     * della tastiera e l'app riceve solo il blob.
-     *
-     * Spenta di default, e non per timidezza: cambia il posto in cui si scrive,
-     * che e' l'abitudine piu' radicata che una tastiera possa toccare. Chi la
-     * vuole la accende sapendo cosa cambia; chi non la accende ha il
-     * comportamento di prima, con il chiaro che passa dal campo dell'app.
-     */
-    const val PREF_COMPOSE_MODE = "cipher_compose_mode"
     const val DEFAULT_COMPOSE_MODE = false
 
     /**
