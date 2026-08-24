@@ -598,14 +598,14 @@ class DecryptActivity : ComponentActivity() {
                     // Vedi CipherActions: in un gruppo non si mostra un
                     // autore, perche' qualunque membro puo' aver riscritto il
                     // testo tenendo gli slot originali (decisione K6).
-                    result.recipientCount > 1 -> getString(R.string.cipher_group_header)
+                    result.isGroup == 1 -> getString(R.string.cipher_group_header)
                     result.verified == 1 -> getString(R.string.cipher_sender_verified, chi)
                     else -> chi
                 },
                 mio = mio,
                 // Vedi CipherActions: un messaggio di gruppo dice di esserlo
                 // e dice il prezzo, perche' non ha forward secrecy.
-                quando = if (result.recipientCount > 1) {
+                quando = if (result.isGroup == 1) {
                     formatTimestamp(result.sentAtUnix) + "  ·  " +
                         getString(R.string.cipher_group_message, result.recipientCount)
                 } else {
@@ -703,14 +703,14 @@ class DecryptActivity : ComponentActivity() {
                     // Vedi CipherActions: in un gruppo non si mostra un
                     // autore, perche' qualunque membro puo' aver riscritto il
                     // testo tenendo gli slot originali (decisione K6).
-                    result.recipientCount > 1 -> getString(R.string.cipher_group_header)
+                    result.isGroup == 1 -> getString(R.string.cipher_group_header)
                     result.verified == 1 -> getString(R.string.cipher_sender_verified, chi)
                     else -> chi
                 },
                 mio = mio,
                 // Vedi CipherActions: un messaggio di gruppo dice di esserlo
                 // e dice il prezzo, perche' non ha forward secrecy.
-                quando = if (result.recipientCount > 1) {
+                quando = if (result.isGroup == 1) {
                     formatTimestamp(result.sentAtUnix) + "  ·  " +
                         getString(R.string.cipher_group_message, result.recipientCount)
                 } else {

@@ -681,7 +681,7 @@ object CipherActions {
         if (!CipherIdentity.persistKeyring(ime)) {
             toast(ime, R.string.cipher_keyring_not_saved)
         }
-        val gruppo = result.recipientCount > 1
+        val gruppo = result.isGroup == 1
         val nome = result.senderLabel ?: result.senderFingerprint.orEmpty()
         // Su un messaggio nostro non si mostra "confrontato di persona": li' non
         // c'e' nessuna identita' da verificare, l'abbiamo scritto noi. Stessa
@@ -707,7 +707,7 @@ object CipherActions {
         // secrecy, e tacerlo farebbe credere a chi legge di avere una garanzia
         // che ha solo nei messaggi a due. Sta accanto alla data e non nel
         // titolo perche' riguarda il messaggio, non chi l'ha scritto.
-        val riga = if (result.recipientCount > 1) {
+        val riga = if (result.isGroup == 1) {
             quando + "  ·  " + ime.getString(R.string.cipher_group_message, result.recipientCount)
         } else {
             quando

@@ -129,7 +129,19 @@ object CipherCore {
          * condizione che accompagna quella decisione e' che l'interfaccia lo
          * dica. Senza questo numero non sarebbe esprimibile.
          */
-        @JvmField var recipientCount: Int = 1
+        @JvmField var recipientCount: Int = 0
+
+        /**
+         * 1 se il messaggio veniva da un **gruppo**.
+         *
+         * Un campo suo e non una soglia su [recipientCount], ed e' una
+         * correzione: prima il gruppo si deduceva da `recipientCount > 1`, e un
+         * blob costruito con un solo slot si presentava come un normale
+         * messaggio a due — pur non avendo forward secrecy. Saltava cosi'
+         * l'avviso che quella mancanza esiste per dire. Un numero non e' una
+         * semantica.
+         */
+        @JvmField var isGroup: Int = 0
         /** Solo per [KIND_MESSAGE]. Da azzerare dopo l'uso. */
         @JvmField var plaintext: ByteArray? = null
         /**
