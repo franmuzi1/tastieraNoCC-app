@@ -37,6 +37,13 @@ import helium314.keyboard.latin.utils.InputTypeUtils
  * chat) toglie una funzione, mentre un falso positivo (riga accesa su una
  * ricerca) rompe il campo.
  *
+ * Le prove contrarie sono state allargate quando l'uso ha mostrato che la riga
+ * restava accesa nei moduli — biglietti, registrazioni, ricerche interne alle
+ * app — che dichiarano "avanti", "indietro" o "fatto" invece di "cerca".
+ * Allargare e' diventato piu' sicuro da quando il tasto in toolbar puo'
+ * **forzare** la riga: un falso negativo si ripara con un tocco, un falso
+ * positivo no.
+ *
  * Le prove contrarie, e cosa hanno in comune: sono tutte campi a **uso unico**,
  * dove il testo e' un parametro e non un discorso.
  */
@@ -123,8 +130,23 @@ internal object CipherFields {
         when (editorInfo.imeOptions and EditorInfo.IME_MASK_ACTION) {
             EditorInfo.IME_ACTION_SEARCH,
             EditorInfo.IME_ACTION_GO,
+            // "Avanti" e "indietro" sono navigazione fra i campi di un modulo:
+            // un compositore di messaggi non ce li ha mai, perche' non c'e' un
+            // campo dopo. Sono il segnale piu' pulito che esista qui —
+            // biglietti, registrazioni, indirizzi di spedizione.
+            EditorInfo.IME_ACTION_NEXT,
+            EditorInfo.IME_ACTION_PREVIOUS,
+            // "Fatto" chiude la scrittura, non la spedisce. Le chat usano
+            // "invia" oppure nessuna azione (sono multiriga): "fatto" e' dei
+            // campi che si compilano.
+            EditorInfo.IME_ACTION_DONE,
             -> return true
         }
+
+        // Completamento automatico: e' il campo che propone voci mentre scrivi
+        // — ricerche, stazioni, indirizzi. Chi compone un messaggio non ha
+        // niente da completare.
+        if (inputType and InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE != 0) return true
 
         return false
     }
