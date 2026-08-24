@@ -97,6 +97,9 @@ object CipherFiles {
             CipherCore.nativeEncryptFile(
                 peer, source.name, source.mime, content, nowUnix,
                 CipherSettings.isForwardSecrecy(context),
+                // Qui il motivo non serve: chi chiama distingue gia' i casi che
+                // sa spiegare, e il ponte accetta `null` apposta.
+                null,
             )
         } finally {
             // Il chiaro non resta in heap piu' del necessario. Non e' una

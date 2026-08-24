@@ -282,10 +282,18 @@ object CipherCore {
      * qui non cambia, ma la regola vale per tutte le altre vie e chi legge
      * questa firma non deve dedurne il contrario.
      */
+    /**
+     * [errorOut], se non e' `null`, e' un `IntArray(1)` in cui il ponte
+     * deposita il motivo quando il ritorno e' `null`: uno dei codici in cima a
+     * questo file. Serve perche' `null` da solo mette insieme cause molto
+     * diverse, e una — [UNKNOWN_PEER], un membro dimenticato dopo che il
+     * gruppo era stato salvato — l'utente puo' risolverla da solo.
+     */
     external fun nativeEncryptGroup(
         peers: ByteArray,
         plaintext: ByteArray,
         nowUnix: Long,
+        errorOut: IntArray?,
     ): String?
 
     external fun nativeEncryptForApp(
@@ -346,6 +354,7 @@ object CipherCore {
         content: ByteArray,
         nowUnix: Long,
         forwardSecrecy: Boolean,
+        errorOut: IntArray?,
     ): ByteArray?
 
     /**

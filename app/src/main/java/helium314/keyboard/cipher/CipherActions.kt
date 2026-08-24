@@ -182,13 +182,23 @@ object CipherActions {
             for ((i, membro) in gruppo.membri.withIndex()) {
                 membro.copyInto(chiavi, i * 32)
             }
+            val motivo = IntArray(1)
             val blobGruppo = try {
-                CipherCore.nativeEncryptGroup(chiavi, plaintext, System.currentTimeMillis() / 1000)
+                CipherCore.nativeEncryptGroup(
+                    chiavi, plaintext, System.currentTimeMillis() / 1000, motivo,
+                )
             } finally {
                 plaintext.fill(0)
             }
             if (blobGruppo == null) {
-                toast(ime, R.string.cipher_group_failed)
+                // Un membro dimenticato dopo che il gruppo era stato salvato e'
+                // l'unico fallimento che l'utente puo' aggiustare, e prima
+                // aveva la stessa frase di un guasto interno.
+                toast(
+                    ime,
+                    if (motivo[0] == CipherCore.UNKNOWN_PEER) R.string.cipher_group_member_gone
+                    else R.string.cipher_group_failed,
+                )
                 return
             }
             consegna(ime, ic, field, composed != null, blobGruppo)
