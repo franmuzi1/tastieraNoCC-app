@@ -283,6 +283,19 @@ object CipherCompose {
         suppressed = when {
             editorInfo == null -> false
             CipherFields.vietata(editorInfo) -> true
+            // Le NOSTRE schermate non sono un posto dove comporre un messaggio
+            // cifrato, e questa riga ripara un difetto vero. La condizione
+            // c'era, ma sotto — come uscita anticipata DOPO aver deciso la
+            // sospensione — quindi `suppressed` restava falso e `connection()`
+            // continuava a deviare le battute nel nostro buffer: il campo "dai
+            // un nome a questo contatto" restava vuoto e le lettere si
+            // accodavano al messaggio che poi sarebbe stato cifrato e spedito.
+            //
+            // Prima non si vedeva perche' la riga era spenta di default;
+            // accendendola per tutti e' diventato il caso normale. Vince anche
+            // sulla forzatura: forzare la riga dentro le nostre impostazioni
+            // non ha nessun senso.
+            app == self -> true
             forzataSu != null -> false
             else -> CipherFields.nonComponeMessaggi(editorInfo)
         }
