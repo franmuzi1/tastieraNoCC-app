@@ -294,11 +294,19 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
   Finestra trasparente e non tema di dialogo: il riquadro se lo disegna il
   dialogo Compose, lo stesso della scheda contatto. Con un tema di dialogo
   sotto ne comparirebbe un secondo intorno al primo.
+
+  configChanges: il gettone che dice da quale app si arriva e' a USO SINGOLO.
+  Ruotando, Android distruggerebbe e ricreerebbe l'Activity con lo stesso
+  intent, e alla seconda lettura il gettone non c'e' piu': la schermata si
+  ritroverebbe senza sapere per quale app si sta scegliendo, e si rifiuterebbe
+  di funzionare. Come per DecryptActivity, si gestisce il cambio invece di
+  ricrearsi — Compose rifa' il layout da solo.
 -->
 <activity
     android:name="helium314.keyboard.cipher.RecipientActivity"
     android:exported="false"
     android:noHistory="true"
+    android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|keyboard|uiMode|density|fontScale"
     android:excludeFromRecents="true"
     android:taskAffinity=""
     android:launchMode="singleTask"

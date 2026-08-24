@@ -494,4 +494,10 @@
     -->
     <string name="cipher_group_name_hint" tools:ignore="MissingTranslation">Il nome resta su questo telefono: gli altri non sanno di essere in un gruppo che si chiama cosi\'</string>
     <string name="cipher_group_not_saved" tools:ignore="MissingTranslation">Non riesco a salvare il gruppo</string>
+    <!--
+        Non si e\' riusciti a togliere il gruppo scelto, quindi cifrando il
+        messaggio andrebbe ancora a tutti. Si dice cosa vale ADESSO, non cosa e\'
+        fallito: l\'utente deve sapere dove sta per finire il prossimo messaggio.
+    -->
+    <string name="cipher_group_still_selected" tools:ignore="MissingTranslation">Attenzione: il gruppo e\' ancora selezionato, il prossimo messaggio andrebbe a tutti</string>
 </resources>

@@ -1,9 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    In orizzontale lo schermo e' corto e la tastiera ne prende gia' molto: la
-    riga di composizione scende a una riga di testo. Il contenuto non si perde,
-    scorre.
+    In orizzontale lo schermo e' corto e la tastiera ne prende gia' molto, quindi
+    la riga di composizione si stringe. Il contenuto non si perde, scorre.
+
+    Erano 40dp, e non bastavano piu': da quando la riga e' a due piani — testo e
+    tasti sopra, destinatario sotto — quaranta lasciavano al piano di sopra una
+    ventina di punti, cioe' due tasti schiacciati e una riga di testo illeggibile.
+    Questo file non era stato toccato insieme al layout, ed e' il modo classico
+    in cui una variante resta indietro: nessuno la vede finche' non ruota il
+    telefono.
+
+    58dp: quaranta al testo con i tasti, il resto al destinatario. Sempre meno
+    dei 74 del ritratto, che e' il punto di questo file.
 -->
 <resources>
-    <dimen name="cipher_compose_row_height">40dp</dimen>
+    <dimen name="cipher_compose_row_height">58dp</dimen>
 </resources>

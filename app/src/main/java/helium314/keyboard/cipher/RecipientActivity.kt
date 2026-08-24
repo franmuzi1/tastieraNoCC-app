@@ -225,7 +225,14 @@ internal class RecipientActivity : ComponentActivity() {
         // sul singolo quando si cifra — e' l'ordine giusto — quindi lasciarlo
         // qui significherebbe che scegliere una persona non ha nessun effetto:
         // il tasto sembra funzionare e il messaggio va ancora a tutti.
-        CipherGroups.scegli(this, appDiProvenienza, null)
+        //
+        // L'esito si guarda. Se la scrittura fallisce, la scelta appena fatta
+        // e' quella che NON vale: si e' toccato un nome e il messaggio andra'
+        // comunque al gruppo. E' il caso in cui tacere costa di piu'.
+        if (!CipherGroups.scegli(this, appDiProvenienza, null)) {
+            Toast.makeText(this, R.string.cipher_group_still_selected, Toast.LENGTH_LONG).show()
+            return
+        }
         // Nessun avviso: diceva "ora in questa app cifri per questo contatto",
         // e non e' cosi'. Il destinatario corrente lo stabilisce anche —
         // e soprattutto — l'ultimo messaggio decifrato in quell'app, quindi

@@ -59,7 +59,12 @@ internal object CipherGroups {
     fun corrente(context: Context, appPackage: String): CipherGroup? {
         val stato = load(context)
         val nome = stato.scelte[appPackage] ?: return null
-        return stato.gruppi.firstOrNull { it.nome == nome }
+        // `ignoreCase` come in [salva] e [dimentica]: quelli trattano
+        // «Famiglia» e «famiglia» come lo stesso gruppo, e un confronto esatto
+        // qui farebbe sparire la scelta appena fatta se il nome fosse stato
+        // salvato con una maiuscola diversa. Tre confronti dello stesso nome
+        // devono seguire la stessa regola, o e' questione di tempo.
+        return stato.gruppi.firstOrNull { it.nome.equals(nome, ignoreCase = true) }
     }
 
     /** Sceglie un gruppo per quell'app. `null` torna al destinatario singolo. */
