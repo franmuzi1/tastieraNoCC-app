@@ -225,20 +225,15 @@ internal class RecipientActivity : ComponentActivity() {
         }
         // Su disco, altrimenti la scelta muore al primo riavvio del servizio —
         // che e' il guasto che questo progetto ha gia' pagato una volta.
-        CipherRecipients.remember(this, appDiProvenienza, peer.key)
-        CipherUsage.nota(this, peer.key)
-        // Via il gruppo, se ce n'era uno scelto per questa app. Il gruppo vince
-        // sul singolo quando si cifra — e' l'ordine giusto — quindi lasciarlo
-        // qui significherebbe che scegliere una persona non ha nessun effetto:
-        // il tasto sembra funzionare e il messaggio va ancora a tutti.
-        //
-        // L'esito si guarda. Se la scrittura fallisce, la scelta appena fatta
-        // e' quella che NON vale: si e' toccato un nome e il messaggio andra'
+        // `remember` toglie da solo il gruppo, ed e' li' che la regola vive:
+        // qui si guarda solo l'esito. Se fallisce, la scelta appena fatta e'
+        // quella che NON vale — si e' toccato un nome e il messaggio andrebbe
         // comunque al gruppo. E' il caso in cui tacere costa di piu'.
-        if (!CipherGroups.scegli(this, appDiProvenienza, null)) {
+        if (!CipherRecipients.remember(this, appDiProvenienza, peer.key)) {
             Toast.makeText(this, R.string.cipher_group_still_selected, Toast.LENGTH_LONG).show()
             return
         }
+        CipherUsage.nota(this, peer.key)
         // Nessun avviso: diceva "ora in questa app cifri per questo contatto",
         // e non e' cosi'. Il destinatario corrente lo stabilisce anche —
         // e soprattutto — l'ultimo messaggio decifrato in quell'app, quindi

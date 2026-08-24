@@ -50,12 +50,31 @@ internal object CipherRecipients {
      * messaggio — e una cache qui sarebbe un secondo stato da tenere allineato
      * con quello del core, cioe' un modo in piu' di sbagliare.
      */
-    fun remember(context: Context, appPackage: String, peer: ByteArray) {
-        if (appPackage.isEmpty() || peer.size != KEY_LEN) return
+    fun remember(context: Context, appPackage: String, peer: ByteArray): Boolean {
+        if (appPackage.isEmpty() || peer.size != KEY_LEN) return false
+        // ## Il gruppo si toglie QUI, e non nei chiamanti
+        //
+        // "Il destinatario di questa app e' questa persona" e "e' questo
+        // gruppo" sono la stessa scelta espressa in due modi, e quando si cifra
+        // il gruppo vince sul singolo. Quindi fissare una persona senza
+        // togliere il gruppo non fissa niente: il messaggio va ancora a tutti.
+        //
+        // I punti che fissano un destinatario sono quattro — la scelta a mano,
+        // il pulsante nella schermata del messaggio, e le DUE vie automatiche
+        // che scattano decifrando — e per un po' solo il primo toglieva il
+        // gruppo. Le altre tre passavano tutte di qui: e' l'unico posto in cui
+        // la regola si scrive una volta e vale per chiunque arrivi.
+        //
+        // La via automatica e' quella che conta di piu': leggere un messaggio
+        // di Marco sceglie Marco da solo, ed e' il gesto piu' frequente che
+        // esista. Rispondere andava al gruppo, con il nome di Marco scritto
+        // accanto alla riga.
+        if (!CipherGroups.scegli(context, appPackage, null)) return false
         val current = load(context).toMutableMap()
-        if (current[appPackage]?.contentEquals(peer) == true) return
+        if (current[appPackage]?.contentEquals(peer) == true) return true
         current[appPackage] = peer
         save(context, current)
+        return true
     }
 
     /**
