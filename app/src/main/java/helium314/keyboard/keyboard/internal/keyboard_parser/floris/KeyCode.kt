@@ -205,6 +205,8 @@ object KeyCode {
     const val CIPHER_ATTACH =             -30006
     /** Apre l'elenco dei contatti cifrati. */
     const val CIPHER_CONTACTS =           -30007
+    /** Come [CIPHER_ATTACH], ma il selettore parte gia' su immagini e video. */
+    const val CIPHER_GALLERY =            -30008
 
     // Intents
     const val SEND_INTENT_ONE =            -20000
@@ -365,7 +367,8 @@ object KeyCode {
         // richiede il dispositivo sbloccato: senza questa riga il tasto ci
         // sarebbe e fallirebbe sempre, che e' il modo peggiore di non esserci.
         CIPHER_ENCRYPT, CIPHER_DECRYPT, CIPHER_DECRYPT_CLIPBOARD, CIPHER_IDENTITY_CARD,
-            CIPHER_SEND_PLAIN, CIPHER_TOGGLE_COMPOSE, CIPHER_ATTACH, CIPHER_CONTACTS -> true
+            CIPHER_SEND_PLAIN, CIPHER_TOGGLE_COMPOSE, CIPHER_ATTACH, CIPHER_CONTACTS,
+            CIPHER_GALLERY -> true
         else -> false
     }
 }

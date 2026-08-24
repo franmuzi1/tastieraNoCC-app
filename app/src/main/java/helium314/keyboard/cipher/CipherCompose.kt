@@ -76,6 +76,7 @@ object CipherCompose {
         ToolbarKey.DECRYPT,
         ToolbarKey.SEND_PLAIN,
         ToolbarKey.ATTACH,
+        ToolbarKey.GALLERY,
         ToolbarKey.CONTACTS,
     )
 

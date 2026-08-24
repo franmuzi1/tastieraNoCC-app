@@ -433,7 +433,7 @@ object CipherActions {
         // L'estremo basso e' l'ULTIMO codice della cifratura, non il primo
         // aggiunto: aggiungendone uno nuovo senza spostarlo, quel tasto
         // resterebbe fuori dall'intervallo e tornerebbe ad adottare il campo.
-        if (primaryCode <= KeyCode.CIPHER_ENCRYPT && primaryCode >= KeyCode.CIPHER_CONTACTS) {
+        if (primaryCode <= KeyCode.CIPHER_ENCRYPT && primaryCode >= KeyCode.CIPHER_GALLERY) {
             return
         }
         // MAI sull'invio. E' il tasto con cui si SPEDISCE cio' che sta nel
@@ -890,6 +890,23 @@ object CipherActions {
      * documenti del sistema, che un IME non puo' aprire per conto proprio, e
      * serve `FLAG_SECURE` sulle impronte.
      */
+    /**
+     * Come [allegato], ma il selettore parte gia' filtrato su immagini e video.
+     *
+     * Era stato tolto quando i tasti in barra erano troppi e la graffetta
+     * faceva quasi la stessa cosa. E' tornato quando cifra-e-invia e invia-in
+     * chiaro si sono spostati nella riga di composizione: la striscia si e'
+     * liberata, e mandare una foto e' il secondo gesto piu' frequente qui
+     * dentro. La differenza con la graffetta resta quella di allora — due
+     * tocchi in meno per arrivare alle foto — e adesso quei due tocchi non
+     * costano piu' spazio ai suggerimenti.
+     */
+    fun galleria(ime: InputMethodService) {
+        if (!CipherSettings.isEnabled(ime)) return
+        runCatching { ime.startActivity(ContactsActivity.intentAllegato(ime, soloMedia = true)) }
+            .onFailure { toast(ime, R.string.cipher_unavailable) }
+    }
+
     fun allegato(ime: InputMethodService) {
         if (!CipherSettings.isEnabled(ime)) return
         runCatching { ime.startActivity(ContactsActivity.intentAllegato(ime, soloMedia = false)) }
