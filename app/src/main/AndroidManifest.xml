@@ -323,9 +323,20 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
   Stesso tema delle impostazioni: ci si arriva da li' con un tocco, e una barra
   di stato di un altro colore basta a far sembrare di essere usciti dall'app.
 -->
+<!--
+  configChanges: qui c'e' uno stato che una ricreazione azzera in silenzio. La
+  passphrase del backup vive in memoria fra il momento in cui l'utente la scrive
+  e quello in cui sceglie dove salvare, e il selettore di sistema sta DAVANTI a
+  questa Activity: ruotando il telefono con quel selettore aperto, Android la
+  distruggeva e ricreava, la passphrase spariva, e il backup usciva di ZERO byte
+  con un "Cifratura non disponibile" — proprio sul percorso che le note di
+  release rendono obbligatorio prima di disinstallare. Stessa causa per l'invio
+  di un allegato, che non faceva niente e non lo diceva.
+-->
 <activity
     android:name="helium314.keyboard.cipher.ContactsActivity"
     android:exported="false"
+    android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|keyboard|uiMode|density|fontScale"
     android:excludeFromRecents="true"
     android:theme="@style/platformActivityTheme" />
 

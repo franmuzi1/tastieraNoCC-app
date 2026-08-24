@@ -79,7 +79,20 @@ internal object CipherGroups {
         if (appPackage.isEmpty()) return false
         val stato = load(context)
         val scelte = stato.scelte.toMutableMap()
-        if (nome == null) scelte.remove(appPackage) else scelte[appPackage] = nome
+        // Il nome si normalizza come in [salva], che fa `trim()`. Senza, un
+        // nome con uno spazio in coda salvava il gruppo e **non lo selezionava
+        // mai**: la schermata si chiudeva senza errori e si continuava a
+        // cifrare per il destinatario di prima. Tre funzioni che maneggiano lo
+        // stesso nome devono trattarlo allo stesso modo, o la differenza salta
+        // fuori come un guasto senza sintomi.
+        //
+        // E si rifiuta un nome che non corrisponde a nessun gruppo: una scelta
+        // che punta al vuoto fa comparire un destinatario che non esiste.
+        val pulito = nome?.trim()
+        if (pulito != null && stato.gruppi.none { it.nome.equals(pulito, ignoreCase = true) }) {
+            return false
+        }
+        if (pulito == null) scelte.remove(appPackage) else scelte[appPackage] = pulito
         return save(context, Stato(stato.gruppi, scelte))
     }
 
