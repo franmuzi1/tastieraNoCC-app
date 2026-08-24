@@ -645,11 +645,18 @@ object CipherActions {
         if (!CipherIdentity.persistKeyring(ime)) {
             toast(ime, R.string.cipher_keyring_not_saved)
         }
+        val gruppo = result.recipientCount > 1
         val nome = result.senderLabel ?: result.senderFingerprint.orEmpty()
         // Su un messaggio nostro non si mostra "confrontato di persona": li' non
         // c'e' nessuna identita' da verificare, l'abbiamo scritto noi. Stessa
         // regola di DecryptActivity.showMessage.
         val intestazione = when {
+            // In un gruppo NON si mostra un autore (decisione K6): il testo e'
+            // cifrato con una chiave che tutti i membri hanno, quindi qualunque
+            // membro puo' averlo riscritto tenendo gli slot originali. Un nome
+            // accanto a un testo riscrivibile e' peggio di nessun nome: e' una
+            // garanzia inventata.
+            gruppo -> ime.getString(R.string.cipher_group_header)
             mio -> ime.getString(R.string.cipher_own_message_to, nome)
             result.verified == 1 -> ime.getString(R.string.cipher_sender_verified, nome)
             else -> nome

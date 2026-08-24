@@ -468,7 +468,15 @@
         significherebbe far credere a chi legge di avere una garanzia che ha
         solo nei messaggi a due.
     -->
-    <string name="cipher_group_message" tools:ignore="MissingTranslation">Messaggio di gruppo, %1$d persone potevano leggerlo. I messaggi di gruppo restano leggibili se qualcuno perde il telefono</string>
+    <string name="cipher_group_message" tools:ignore="MissingTranslation">%1$d persone potevano leggerlo. In un gruppo non si puo\' stabilire chi ha scritto, e i messaggi restano leggibili se qualcuno perde il telefono</string>
+    <!--
+        L\'intestazione di un messaggio di gruppo. NON c\'e\' un nome, ed e\' una
+        condizione della decisione K6: il testo e\' cifrato con una chiave che
+        tutti i membri hanno, quindi qualunque membro puo\' averlo riscritto
+        tenendo gli slot originali. Un nome accanto a un testo riscrivibile e\'
+        peggio di nessun nome — e\' una garanzia inventata.
+    -->
+    <string name="cipher_group_header" tools:ignore="MissingTranslation">Messaggio di gruppo</string>
     <string name="cipher_group_new" tools:ignore="MissingTranslation">+ Scrivi a piu\' persone</string>
     <string name="cipher_group_forget" tools:ignore="MissingTranslation">Elimina</string>
     <string name="cipher_group_save" tools:ignore="MissingTranslation">Avanti</string>

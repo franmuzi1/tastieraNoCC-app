@@ -595,6 +595,10 @@ class DecryptActivity : ComponentActivity() {
                 // verificare, l'abbiamo scritto noi.
                 chi = when {
                     mio -> getString(R.string.cipher_own_message_to, chi)
+                    // Vedi CipherActions: in un gruppo non si mostra un
+                    // autore, perche' qualunque membro puo' aver riscritto il
+                    // testo tenendo gli slot originali (decisione K6).
+                    result.recipientCount > 1 -> getString(R.string.cipher_group_header)
                     result.verified == 1 -> getString(R.string.cipher_sender_verified, chi)
                     else -> chi
                 },
@@ -696,6 +700,10 @@ class DecryptActivity : ComponentActivity() {
             Schermo.Allegato(
                 chi = when {
                     mio -> getString(R.string.cipher_own_message_to, chi)
+                    // Vedi CipherActions: in un gruppo non si mostra un
+                    // autore, perche' qualunque membro puo' aver riscritto il
+                    // testo tenendo gli slot originali (decisione K6).
+                    result.recipientCount > 1 -> getString(R.string.cipher_group_header)
                     result.verified == 1 -> getString(R.string.cipher_sender_verified, chi)
                     else -> chi
                 },
