@@ -180,7 +180,7 @@ class DecryptActivity : ComponentActivity() {
             // attacca — e questo strato non deve reintrodurla travestita da
             // messaggi diversi.
             CipherCore.CRYPTO, CipherCore.FORMAT, CipherCore.DECODE ->
-                return showNotice(R.string.cipher_cannot_decrypt)
+                return showNotice(perche_non_si_apre(incoming.toString()))
             // L'abbiamo scritto noi ma non si trova piu' a chi: e' un esito
             // normale, non un guasto, e dirlo com'e' evita di far cercare un
             // problema che non c'e'.
@@ -572,6 +572,36 @@ class DecryptActivity : ComponentActivity() {
      *   mostrata e' il **destinatario**, e chiamarla "mittente" sarebbe
      *   semplicemente falso.
      */
+    /**
+     * La frase da mostrare quando un blob non si apre, scelta guardando **che
+     * forma ha la busta**.
+     *
+     * Non incrina la regola dell'errore opaco, e la distinzione va tenuta
+     * ferma: il core non dice **perche'** la decifratura e' fallita, e non deve
+     * — distinguere "tag non valido" da "chiave sbagliata" aiuterebbe chi
+     * attacca. Qui si guarda invece cio' che il blob dichiara di se' **in
+     * chiaro**: versione, tipo, bit di flag. Sono i byte che chiunque
+     * intercetti il messaggio legge comunque, quindi mostrarli non aggiunge
+     * niente a nessuno.
+     *
+     * Serviva perche' la frase unica elencava due cause **indovinate** — «puo'
+     * essere diretto a qualcun altro, oppure gia' aperto una volta» — e su
+     * parecchi blob erano false tutte e due. Su un messaggio che non ha mai
+     * usato la catena, «si apre una volta sola» non c'entra niente; su un
+     * messaggio di gruppo non c'entra nessuna delle due. Chi legge finisce per
+     * cercare un guasto dove non e', o per concludere che il messaggio non era
+     * per lui.
+     */
+    private fun perche_non_si_apre(testo: String): Int = when (CipherCore.nativeBlobShape(testo)) {
+        CipherCore.SHAPE_MESSAGE_FS -> R.string.cipher_cannot_decrypt_fs
+        CipherCore.SHAPE_MESSAGE -> R.string.cipher_cannot_decrypt_plain
+        CipherCore.SHAPE_GROUP -> R.string.cipher_cannot_decrypt_group
+        CipherCore.SHAPE_BURN -> R.string.cipher_cannot_decrypt_burn
+        // Card e forma ignota: qui non c'e' niente di piu' preciso da dire, e
+        // inventarlo sarebbe tornare al problema di prima.
+        else -> R.string.cipher_cannot_decrypt
+    }
+
     private fun showMessage(result: CipherCore.IncomingResult, mio: Boolean = false) {
         val bytes = result.plaintext
         if (bytes == null) {

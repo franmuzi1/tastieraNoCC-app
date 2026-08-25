@@ -56,6 +56,16 @@ object CipherCore {
     const val KEYRING = 8
     /** Sessione non inizializzata, errore JNI, o panic intercettato in Rust. */
     const val INTERNAL = 9
+
+    // Esiti di [nativeBlobShape]. Descrivono la BUSTA, non l'esito: dicono cosa
+    // il blob dichiara di se' in chiaro, non se si e' aperto.
+    const val SHAPE_UNKNOWN = 0
+    const val SHAPE_MESSAGE = 1
+    /** Ha usato la catena: solo qui «si apre una volta sola» e' vero. */
+    const val SHAPE_MESSAGE_FS = 2
+    const val SHAPE_GROUP = 3
+    const val SHAPE_CARD = 4
+    const val SHAPE_BURN = 5
     /**
      * L'abbiamo scritto noi, ma il destinatario non e' piu' fra i contatti.
      * Esito NORMALE: senza forward secrecy un proprio messaggio si riapre, e
@@ -247,6 +257,17 @@ object CipherCore {
      * Unica entry che NON richiede [nativeInit]: guarda solo la forma del
      * testo.
      */
+    /**
+     * Che forma ha il blob, senza decifrarlo e senza toccare il portachiavi.
+     *
+     * Guarda solo cio' che viaggia in chiaro — versione, tipo, bit di flag —
+     * quindi **non e' un oracolo**: non dice se un messaggio si apre, ne'
+     * perche' non si e' aperto. Serve dopo un fallimento, per scegliere una
+     * frase vera invece di elencare ipotesi. Come [nativeLooksLikeOurBlob], non
+     * richiede una sessione inizializzata.
+     */
+    external fun nativeBlobShape(text: String): Int
+
     external fun nativeLooksLikeOurBlob(text: String): Boolean
 
     /**
