@@ -113,7 +113,13 @@ internal object CipherFields {
         // riga cifrata senza che serva. E' un fastidio, mentre una chat senza
         // riga e' la funzione che non c'e' — e la bilancia, qui, pende da
         // quella parte.
-        if (inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE != 0) return false
+        // Il bit va letto solo dentro TYPE_CLASS_TEXT: fuori di li' non
+        // significa "piu' righe", significa un bit qualunque di un'altra
+        // classe. Senza questo vincolo un `inputType` malformato di una classe
+        // numerica potrebbe accendere la riga cifrata su un campo che non e'
+        // nemmeno testo.
+        val testo = inputType and InputType.TYPE_MASK_CLASS == InputType.TYPE_CLASS_TEXT
+        if (testo && inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE != 0) return false
 
         // Numeri, telefono, date. Non sono discorsi, e cifrarli non ha senso —
         // ma soprattutto sono campi che l'app legge per farci qualcosa, non per

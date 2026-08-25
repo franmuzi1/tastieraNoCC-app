@@ -182,7 +182,12 @@ object CipherActions {
             for ((i, membro) in gruppo.membri.withIndex()) {
                 membro.copyInto(chiavi, i * 32)
             }
-            val motivo = IntArray(1)
+            // Parte da INTERNAL e non da zero: `IntArray(1)` si riempie di
+            // zeri, e zero nel ponte vuol dire OK. Un percorso che non scrive
+            // il motivo — un panic intercettato da `guard`, o uno che si
+            // aggiunge domani — lascerebbe "riuscito" accanto a un risultato
+            // nullo, cioe' la lettura peggiore possibile di questo canale.
+            val motivo = intArrayOf(CipherCore.INTERNAL)
             val blobGruppo = try {
                 CipherCore.nativeEncryptGroup(
                     chiavi, plaintext, System.currentTimeMillis() / 1000, motivo,
