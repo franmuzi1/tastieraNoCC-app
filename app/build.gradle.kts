@@ -1,6 +1,94 @@
+import com.android.build.api.artifact.SingleArtifact
 import com.android.build.api.variant.ApplicationVariant
 import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+// keyboard-cipher: i permessi che questa app puo' chiedere, congelati.
+//
+// La proprieta' su cui poggia tutto il progetto e' che la tastiera **non abbia
+// accesso alla rete**: il chiaro non esce perche' non c'e' niente da cui possa
+// uscire. Finora quella proprieta' era vera *a ispezione* — si apriva il
+// manifest e si guardava. Ma cio' che finisce nell'APK e' il manifest **unito**,
+// e il merge ci versa dentro anche i permessi dichiarati dalle dipendenze: una
+// libreria aggiunta o aggiornata puo' portarsi dietro `INTERNET` senza che
+// nessuno scriva una riga, e il build riuscirebbe lo stesso.
+//
+// Da qui la lista. Un permesso nuovo nel manifest unito **ferma il build**, e
+// per farlo passare bisogna scriverlo qui: non e' un ostacolo, e' il punto —
+// aggiungere un permesso a questa app deve essere un gesto deliberato, non una
+// conseguenza di un aggiornamento di dipendenze.
+//
+// `INTERNET` non e' nella lista e non ci deve entrare. Se un giorno servisse
+// davvero, quella non e' una riga da aggiungere qui: e' un progetto diverso.
+val permessiConsentiti = setOf(
+    "android.permission.READ_USER_DICTIONARY",
+    "android.permission.WRITE_USER_DICTIONARY",
+    "android.permission.RECEIVE_BOOT_COMPLETED",
+    "android.permission.VIBRATE",
+    // Solo per il dizionario dei nomi di HeliBoard, chiesto a runtime e dietro
+    // un interruttore: dichiarato non vuol dire concesso.
+    "android.permission.READ_CONTACTS",
+    // Le tre del servizio che tiene vivo il processo della tastiera.
+    "android.permission.FOREGROUND_SERVICE",
+    "android.permission.FOREGROUND_SERVICE_SPECIAL_USE",
+    "android.permission.POST_NOTIFICATIONS",
+    // Non l'ha scritto nessuno: lo aggiunge AndroidX al merge, per proteggere i
+    // receiver registrati a runtime (`ContextCompat.registerReceiver`). E'
+    // definito da questa app, e' di livello `signature`, e quindi non concede
+    // niente a nessun altro. Il primo giro di questo controllo l'ha trovato —
+    // che e' esattamente cio' per cui esiste.
+    //
+    // Il segnaposto c'e' perche' il nome porta dentro l'applicationId, che nel
+    // debug ha il suffisso `.debug`: senza, il controllo passerebbe su una
+    // variante e fallirebbe sull'altra.
+    "\${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
+)
+
+/**
+ * Legge il manifest UNITO e fallisce se ci trova un permesso fuori lista.
+ *
+ * Input dichiarati e nessun riferimento allo script: cosi' la configuration
+ * cache lo accetta, e il task non rigira quando non e' cambiato niente.
+ */
+abstract class VerificaPermessi : DefaultTask() {
+    @get:org.gradle.api.tasks.InputFile
+    abstract val manifest: RegularFileProperty
+
+    @get:org.gradle.api.tasks.Input
+    abstract val consentiti: SetProperty<String>
+
+    /** Sostituito a `${applicationId}` nella lista: cambia fra le varianti. */
+    @get:org.gradle.api.tasks.Input
+    abstract val applicationId: Property<String>
+
+    @org.gradle.api.tasks.TaskAction
+    fun verifica() {
+        val testo = manifest.get().asFile.readText()
+        // Si prendono anche le `uses-permission-sdk-23`: sono permessi a tutti
+        // gli effetti, solo condizionati alla versione di Android.
+        val trovati = Regex("""<uses-permission(?:-sdk-23)?[^>]*android:name="([^"]+)"""")
+            .findAll(testo)
+            .map { it.groupValues[1] }
+            .toSet()
+        val ammessi = consentiti.get()
+            .map { it.replace("\${applicationId}", applicationId.get()) }
+            .toSet()
+        val estranei = (trovati - ammessi).sorted()
+        if (estranei.isNotEmpty()) {
+            throw GradleException(
+                buildString {
+                    appendLine("Permessi non previsti nel manifest unito:")
+                    estranei.forEach { appendLine("  - $it") }
+                    appendLine()
+                    appendLine("Non sono stati dichiarati qui: li porta una dipendenza.")
+                    appendLine("Se il permesso serve davvero, aggiungilo a `permessiConsentiti`")
+                    appendLine("in app/build.gradle.kts, con scritto perche'.")
+                    appendLine("Se non serve, toglilo con tools:node=\"remove\" nel manifest.")
+                }
+            )
+        }
+    }
+}
 
 plugins {
     id("com.android.application")
@@ -121,6 +209,28 @@ android {
                     output.outputFileName = "MusyBoard_${defaultConfig.versionName}-${variant.buildType}.apk"
                 }
             }
+
+            // Il controllo sui permessi, una volta per variante.
+            //
+            // Chiedere l'artefatto MERGED_MANIFEST porta con se' la dipendenza
+            // dal task che lo produce, quindi il controllo non puo' girare
+            // prima del merge — che e' il momento in cui i permessi delle
+            // dipendenze sono gia' dentro. Guardare il manifest sorgente non
+            // servirebbe a niente: e' proprio quello che NON contiene cio' che
+            // si sta cercando.
+            val controllo = tasks.register<VerificaPermessi>(
+                "verificaPermessi${variant.name.replaceFirstChar { it.uppercase() }}"
+            ) {
+                manifest.set(variant.artifacts.get(SingleArtifact.MERGED_MANIFEST))
+                consentiti.set(permessiConsentiti)
+                applicationId.set(variant.applicationId)
+            }
+            // Agganciato al pacchettizzatore e non ad `assemble`: cosi' vale
+            // anche per chi installa direttamente, e non solo per chi chiama il
+            // task che costruisce l'APK per intero.
+            tasks.matching {
+                it.name == "package${variant.name.replaceFirstChar { c -> c.uppercase() }}"
+            }.configureEach { dependsOn(controllo) }
         }
     }
 
