@@ -25,9 +25,6 @@ val permessiConsentiti = setOf(
     "android.permission.WRITE_USER_DICTIONARY",
     "android.permission.RECEIVE_BOOT_COMPLETED",
     "android.permission.VIBRATE",
-    // Solo per il dizionario dei nomi di HeliBoard, chiesto a runtime e dietro
-    // un interruttore: dichiarato non vuol dire concesso.
-    "android.permission.READ_CONTACTS",
     // Le tre del servizio che tiene vivo il processo della tastiera.
     "android.permission.FOREGROUND_SERVICE",
     "android.permission.FOREGROUND_SERVICE_SPECIAL_USE",

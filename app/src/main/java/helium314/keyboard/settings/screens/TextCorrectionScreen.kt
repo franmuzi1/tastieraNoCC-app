@@ -90,7 +90,6 @@ fun TextCorrectionScreen(
         if (prefs.getBoolean(Settings.PREF_SUGGEST_PUNCTUATION, Defaults.PREF_SUGGEST_PUNCTUATION))
             Settings.PREF_PUNCTUATION_SUGGESTIONS else null,
         Settings.PREF_SUGGEST_CLIPBOARD_CONTENT,
-        Settings.PREF_USE_CONTACTS,
         Settings.PREF_USE_APPS,
         if (prefs.getBoolean(Settings.PREF_KEY_USE_PERSONALIZED_DICTS, Defaults.PREF_KEY_USE_PERSONALIZED_DICTS))
             Settings.PREF_ADD_TO_PERSONAL_DICTIONARY else null,
@@ -243,25 +242,26 @@ fun createCorrectionSettings(context: Context) = listOf(
     ) {
         SwitchPreference(it, Defaults.PREF_SUGGEST_CLIPBOARD_CONTENT)
     },
-    Setting(context, Settings.PREF_USE_CONTACTS,
-        R.string.use_contacts_dict, R.string.use_contacts_dict_summary
-    ) { setting ->
-        val activity = LocalContext.current.getActivity() ?: return@Setting
-        var granted by remember { mutableStateOf(PermissionsUtil.checkAllPermissionsGranted(activity, Manifest.permission.READ_CONTACTS)) }
-        val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-            granted = it
-            if (granted)
-                activity.prefs().edit { putBoolean(setting.key, true) }
-        }
-        SwitchPreference(setting, Defaults.PREF_USE_CONTACTS,
-            allowCheckedChange = {
-                if (it && !granted) {
-                    launcher.launch(Manifest.permission.READ_CONTACTS)
-                    false
-                } else true
-            }
-        )
-    },
+    // keyboard-cipher: il dizionario dei nomi dalla rubrica NON c'e' piu', e
+    // con esso il permesso `READ_CONTACTS`.
+    //
+    // Il permesso era dichiarato, chiesto a runtime e dietro questo
+    // interruttore — quindi non concesso finche' nessuno lo accendeva. Ma
+    // **dichiarato si vede lo stesso**: nella schermata info dell'app e nella
+    // scheda dello store, «puo' leggere i tuoi contatti» compare accanto a una
+    // tastiera che si presenta come incapace di telefonare a casa. E' la riga
+    // che smentisce tutto il resto, e la smentisce a chi legge le etichette
+    // senza poter leggere il codice — cioe' a tutti.
+    //
+    // In cambio si perde il completamento dei nomi della rubrica. Poco, e della
+    // stessa famiglia di fughe che l'interruttore sul dizionario esiste per
+    // controllare: i nomi delle persone che frequenti finivano nei suggerimenti.
+    //
+    // Il codice del dizionario contatti resta dov'e', a monte: e' roba di
+    // HeliBoard e cancellarla renderebbe doloroso ogni merge futuro. Senza il
+    // permesso nel manifest non puo' partire — `checkAllPermissionsGranted`
+    // ritorna `false` per sempre — e il controllo sui permessi in
+    // `build.gradle.kts` adesso **impedisce** che il permesso torni per sbaglio.
     Setting(context, Settings.PREF_USE_APPS,
         R.string.use_apps_dict, R.string.use_apps_dict_summary
     ) { setting ->
