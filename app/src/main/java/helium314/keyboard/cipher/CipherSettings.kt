@@ -166,6 +166,34 @@ object CipherSettings {
 
     fun isLearn(context: Context): Boolean = isLearn(context.prefs())
 
+    /**
+     * Blocca screenshot, registrazione schermo e la miniatura che il sistema
+     * salva per la schermata Recenti, su tutto cio' che mostra del chiaro: la
+     * schermata di decifratura, la riga di composizione, il fumetto.
+     *
+     * Acceso di default, ed e' la scelta giusta per una tastiera che esiste per
+     * tenere il chiaro lontano da dove non deve stare. Si puo' spegnere, perche'
+     * a volte una schermata serve davvero — segnalare un difetto, mostrare a
+     * qualcuno come si usa — e senza interruttore l'unica via sarebbe
+     * ricompilare.
+     *
+     * **Cosa si perde spegnendolo**, e non e' solo «si possono fare
+     * screenshot»: il sistema salva **su disco** una miniatura della schermata
+     * con il testo decifrato per la lista delle app recenti, e resta li'; e
+     * qualunque app con registrazione schermo o proiezione — comprese quelle di
+     * condivisione lasciate attive per sbaglio — vede il chiaro.
+     *
+     * Il resto delle difese non dipende da questo interruttore: `noHistory`,
+     * `excludeFromRecents`, la chiusura in `onStop`, l'azzeramento degli array.
+     */
+    const val PREF_BLOCK_SCREENSHOT = "cipher_block_screenshot"
+    const val DEFAULT_BLOCK_SCREENSHOT = true
+
+    fun isBlockScreenshot(prefs: SharedPreferences): Boolean =
+        prefs.getBoolean(PREF_BLOCK_SCREENSHOT, DEFAULT_BLOCK_SCREENSHOT)
+
+    fun isBlockScreenshot(context: Context): Boolean = isBlockScreenshot(context.prefs())
+
     const val PREF_BLOCK_COPY = "cipher_block_copy"
     const val DEFAULT_BLOCK_COPY = true
 

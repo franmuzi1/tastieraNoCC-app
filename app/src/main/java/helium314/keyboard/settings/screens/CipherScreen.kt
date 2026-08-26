@@ -57,6 +57,10 @@ fun CipherScreen(
         // Stessa ragione: senza la riga il chiaro sta gia' nel campo dell'app, e
         // un divieto di copiarlo non proteggerebbe niente.
         if (enabled) CipherSettings.PREF_BLOCK_COPY else null,
+        // NON condizionato a `enabled`: la schermata di decifratura mostra del
+        // chiaro anche a riga spenta, quindi un interruttore che sparisce
+        // insieme alla riga nasconderebbe una protezione ancora attiva.
+        CipherSettings.PREF_BLOCK_SCREENSHOT,
         // Accanto al divieto di copia perche' rispondono alla stessa domanda —
         // dove finisce il chiaro oltre al campo dell'app — e questa e' la via
         // che non si vede: il dizionario personale entra nel backup di Android.
@@ -102,6 +106,12 @@ fun createCipherSettings(context: Context) = listOf(
         R.string.cipher_block_copy, R.string.cipher_block_copy_summary
     ) {
         SwitchPreference(it, CipherSettings.DEFAULT_BLOCK_COPY)
+    },
+    Setting(
+        context, CipherSettings.PREF_BLOCK_SCREENSHOT,
+        R.string.cipher_block_screenshot, R.string.cipher_block_screenshot_summary
+    ) {
+        SwitchPreference(it, CipherSettings.DEFAULT_BLOCK_SCREENSHOT)
     },
     Setting(
         context, CipherSettings.PREF_LEARN,

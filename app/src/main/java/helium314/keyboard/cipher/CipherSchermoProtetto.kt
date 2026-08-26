@@ -46,7 +46,12 @@ internal object CipherSchermoProtetto {
      */
     fun aggiorna(ime: InputMethodService?) {
         val finestra = ime?.window?.window ?: return
-        val serve = CipherPanel.isAperto() || CipherCompose.rigaASchermo()
+        // L'interruttore e' in `CipherSettings`, uno solo per tutta l'app:
+        // spegnendolo il chiaro diventa catturabile ovunque, qui e nella
+        // schermata di decifratura. Il costo per esteso sta accanto alla
+        // preferenza.
+        val serve = CipherSettings.isBlockScreenshot(finestra.context) &&
+            (CipherPanel.isAperto() || CipherCompose.rigaASchermo())
         runCatching {
             if (serve) {
                 finestra.setFlags(

@@ -1,5 +1,7 @@
 package helium314.keyboard.cipher
 
+import helium314.keyboard.event.HapticEvent
+import helium314.keyboard.latin.AudioAndHapticFeedbackManager
 import android.content.ClipboardManager
 import android.content.Context
 import android.inputmethodservice.InputMethodService
@@ -348,6 +350,25 @@ object CipherCompose {
         // I due tasti dentro la riga. `servizio` e' gia' assegnato qui sopra.
         view.findViewById<android.widget.ImageButton>(R.id.cipher_compose_send)?.apply {
             setOnClickListener { servizio?.let { CipherActions.encrypt(it) } }
+            // Pressione lunga: inserisce la propria presentazione, come sul
+            // tasto della toolbar.
+            //
+            // Mancava, e la ragione e' istruttiva: «cifra» e «invia in chiaro»
+            // sono stati spostati DENTRO la riga di composizione perche' sono i
+            // due che si usano di piu'. Ma i tasti della toolbar sono
+            // `ImageButton` con un tag, e la striscia li smista da sola a
+            // `getCodeForToolbarKeyLongClick`; questi due sono viste nostre, e
+            // di quel percorso non sanno niente. Spostando il tasto si e'
+            // portata la pressione breve e lasciata indietro quella lunga —
+            // cioe' l'unico modo che c'e' per mandare la propria chiave a
+            // qualcuno la prima volta.
+            setOnLongClickListener {
+                val ime = servizio ?: return@setOnLongClickListener false
+                AudioAndHapticFeedbackManager.getInstance()
+                    .performHapticFeedback(this, HapticEvent.KEY_LONG_PRESS)
+                CipherActions.insertIdentityCard(ime)
+                true
+            }
         }
         view.findViewById<android.widget.ImageButton>(R.id.cipher_compose_plain)?.apply {
             setOnClickListener { servizio?.let { CipherActions.sendPlain(it) } }

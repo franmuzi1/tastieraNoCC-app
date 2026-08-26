@@ -86,10 +86,16 @@ class DecryptActivity : ComponentActivity() {
         // Prima di qualunque cosa che possa finire sullo schermo.
         // Blocca screenshot, registrazione schermo, e la miniatura che il
         // sistema salva per la schermata Recenti.
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_SECURE,
-            WindowManager.LayoutParams.FLAG_SECURE,
-        )
+        //
+        // L'interruttore e' nelle impostazioni della cifratura, uno solo per
+        // tutta l'app. Acceso di default; il costo di spegnerlo e' scritto per
+        // esteso accanto alla preferenza.
+        if (CipherSettings.isBlockScreenshot(this)) {
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_SECURE,
+                WindowManager.LayoutParams.FLAG_SECURE,
+            )
+        }
         super.onCreate(savedInstanceState)
         // `savedInstanceState != null` significa che questa e' una rinascita:
         // il sistema ci aveva distrutti e ci rimette in piedi con lo stesso
