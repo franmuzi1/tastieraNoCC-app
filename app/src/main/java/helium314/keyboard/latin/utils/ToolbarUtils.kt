@@ -136,6 +136,15 @@ fun getCodeForToolbarKeyLongClick(key: ToolbarKey) = Settings.getInstance().getC
     // bootstrap del primo contatto, e sta qui perche' inserire nel campo e'
     // nativo per un IME mentre leggere la cronologia della chat non lo e'.
     ENCRYPT -> KeyCode.CIPHER_IDENTITY_CARD
+    // Pressione lunga su "contatti": la distruzione totale, dietro conferma.
+    //
+    // Sta qui e non su un tasto suo per due motivi. Un tasto dedicato
+    // occuperebbe la striscia per un gesto che si spera di non usare mai; e
+    // sarebbe un marcatore visibile — un pulsante «distruggi tutto» sulla
+    // tastiera dice a chiunque guardi lo schermo che qui c'e' qualcosa da
+    // distruggere. Sotto i contatti e' dove uno lo cercherebbe comunque, ed e'
+    // raggiungibile senza uscire da dove si sta scrivendo.
+    CONTACTS -> KeyCode.CIPHER_WIPE
     // Niente di diverso dalla pressione breve: consegnare il chiaro e' gia' la
     // cosa piu' irreversibile che questo tasto possa fare, e nasconderci sotto
     // una seconda azione significherebbe farla scattare per sbaglio.

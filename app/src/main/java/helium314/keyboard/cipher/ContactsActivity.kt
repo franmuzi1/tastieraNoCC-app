@@ -177,16 +177,23 @@ class ContactsActivity : ComponentActivity() {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Non mostra plaintext, ma mostra fingerprint: roba che non deve
-        // finire negli screenshot automatici dei Recenti. Prima di qualunque
-        // contenuto, come nelle altre Activity che mostrano roba riservata.
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_SECURE,
-            WindowManager.LayoutParams.FLAG_SECURE,
-        )
+        // Non mostra plaintext, ma mostra i nomi dei contatti e le loro
+        // impronte: roba che non deve finire negli screenshot automatici dei
+        // Recenti. Prima di qualunque contenuto, come nelle altre Activity che
+        // mostrano roba riservata.
+        //
+        // Passa dallo stesso interruttore delle altre: un blocco schermo che
+        // vale in tre schermate su quattro non e' un blocco, e' una sorpresa.
+        if (CipherSettings.isBlockScreenshot(this)) {
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_SECURE,
+                WindowManager.LayoutParams.FLAG_SECURE,
+            )
+        }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         nominaSubito()
+        distruggiSubito()
         setContent {
             Theme {
                 Surface {
@@ -204,6 +211,22 @@ class ContactsActivity : ComponentActivity() {
      * qualunque ragione non e' nel keyring — un pin non persistito, una corsa
      * fra processi — non si apre un dialogo su una chiave che non c'e'.
      */
+    private val daDistruggere: Boolean by lazy {
+        intent?.getBooleanExtra(EXTRA_DISTRUGGI, false) == true
+    }
+
+    /**
+     * Apre subito la conferma della distruzione totale, se ci si e' arrivati
+     * dalla pressione lunga sul tasto contatti.
+     *
+     * Non distrugge niente: mostra il dialogo, che e' lo stesso di sempre e
+     * dice cosa si perde. La scorciatoia accorcia la strada per **chiedere**,
+     * non salta la domanda.
+     */
+    private fun distruggiSubito() {
+        if (daDistruggere) dialogo = Dialogo.Reset
+    }
+
     private fun nominaSubito() {
         val chiave = daNominare ?: return
         val peer = CipherCore.nativeListPeers()
@@ -1134,6 +1157,7 @@ class ContactsActivity : ComponentActivity() {
     }
 
     companion object {
+        private const val EXTRA_DISTRUGGI = "cipher_distruggi"
         private const val EXTRA_ALLEGATO = "cipher_allegato"
         private const val EXTRA_SOLO_MEDIA = "cipher_solo_media"
         private const val EXTRA_NOMINA = "cipher_nomina"
@@ -1156,6 +1180,10 @@ class ContactsActivity : ComponentActivity() {
             Intent(context, ContactsActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
+
+        /** L'elenco con la conferma della distruzione totale gia' a schermo. */
+        fun intentDistruggi(context: android.content.Context): Intent =
+            intent(context).apply { putExtra(EXTRA_DISTRUGGI, true) }
 
         /** L'elenco con il dialogo "dai un nome" gia' aperto su [peer]. */
         fun intentNomina(context: android.content.Context, peer: ByteArray): Intent =

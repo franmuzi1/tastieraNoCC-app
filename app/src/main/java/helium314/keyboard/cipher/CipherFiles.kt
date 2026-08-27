@@ -187,5 +187,17 @@ object CipherFiles {
         File(dir, "kc-$suffix.$EXTENSION").apply { writeBytes(blob) }
     }.getOrNull()
 
+    /**
+     * Svuota la cartella da cui escono gli allegati cifrati.
+     *
+     * Chiamata dalla distruzione totale: quei file sono cifrati e non
+     * rivelano contenuti, ma la loro presenza dice **quando** hai mandato
+     * qualcosa, e sopravviverebbe a un gesto che promette di non lasciare
+     * niente.
+     */
+    fun svuotaCondivisione(context: Context) {
+        runCatching { File(context.cacheDir, "cipher-share").deleteRecursively() }
+    }
+
     private fun authority(context: Context) = context.packageName + ".cipherfiles"
 }

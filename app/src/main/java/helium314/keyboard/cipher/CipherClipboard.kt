@@ -66,6 +66,29 @@ internal object CipherClipboard {
         }.getOrNull()
     }
 
+    /**
+     * Svuota gli appunti di sistema.
+     *
+     * Chiamata dalla distruzione totale. E' la superficie piu' esposta che
+     * esista qui dentro: quel che sta negli appunti lo legge qualunque app che
+     * li chieda, e sopravvive alla distruzione di ogni chiave — perche' li' il
+     * testo e' gia' uscito dal sistema di cifratura.
+     *
+     * `clearPrimaryClip` esiste dalla 28; sotto si sovrascrive con una stringa
+     * vuota, che non e' la stessa cosa — resta un elemento negli appunti — ma
+     * toglie comunque di mezzo il contenuto, che e' il punto.
+     */
+    fun svuota(context: Context) {
+        val clip = manager(context) ?: return
+        runCatching {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                clip.clearPrimaryClip()
+            } else {
+                clip.setPrimaryClip(android.content.ClipData.newPlainText("", ""))
+            }
+        }
+    }
+
     private fun manager(context: Context): ClipboardManager? =
         context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
 

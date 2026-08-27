@@ -936,6 +936,30 @@ object CipherActions {
             .onFailure { toast(ime, R.string.cipher_unavailable) }
     }
 
+    /**
+     * Apre l'elenco contatti con gia' a schermo la conferma della distruzione
+     * totale: identita', portachiavi, nomi, gruppi, lapidi, statistiche,
+     * cartella di condivisione e appunti.
+     *
+     * **Non distrugge niente da sola.** Il gesto e' irreversibile e il dialogo
+     * che compare elenca cosa si perde, come qualunque altra distruzione in
+     * questa app. Quello che cambia rispetto a prima e' solo il numero di passi
+     * per arrivarci: da «sblocca, apri le impostazioni della tastiera, entra
+     * nei contatti, scorri, conferma» a «tieni premuto un tasto, conferma».
+     *
+     * Il limite, che va detto e non aggirato: e' un gesto **visibile**. Chi ti
+     * sta guardando lo schermo lo vede. Un gesto occulto vorrebbe dire un PIN
+     * dell'app con un secondo PIN che distrugge invece di aprire, e un PIN
+     * dell'app qui non c'e' — aggiungerlo significherebbe chiederlo a ogni uso
+     * della tastiera. Questo difende «sto per consegnare il telefono», non
+     * «me lo stanno strappando di mano».
+     */
+    fun distruggiTutto(ime: InputMethodService) {
+        if (!CipherSettings.isEnabled(ime)) return
+        runCatching { ime.startActivity(ContactsActivity.intentDistruggi(ime)) }
+            .onFailure { toast(ime, R.string.cipher_unavailable) }
+    }
+
     private fun chiediDestinatario(ime: InputMethodService) {
         val pacchetto = ime.currentInputEditorInfo?.packageName.orEmpty()
         if (pacchetto.isEmpty()) {

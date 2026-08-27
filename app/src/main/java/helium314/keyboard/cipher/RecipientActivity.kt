@@ -78,10 +78,14 @@ internal class RecipientActivity : ComponentActivity() {
     private var appDiProvenienza: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_SECURE,
-            WindowManager.LayoutParams.FLAG_SECURE,
-        )
+        // Stesso interruttore delle altre schermate: qui si vedono i nomi dei
+        // contatti, cioe' con chi parli.
+        if (CipherSettings.isBlockScreenshot(this)) {
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_SECURE,
+                WindowManager.LayoutParams.FLAG_SECURE,
+            )
+        }
         super.onCreate(savedInstanceState)
 
         appDiProvenienza = CipherHandoff

@@ -156,6 +156,19 @@ object CipherIdentity {
             // affinita', cioe' "chi sta insieme a chi" — un metadato piu' ricco
             // dell'elenco dei contatti, non piu' povero.
             CipherGroups.cancellaTutto(app)
+            // La cartella da cui escono gli allegati cifrati. Non e' un
+            // segreto — quei file sono cifrati — ma e' l'elenco di QUANDO hai
+            // mandato qualcosa, e resta leggibile a chiunque prenda il
+            // telefono. Vale lo stesso ragionamento delle lapidi qui sopra: un
+            // gesto che si chiama "butta via tutto" non puo' lasciare in giro
+            // la cronologia di cosa hai fatto.
+            CipherFiles.svuotaCondivisione(app)
+            // E gli appunti, se ci sta ancora dentro un nostro blob o il chiaro
+            // appena letto. E' la superficie piu' esposta di tutte: la vede
+            // qualunque app che chieda gli appunti, e sopravvive alla
+            // distruzione di ogni chiave — perche' li' il testo e' gia' fuori
+            // dal sistema di cifratura.
+            CipherClipboard.svuota(app)
             // Dopo i file: cancellare prima la chiave lascerebbe su disco due
             // blob non piu' decifrabili se la cancellazione dei file fallisse.
             CipherKeystore.deleteKey()
