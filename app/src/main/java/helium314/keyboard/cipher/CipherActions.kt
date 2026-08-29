@@ -1023,7 +1023,9 @@ object CipherActions {
     fun decryptFromClipboard(ime: InputMethodService) = decrypt(ime, clipboardOnly = true)
 
     private fun decrypt(ime: InputMethodService, clipboardOnly: Boolean) {
-        if (!ready(ime)) return
+        // `prontoPerLeggere` e non `ready`: la decifratura funziona anche con
+        // l'interruttore generale spento. Vedi il commento su quella funzione.
+        if (!prontoPerLeggere(ime)) return
         val text = source(ime, clipboardOnly) ?: return
 
         // ## Prima il pannello dentro la tastiera, come per l'apertura automatica
@@ -1138,7 +1140,22 @@ object CipherActions {
         // non ci sono, ma un codice puo' arrivare lo stesso da una scorciatoia
         // personalizzata rimasta in un profilo salvato.
         if (!CipherSettings.isEnabled(ime)) false
-        else when (CipherIdentity.ensureReady(ime)) {
+        else prontoPerLeggere(ime)
+
+    /**
+     * Come [ready], **senza** l'interruttore generale.
+     *
+     * Leggere e scrivere non sono la stessa facolta', e confonderle costava un
+     * difetto: spegnere la cifratura spegneva anche la decifratura. Ma un blob
+     * resta leggibile finche' si ha l'identita' con cui e' stato cifrato, e chi
+     * spegne l'interruttore sta dicendo "non voglio la riga di composizione" —
+     * non "buttate via i messaggi che mi arrivano".
+     *
+     * Serve comunque un'identita' pronta: senza non c'e' niente con cui
+     * decifrare, e l'interruttore non c'entra.
+     */
+    private fun prontoPerLeggere(ime: InputMethodService): Boolean =
+        when (CipherIdentity.ensureReady(ime)) {
             CipherState.Ready -> true
             CipherState.Locked -> {
                 toast(ime, R.string.cipher_locked)

@@ -751,6 +751,12 @@ object CipherCompose {
                 val figlio = barra.getChildAt(i) ?: continue
                 val chiave = figlio.tag as? ToolbarKey ?: continue
                 if (chiave == ToolbarKey.COMPOSE) continue
+                // Come COMPOSE, anche DECIFRA sopravvive alla riga assente.
+                // Leggere non dipende dalla riga di composizione: un messaggio
+                // in arrivo si apre anche quando non si ha nessuna intenzione
+                // di rispondere cifrando, e con l'interruttore spento questo
+                // era l'unico tasto che ancora avrebbe avuto senso — e spariva.
+                if (chiave == ToolbarKey.DECRYPT) continue
                 if (chiave in TASTI_CIFRATURA) figlio.isVisible = mostra
             }
         }

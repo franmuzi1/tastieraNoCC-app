@@ -322,7 +322,19 @@ private fun withCipherKeys(prefs: SharedPreferences, pref: String, default: Stri
     // interruttore che sparisce spegnendosi si puo' solo riaccendere dalle
     // impostazioni. Tutto il resto se ne va.
     if (!CipherSettings.isEnabled(prefs)) {
-        return keys.filterNot { it in cipherKeys && it != COMPOSE }
+        // **DECRYPT resta anche a cifratura spenta**, ed e' una correzione.
+        //
+        // Leggere e scrivere non sono la stessa facolta'. Spegnere la cifratura
+        // vuol dire "non voglio la riga di composizione": non vuol dire "non
+        // voglio piu' poter aprire i messaggi che mi arrivano". Un blob resta
+        // leggibile finche' si ha l'identita' con cui e' stato cifrato, e
+        // nascondere il tasto toglieva l'unica via che parte dalla tastiera —
+        // restavano il menu di condivisione e gli appunti, che sono piu' lunghi
+        // e che chi ha appena spento un interruttore non pensa a cercare.
+        //
+        // Il resto della cifratura se ne va davvero: cifrare, allegare,
+        // contatti. Quelle sono le facolta' che l'interruttore governa.
+        return keys.filterNot { it in cipherKeys && it != COMPOSE && it != DECRYPT }
     }
     val composizione = CipherSettings.isComposeMode(prefs)
     // COMPOSE resta anche a modalita' spenta: e' l'interruttore, cioe' l'unico
