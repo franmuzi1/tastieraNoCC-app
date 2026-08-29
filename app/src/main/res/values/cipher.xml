@@ -202,7 +202,7 @@
     <string name="cipher_keep_alive_other" tools:ignore="MissingTranslation">Ultima copia: non era un messaggio cifrato.</string>
     <string name="cipher_keep_alive_channel" tools:ignore="MissingTranslation">Tastiera sempre viva</string>
     <string name="cipher_forward_secrecy" tools:ignore="MissingTranslation">Forward secrecy</string>
-    <string name="cipher_forward_secrecy_summary" tools:ignore="MissingTranslation">Ogni messaggio porta una chiave nuova, e leggere una risposta butta le vecchie. Chi domani ti prendesse il telefono e la tua chiave non riaprirebbe quello che hai gia\' mandato. Il prezzo: i messaggi si aprono una volta sola, e riaprire una vecchia conversazione non sara\' piu\' possibile — nemmeno esportandola. Spegnila se ti serve poterla rileggere. Richiede che chi riceve abbia questa versione o piu\' recente e che tu sia gia\' fra i suoi contatti.</string>
+    <string name="cipher_forward_secrecy_summary" tools:ignore="MissingTranslation">Ogni messaggio porta una chiave nuova, e leggere una risposta butta le vecchie. Chi domani ti prendesse il telefono e la tua chiave non riaprirebbe quello che hai gia\' mandato. Il prezzo: una conversazione vecchia non si riapre piu\', nemmeno esportandola. Gli ultimi messaggi restano leggibili ancora per un po\', poi anche quelli si chiudono man mano che la conversazione va avanti. Spegnila se ti serve poterla rileggere. Richiede che chi riceve abbia questa versione o piu\' recente e che tu sia gia\' fra i suoi contatti.</string>
     <!--
         Stesso nome, chiave diversa da una dimenticata. Non accusa nessuno: dice
         che c'e' una contraddizione negli appunti dell'utente, e che l'unica
