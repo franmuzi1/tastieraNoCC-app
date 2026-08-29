@@ -690,7 +690,11 @@ class ContactsActivity : ComponentActivity() {
             titolo = stringResource(R.string.cipher_backup_import),
             corpo = stringResource(R.string.cipher_backup_import_conferma),
             azione = stringResource(R.string.cipher_backup_import_procedi),
-            chiudi = { chiudi(); azzeraPassphrase() },
+            // Annullando, la copia del dialogo va azzerata: e' l'unica via in
+            // cui `eseguiImport` non gira, quindi nessun altro la pulirebbe.
+            // Azzerarla anche dopo l'esecuzione non fa danno — `fill(0)` su un
+            // array gia' a zero e' un'operazione senza effetto.
+            chiudi = { chiudi(); richiesta.pass.fill(0); azzeraPassphrase() },
         ) { eseguiImport(richiesta.blob, richiesta.pass) }
     }
 
@@ -771,7 +775,19 @@ class ContactsActivity : ComponentActivity() {
             confirmButtonText = null,
             cancelButtonText = rinuncia,
             neutralButtonText = azione,
-            onNeutral = { chiudi(); esegui() },
+            // **Prima si esegue, poi si chiude**, e l'ordine non e' estetico.
+            //
+            // `chiudi` non e' sempre solo "togli il dialogo": chi lo usa ci
+            // attacca la pulizia di cio' che serviva al dialogo. Nella conferma
+            // di import ci azzera la passphrase — e la passphrase e' proprio
+            // l'argomento di `esegui`. Chiudendo per primo, l'import partiva con
+            // un array di zeri: **non poteva riuscire mai**, e il difetto si
+            // presentava come "il backup non si riapre", cioe' puntando il dito
+            // sul file invece che su chi lo legge.
+            //
+            // Invertire e' la correzione minima. Quella vera e' la regola: cio'
+            // che serve all'azione non si smonta prima dell'azione.
+            onNeutral = { esegui(); chiudi() },
             scrollContent = true,
             title = { Text(titolo) },
             content = { Text(corpo) },
@@ -1008,12 +1024,27 @@ class ContactsActivity : ComponentActivity() {
             toast(R.string.cipher_unavailable)
             return
         }
-        // La passphrase NON si azzera qui: serve ancora, dopo la conferma.
-        dialogo = Dialogo.ConfermaImport(blob, pass)
+        // Una **copia** per il dialogo, e poi si azzera subito l'originale.
+        //
+        // Prima il dialogo teneva lo stesso identico array di
+        // `passphraseInAttesa`: due riferimenti a una cosa sola, con due
+        // padroni che decidevano quando distruggerla. E' l'aliasing che ha reso
+        // possibile il difetto per cui l'import non riusciva mai — bastava che
+        // uno dei due azzerasse per primo.
+        //
+        // Con la copia le due vite sono separate: questa la azzera
+        // `eseguiImport` quando ha finito di usarla, l'originale sparisce qui.
+        dialogo = Dialogo.ConfermaImport(blob, pass.copyOf())
+        azzeraPassphrase()
     }
 
     private fun eseguiImport(blob: ByteArray, pass: ByteArray) {
         val esito = CipherIdentity.importBackup(this, blob, pass)
+        // `pass` e' la copia del dialogo e la azzera chi la possiede, cioe'
+        // questa funzione. `azzeraPassphrase` copre l'originale, che a questo
+        // punto e' gia' sparito: chiamarla lo stesso non costa niente ed evita
+        // di dover ragionare su quale delle due vie ci ha portati qui.
+        pass.fill(0)
         azzeraPassphrase()
         if (esito == CipherState.Ready) {
             // ## Non basta dire "importato"
