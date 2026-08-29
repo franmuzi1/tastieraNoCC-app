@@ -219,13 +219,20 @@ class DecryptActivity : ComponentActivity() {
         if (letturaDa != null &&
             (result.kind == CipherCore.KIND_MESSAGE || result.kind == CipherCore.KIND_OWN_MESSAGE)
         ) {
-            CipherRecipients.remember(this, appDiProvenienza, letturaDa)
-            // Anche fuori dall'app di provenienza. La via piu' usata per
-            // decifrare e' il menu di condivisione, che NON dice da dove viene
-            // il testo: li' `appDiProvenienza` e' vuoto, `remember` non fissava
-            // niente, e rispondere chiedeva di nuovo a chi — dopo aver appena
-            // letto un messaggio di quella persona.
-            CipherRecipients.ricordaUltimoLetto(this, letturaDa)
+            // Se l'app di provenienza si sa, il destinatario va **li' e solo
+            // li'**: e' la memoria per app, e due conversazioni in due app
+            // diverse non devono pestarsi i piedi.
+            //
+            // Se non si sa — ed e' il caso della via piu' usata, il menu di
+            // condivisione, che il sistema non attribuisce — si lascia una
+            // consegna in sospeso per la prima chat che si aprira'. Senza,
+            // leggere un messaggio dal menu di condivisione non sceglieva
+            // nessuno, e rispondere chiedeva di nuovo a chi.
+            if (appDiProvenienza.isEmpty()) {
+                CipherRecipients.ricordaUltimoLetto(this, letturaDa)
+            } else {
+                CipherRecipients.remember(this, appDiProvenienza, letturaDa)
+            }
         }
 
         when (result.kind) {

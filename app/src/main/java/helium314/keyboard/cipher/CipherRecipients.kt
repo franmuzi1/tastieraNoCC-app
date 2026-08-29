@@ -71,7 +71,19 @@ internal object CipherRecipients {
         // accanto alla riga.
         if (!CipherGroups.scegli(context, appPackage, null)) return false
         val current = load(context).toMutableMap()
-        if (current[appPackage]?.contentEquals(peer) == true) return true
+        // ## Fissare un destinatario annulla la consegna in sospeso
+        //
+        // Senza, una scelta a mano non sopravviveva. Scegliere il destinatario
+        // passa da una NOSTRA schermata, quindi il fuoco torna all'app subito
+        // dopo: se l'ultimo letto fosse rimasto in sospeso, quel ritorno lo
+        // avrebbe riapplicato **sopra** la scelta appena fatta. L'utente
+        // sceglieva Giuseppe e il messaggio partiva per Mario, senza che niente
+        // lo dicesse.
+        //
+        // Qui passano tutte le vie che fissano un destinatario, la manuale
+        // compresa: toglierla qui la toglie per tutte.
+        val cera = current.remove(ULTIMO_LETTO) != null
+        if (!cera && current[appPackage]?.contentEquals(peer) == true) return true
         current[appPackage] = peer
         save(context, current)
         return true
@@ -129,8 +141,25 @@ internal object CipherRecipients {
     fun ereditaUltimoLetto(context: Context, appPackage: String): Boolean {
         if (appPackage.isEmpty() || appPackage == ULTIMO_LETTO) return false
         val map = load(context)
-        if (map.containsKey(appPackage)) return false
         val ultimo = map[ULTIMO_LETTO] ?: return false
+        // **Sovrascrive** il destinatario dell'app, e poi si consuma. Sono due
+        // meta' della stessa regola, e da sole non funzionano.
+        //
+        // Sovrascrive perche' la regola e' quella scritta nel documento e
+        // confermata dall'utente: dentro un'app vince l'ultimo mittente letto.
+        // Riempire solo il vuoto — com'era — non faceva il mestiere: chi aveva
+        // gia' scritto a Giuseppe, leggeva un messaggio di Anna e tornava li',
+        // continuava a rispondere a Giuseppe.
+        //
+        // Si consuma perche' altrimenti la stessa lettura seguirebbe l'utente
+        // in **ogni** app aperta dopo, e nessuna scelta a mano
+        // sopravviverebbe. Vale per la prima chat che si apre dopo la lettura,
+        // cioe' quella in cui si sta andando a rispondere. Da li' in poi e' la
+        // memoria per app a tenerlo, e resta finche' non arriva un altro
+        // evento: un'altra lettura o una scelta a mano.
+        //
+        // Il consumo lo fa `remember`, che toglie la consegna: e' lo stesso
+        // gesto che la annulla quando la scelta e' a mano.
         return remember(context, appPackage, ultimo)
     }
 

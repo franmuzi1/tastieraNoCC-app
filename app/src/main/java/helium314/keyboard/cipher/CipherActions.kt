@@ -668,8 +668,10 @@ object CipherActions {
         val letturaDa = result.senderKey
         if (letturaDa != null) {
             val app = ime.currentInputEditorInfo?.packageName.orEmpty()
+            // Come in `DecryptActivity`: con l'app nota il destinatario va li'
+            // e basta; senza, resta in sospeso per la prima chat che si apre.
             if (app.isNotEmpty()) CipherRecipients.remember(ime, app, letturaDa)
-            CipherRecipients.ricordaUltimoLetto(ime, letturaDa)
+            else CipherRecipients.ricordaUltimoLetto(ime, letturaDa)
         }
         val bytes = result.plaintext ?: return Esito.NO
         // Il core consegna ByteArray e non String proprio per poterlo azzerare.
