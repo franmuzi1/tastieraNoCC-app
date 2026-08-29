@@ -220,6 +220,12 @@ class DecryptActivity : ComponentActivity() {
             (result.kind == CipherCore.KIND_MESSAGE || result.kind == CipherCore.KIND_OWN_MESSAGE)
         ) {
             CipherRecipients.remember(this, appDiProvenienza, letturaDa)
+            // Anche fuori dall'app di provenienza. La via piu' usata per
+            // decifrare e' il menu di condivisione, che NON dice da dove viene
+            // il testo: li' `appDiProvenienza` e' vuoto, `remember` non fissava
+            // niente, e rispondere chiedeva di nuovo a chi — dopo aver appena
+            // letto un messaggio di quella persona.
+            CipherRecipients.ricordaUltimoLetto(this, letturaDa)
         }
 
         when (result.kind) {

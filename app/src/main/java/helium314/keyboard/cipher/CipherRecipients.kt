@@ -86,8 +86,59 @@ internal object CipherRecipients {
      * ripristinare un destinatario che non esiste piu' sarebbe peggio che
      * chiederglielo di nuovo.
      */
+    /**
+     * Chiave riservata per «l'ultimo contatto di cui ho letto un messaggio».
+     *
+     * Uno spazio in testa: un nome di pacchetto Android non puo' contenerlo,
+     * quindi non collide con nessuna app reale e non serve un secondo file.
+     */
+    private const val ULTIMO_LETTO = " ultimo"
+
+    /**
+     * Registra chi ha scritto il messaggio appena aperto, **anche quando non si
+     * sa da quale app arrivava**.
+     *
+     * Serve perche' la memoria dei destinatari e' per app, e la via piu' usata
+     * per decifrare — il menu di condivisione — non dice da dove viene il testo:
+     * il sistema non lo attribuisce, e `getReferrer()` e' falsificabile, quindi
+     * non lo si usa. Il risultato era che leggere un messaggio dal menu di
+     * condivisione non sceglieva nessun destinatario, e rispondere chiedeva di
+     * nuovo a chi.
+     *
+     * Questo valore non sostituisce mai una scelta gia' fatta per un'app: vedi
+     * [ereditaUltimoLetto]. Riempie solo il vuoto, dove prima si chiedeva.
+     */
+    fun ricordaUltimoLetto(context: Context, peer: ByteArray): Boolean {
+        if (peer.size != KEY_LEN) return false
+        val current = load(context).toMutableMap()
+        if (current[ULTIMO_LETTO]?.contentEquals(peer) == true) return true
+        current[ULTIMO_LETTO] = peer
+        save(context, current)
+        return true
+    }
+
+    /**
+     * Da' a [appPackage] l'ultimo contatto letto, ma **solo se quell'app non ne
+     * ha gia' uno**.
+     *
+     * L'ordine di precedenza e' quello che conta: una scelta esplicita per
+     * un'app, o una fatta leggendo dentro quell'app, vince sempre. Questo e'
+     * l'ultimo gradino, quello che prima non c'era e lasciava la domanda "a chi
+     * scrivo?" senza risposta.
+     */
+    fun ereditaUltimoLetto(context: Context, appPackage: String): Boolean {
+        if (appPackage.isEmpty() || appPackage == ULTIMO_LETTO) return false
+        val map = load(context)
+        if (map.containsKey(appPackage)) return false
+        val ultimo = map[ULTIMO_LETTO] ?: return false
+        return remember(context, appPackage, ultimo)
+    }
+
     fun restore(context: Context) {
         for ((appPackage, peer) in load(context)) {
+            // La chiave riservata non e' un'app: darla al core come tale
+            // creerebbe un destinatario per un pacchetto che non esiste.
+            if (appPackage == ULTIMO_LETTO) continue
             CipherCore.nativeSetCurrentPeer(appPackage, peer)
         }
     }

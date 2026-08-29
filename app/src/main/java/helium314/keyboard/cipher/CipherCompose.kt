@@ -302,7 +302,20 @@ object CipherCompose {
             else -> CipherFields.nonComponeMessaggi(editorInfo)
         }
         if (suppressed) {
-            svuotaSovrascrivendo(connection?.buffer)
+            // **Non si svuota il buffer.** Sospendere vuol dire "le battute non
+            // vengono qui", ed e' tutto quello che serve: cancellare il
+            // messaggio e' un'azione in piu' che nessuno ha chiesto.
+            //
+            // Costava un bug quotidiano. Le NOSTRE schermate sospendono — e fra
+            // quelle ci sono "cambia destinatario" e la lettura di un messaggio
+            // cifrato, cioe' due cose che si fanno **mentre** si sta scrivendo.
+            // Chi scriveva mezza risposta, apriva il destinatario per correggere
+            // a chi stava mandando e tornava indietro, trovava il campo vuoto.
+            //
+            // Il chiaro in memoria non aumenta: era gia' li' un istante prima.
+            // E il travaso fra app resta impedito dal controllo su `owner` qui
+            // sotto, che e' il posto giusto — quello guarda a CHI appartiene il
+            // testo, non a cosa stava succedendo quando il fuoco se n'e' andato.
             updateRow()
             return
         }
@@ -316,6 +329,10 @@ object CipherCompose {
             svuotaSovrascrivendo(connection?.buffer)
         }
         owner = app
+        // Se quest'app non ha ancora un destinatario, eredita l'ultimo contatto
+        // letto. Non sovrascrive mai una scelta gia' fatta: e' l'ultimo
+        // gradino, quello che prima lasciava «a chi scrivo?» senza risposta.
+        servizio?.let { CipherRecipients.ereditaUltimoLetto(it, app) }
         updateRow()
         updateRecipient(app)
     }
@@ -640,10 +657,15 @@ object CipherCompose {
             val voce = tendina.findViewById<TextView>(id) ?: continue
             voce.setTextColor(colori.get(ColorType.KEY_TEXT))
             voce.setOnClickListener {
-                // Prima si chiude: "seleziona tutto" lascia una selezione viva,
-                // e una tendina che resta aperta sopra il risultato nasconde
-                // proprio cio' che si e' appena ottenuto.
-                chiudiMenu()
+                // "Seleziona tutto" e' l'unica voce che NON chiude la tendina,
+                // ed e' il comportamento di Android: selezionare tutto e' un
+                // preludio, non una conclusione — dopo si copia, si taglia o si
+                // elimina. Chiudendo si obbligava a tenere premuto di nuovo per
+                // riaprire il menu sulla selezione appena fatta.
+                //
+                // Le altre voci si chiudono perche' sono conclusioni: dopo aver
+                // copiato o incollato non c'e' un secondo gesto che segue.
+                if (codice != KeyCode.CLIPBOARD_SELECT_ALL) chiudiMenu()
                 (servizio as? LatinIME)?.onEvent(
                     Event.createSoftwareKeypressEvent(
                         codice, 0, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false,

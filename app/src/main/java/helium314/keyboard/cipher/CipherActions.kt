@@ -599,30 +599,6 @@ object CipherActions {
      * (e allora chi chiama non deve fare NIENTE, o rielaborerebbe il blob), o
      * non nostro da gestire qui.
      */
-    /**
-     * Aver letto un messaggio cifrato accende la cifratura, se era spenta.
-     *
-     * Chi apre un blob e' in una conversazione cifrata, punto: rispondere in
-     * chiaro non e' quasi mai cio' che vuole, e con la cifratura spenta non
-     * troverebbe nemmeno la riga in cui scrivere. Prima toccava accorgersi da
-     * soli che serviva un interruttore, e cercarlo.
-     *
-     * Accende e basta: non spegne mai da sola. Un automatismo che toglie una
-     * protezione e' un'altra categoria di cosa, e non la fa questa funzione.
-     */
-    private fun accendiPerLaRisposta(ime: InputMethodService) {
-        val prefs = ime.prefs()
-        if (CipherSettings.isEnabled(prefs)) return
-        prefs.edit().putBoolean(CipherSettings.PREF_ENABLED, true).apply()
-        CipherCompose.reload(ime)
-        // Come nel tasto in toolbar: da spenta la riga aveva congelato
-        // proprietario e sospensione sull'ultima app in cui era accesa, e
-        // questa accensione arriva proprio dopo aver letto un messaggio —
-        // cioe' quasi sempre in un'app diversa da quella di prima.
-        CipherCompose.risincronizza(ime)
-        KeyboardSwitcher.getInstance().setThemeNeedsReload()
-        avvisoUnaVolta(ime, "accesa_leggendo", R.string.cipher_on_after_read)
-    }
 
     private enum class Esito { PANNELLO, GESTITO, NO }
 
@@ -636,7 +612,19 @@ object CipherActions {
             result,
         )
         if (code != CipherCore.OK) return Esito.NO
-        accendiPerLaRisposta(ime)
+        // Qui prima si riaccendeva la cifratura da sola, se era spenta.
+        //
+        // Tolto su richiesta esplicita dell'utente, e la richiesta ha ragione:
+        // era un automatismo che **scavalcava un interruttore**. Chi spegneva la
+        // cifratura dalle impostazioni se la ritrovava accesa al primo messaggio
+        // letto, senza aver toccato niente — e la lettura di un messaggio e' il
+        // gesto piu' frequente che ci sia, quindi l'interruttore sembrava
+        // rotto. Una preferenza che il programma cambia da solo non e' una
+        // preferenza.
+        //
+        // Il motivo per cui era stato messo resta valido — chi apre un blob sta
+        // rispondendo, e con la cifratura spenta non trova la riga — ma la
+        // risposta giusta a quel problema e' dirglielo, non decidere per lui.
         // ## La presentazione mai vista non si puo' rielaborare
         //
         // `nativeHandleIncomingText` NON e' senza effetti: una chiave mai vista
@@ -681,6 +669,7 @@ object CipherActions {
         if (letturaDa != null) {
             val app = ime.currentInputEditorInfo?.packageName.orEmpty()
             if (app.isNotEmpty()) CipherRecipients.remember(ime, app, letturaDa)
+            CipherRecipients.ricordaUltimoLetto(ime, letturaDa)
         }
         val bytes = result.plaintext ?: return Esito.NO
         // Il core consegna ByteArray e non String proprio per poterlo azzerare.
