@@ -228,7 +228,28 @@ class DecryptActivity : ComponentActivity() {
             // consegna in sospeso per la prima chat che si aprira'. Senza,
             // leggere un messaggio dal menu di condivisione non sceglieva
             // nessuno, e rispondere chiedeva di nuovo a chi.
-            if (appDiProvenienza.isEmpty()) {
+            val gruppoLetto = result.isGroup == 1
+            if (gruppoLetto) {
+                // Un gruppo letto sceglie IL GRUPPO, non chi ha scritto:
+                // `remember` fissa una persona e cancella il gruppo, quindi la
+                // risposta sarebbe andata in privato al mittente.
+                //
+                // Il blob non porta l'elenco dei membri (decisione K), percio'
+                // il gruppo si riconosce solo confrontando con quelli salvati.
+                // Riconoscimento non univoco: non si sceglie, si dice, e il
+                // destinatario resta dov'era. Stessa regola della tastiera.
+                val gruppo = if (appDiProvenienza.isNotEmpty()) {
+                    CipherGroups.riconosci(this, letturaDa, result.recipientCount)
+                } else {
+                    null
+                }
+                if (gruppo != null) {
+                    CipherGroups.scegli(this, appDiProvenienza, gruppo.nome)
+                } else {
+                    Toast.makeText(this, R.string.cipher_group_unknown, Toast.LENGTH_LONG)
+                        .show()
+                }
+            } else if (appDiProvenienza.isEmpty()) {
                 CipherRecipients.ricordaUltimoLetto(this, letturaDa)
             } else {
                 CipherRecipients.remember(this, appDiProvenienza, letturaDa)

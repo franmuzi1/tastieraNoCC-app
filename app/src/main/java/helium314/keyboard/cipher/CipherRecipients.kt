@@ -86,6 +86,26 @@ internal object CipherRecipients {
         if (!cera && current[appPackage]?.contentEquals(peer) == true) return true
         current[appPackage] = peer
         save(context, current)
+        // ## Anche il core, non solo il disco
+        //
+        // Qui c'era il difetto per cui l'etichetta non si aggiornava dopo aver
+        // letto un messaggio. Il destinatario vive in due posti: su disco, che
+        // e' questa mappa, e dentro il core, che e' quello che l'interfaccia
+        // interroga per scrivere il nome accanto alla riga
+        // (`nativeCurrentPeerName`). Questa funzione aggiornava solo il primo.
+        //
+        // A riallinearli era la sola `restore`, all'avvio della tastiera.
+        // Quindi: leggevi un messaggio di Marco, su disco diventava Marco, e
+        // l'etichetta continuava a dire il nome di prima — finche' non si
+        // toccava qualcosa che passasse da `nativeSetCurrentPeer`, cioe' la
+        // scelta a mano. Da fuori sembrava che la lettura non scegliesse
+        // nessuno; in realta' sceglieva, e non lo diceva.
+        //
+        // Sta qui e non nei chiamanti per la stessa ragione per cui ci sta la
+        // cancellazione del gruppo: questo e' l'unico posto in cui si scrive
+        // "il destinatario di questa app e' questa persona", e le due meta' di
+        // quel fatto devono muoversi insieme.
+        CipherCore.nativeSetCurrentPeer(appPackage, peer)
         return true
     }
 

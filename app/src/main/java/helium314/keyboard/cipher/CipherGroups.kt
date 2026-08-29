@@ -63,6 +63,37 @@ internal object CipherGroups {
      * perche' "in quale chat scrivo a quale gruppo" e' un metadato piu' ricco
      * dell'elenco dei contatti, non piu' povero.
      */
+    /**
+     * Quale gruppo salvato corrisponde al messaggio appena letto, se uno solo.
+     *
+     * Un blob di gruppo **non contiene l'elenco dei membri**, e non e' una
+     * dimenticanza: la decisione K vieta gli identificatori per slot proprio
+     * perche' renderebbero verificabile dall'esterno chi fa parte del gruppo.
+     * Quello che il blob dice e' due cose sole: chi ha costruito gli slot e
+     * quante persone potevano leggerlo. Da queste si riconosce il gruppo
+     * **solo confrontandole con quelli salvati qui**, che sono roba locale.
+     *
+     * Due condizioni insieme:
+     *
+     * - il mittente e' uno dei membri. Ovvio ma non superfluo: taglia via i
+     *   gruppi della stessa dimensione a cui quella persona non appartiene;
+     * - il conteggio torna. `membri` sono gli **altri**, senza di noi, mentre
+     *   il conteggio del blob include tutti, mittente compreso — da cui il
+     *   `+ 1`, che siamo noi.
+     *
+     * Se combaciano in due, non si sceglie: preferire il primo vorrebbe dire
+     * indovinare in silenzio su chi legge il messaggio, che e' il tipo di
+     * errore piu' costoso che questo progetto possa fare. Chi chiama lo dice
+     * all'utente e lascia il destinatario dov'era.
+     */
+    fun riconosci(context: Context, mittente: ByteArray, quanti: Int): CipherGroup? =
+        tutti(context)
+            .filter { gruppo ->
+                gruppo.membri.size + 1 == quanti &&
+                    gruppo.membri.any { it.contentEquals(mittente) }
+            }
+            .singleOrNull()
+
     fun corrente(context: Context, appPackage: String): CipherGroup? {
         val stato = load(context)
         val nome = stato.scelte[appPackage] ?: return null

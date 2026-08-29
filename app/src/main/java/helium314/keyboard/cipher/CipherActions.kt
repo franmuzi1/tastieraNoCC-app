@@ -670,8 +670,45 @@ object CipherActions {
             val app = ime.currentInputEditorInfo?.packageName.orEmpty()
             // Come in `DecryptActivity`: con l'app nota il destinatario va li'
             // e basta; senza, resta in sospeso per la prima chat che si apre.
-            if (app.isNotEmpty()) CipherRecipients.remember(ime, app, letturaDa)
-            else CipherRecipients.ricordaUltimoLetto(ime, letturaDa)
+            val gruppoLetto = result.isGroup == 1
+            if (app.isEmpty()) {
+                // Senza app non si puo' fissare niente per nessuno; per le
+                // persone resta la consegna in sospeso, per i gruppi no —
+                // scegliere un gruppo e' per app come il resto.
+                if (!gruppoLetto) CipherRecipients.ricordaUltimoLetto(ime, letturaDa)
+            } else if (gruppoLetto) {
+                // ## Un gruppo letto sceglie IL GRUPPO, non chi ha scritto
+                //
+                // Prima passava di qui `remember`, che fissa una persona e
+                // **cancella il gruppo**: dopo aver letto nel gruppo, la
+                // risposta sarebbe andata in privato al mittente. Non e' quasi
+                // mai cio' che si vuole, e non lo diceva nessuno.
+                //
+                // Il gruppo si riconosce solo confrontando con quelli salvati:
+                // il blob non porta l'elenco dei membri, per scelta (decisione
+                // K). Se il riconoscimento non e' univoco non si sceglie e non
+                // si indovina: si dice, e il destinatario resta dov'era.
+                val gruppo = CipherGroups.riconosci(ime, letturaDa, result.recipientCount)
+                if (gruppo != null) {
+                    CipherGroups.scegli(ime, app, gruppo.nome)
+                } else {
+                    toast(ime, R.string.cipher_group_unknown)
+                }
+                CipherCompose.updateRecipient(app)
+            } else {
+                CipherRecipients.remember(ime, app, letturaDa)
+                // Ridisegnare **adesso**, non aspettare il prossimo
+                // `onStartInput`.
+                //
+                // Decifrando dalla tastiera il fuoco non lascia mai l'app,
+                // quindi `onInputStarted` non riparte e nessuno ridipinge
+                // l'etichetta: il destinatario era gia' cambiato e la riga
+                // continuava a mostrare il nome di prima, fino a un cambio di
+                // campo. E' proprio il caso in cui il cambio dovrebbe vedersi
+                // subito — hai appena letto quel messaggio, e la risposta la
+                // scrivi nella riga che hai davanti.
+                CipherCompose.updateRecipient(app)
+            }
         }
         val bytes = result.plaintext ?: return Esito.NO
         // Il core consegna ByteArray e non String proprio per poterlo azzerare.
