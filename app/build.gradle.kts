@@ -261,6 +261,29 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
+            // I test con Robolectric non partivano: `UnsatisfiedLinkError`,
+            // anche su quelli che c'erano da prima di questo fork.
+            //
+            // La causa non e' Robolectric: e' che **`/tmp` e' montato
+            // `noexec`** su questa macchina. Robolectric estrae li' le proprie
+            // librerie native — e Conscrypt la sua — e poi non puo' caricarle.
+            // L'eccezione lo dice per esteso e suggerisce da se' la via
+            // d'uscita; ci si arriva solo leggendo la causa in fondo alla
+            // catena, perche' in cima si vede solo un errore di link.
+            //
+            // Si spostano quindi in una cartella dentro `build/`, che sta nella
+            // home dell'utente ed e' eseguibile. Due proprieta' e non una:
+            // Conscrypt guarda la sua, tutto il resto guarda `java.io.tmpdir`.
+            //
+            // Non e' una toppa per un ambiente strano: `noexec` su `/tmp` e'
+            // una scelta di sicurezza comune, e un progetto che non gira sulle
+            // macchine indurite e' un progetto che non gira dove serve.
+            all {
+                val nativi = layout.buildDirectory.dir("tmp/robolectric-native").get().asFile
+                it.doFirst { nativi.mkdirs() }
+                it.systemProperty("org.conscrypt.native.workdir", nativi.absolutePath)
+                it.systemProperty("java.io.tmpdir", nativi.absolutePath)
+            }
         }
     }
 
