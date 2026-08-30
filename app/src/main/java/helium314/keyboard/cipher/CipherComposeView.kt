@@ -177,11 +177,31 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
 
     private fun raggioManiglia(): Float = RAGGIO_MANIGLIA_DP * resources.displayMetrics.density
 
+    /**
+     * Un offset che si puo' dare a `Layout` senza farlo esplodere.
+     *
+     * `getPrimaryHorizontal` e `getLineForOffset` indicizzano il testo: fuori
+     * intervallo sollevano, e qui sollevare vuol dire **la tastiera che
+     * sparisce mentre si scrive** — `disegnaManiglie` gira dentro `onDraw`.
+     *
+     * Non e' teoria. Gli estremi della selezione appartengono alla vista, ma il
+     * buffer viene svuotato **da fuori**: `CipherCompose.clear()` scrive
+     * direttamente sull'`Editable` dopo un invio riuscito. Fra quella scrittura
+     * e l'aggiornamento della selezione c'e' una finestra in cui gli estremi
+     * puntano oltre la fine del testo — cioe' selezionare qualcosa e premere
+     * invia.
+     *
+     * La protezione c'era su una chiamata e mancava su quella subito dopo, il
+     * che dice che il rischio era stato visto e poi perso di vista.
+     */
+    private fun offsetValido(offset: Int): Int = offset.coerceIn(0, text?.length ?: 0)
+
     /** Il centro della maniglia di un estremo, in coordinate della vista. */
     private fun centroManiglia(offset: Int): Pair<Float, Float>? {
         val l = layout ?: return null
-        val riga = l.getLineForOffset(offset.coerceIn(0, text?.length ?: 0))
-        val x = l.getPrimaryHorizontal(offset) + totalPaddingLeft - scrollX
+        val sicuro = offsetValido(offset)
+        val riga = l.getLineForOffset(sicuro)
+        val x = l.getPrimaryHorizontal(sicuro) + totalPaddingLeft - scrollX
         val y = l.getLineBottom(riga).toFloat() + totalPaddingTop - scrollY + raggioManiglia()
         return x to y
     }
@@ -245,7 +265,8 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
         if (selectionEnd <= selectionStart) return
         val l = layout ?: return
         val raggio = raggioManiglia()
-        for (offset in intArrayOf(selectionStart, selectionEnd)) {
+        for (grezzo in intArrayOf(selectionStart, selectionEnd)) {
+            val offset = offsetValido(grezzo)
             val riga = l.getLineForOffset(offset)
             canvas.drawCircle(
                 left + l.getPrimaryHorizontal(offset),
@@ -755,8 +776,12 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
         }
         if (!caretOn) return
 
-        val line = l.getLineForOffset(selectionEnd)
-        val x = left + l.getPrimaryHorizontal(selectionEnd)
+        // Come nelle maniglie: gli estremi passano da `offsetValido` prima di
+        // toccare `Layout`. Siamo dentro `onDraw`, e qui un'eccezione chiude la
+        // tastiera.
+        val fine = offsetValido(selectionEnd)
+        val line = l.getLineForOffset(fine)
+        val x = left + l.getPrimaryHorizontal(fine)
         canvas.drawRect(
             x,
             (top + l.getLineTop(line)).toFloat(),
@@ -773,11 +798,13 @@ class CipherComposeView(context: Context, attrs: AttributeSet?) : TextView(conte
      */
     private fun drawSelection(canvas: Canvas, left: Float, top: Float) {
         val l = layout ?: return
-        val firstLine = l.getLineForOffset(selectionStart)
-        val lastLine = l.getLineForOffset(selectionEnd)
+        val inizio = offsetValido(selectionStart)
+        val fine = offsetValido(selectionEnd)
+        val firstLine = l.getLineForOffset(inizio)
+        val lastLine = l.getLineForOffset(fine)
         for (line in firstLine..lastLine) {
-            val startX = if (line == firstLine) l.getPrimaryHorizontal(selectionStart) else l.getLineLeft(line)
-            val endX = if (line == lastLine) l.getPrimaryHorizontal(selectionEnd) else l.getLineRight(line)
+            val startX = if (line == firstLine) l.getPrimaryHorizontal(inizio) else l.getLineLeft(line)
+            val endX = if (line == lastLine) l.getPrimaryHorizontal(fine) else l.getLineRight(line)
             canvas.drawRect(
                 left + startX,
                 top + l.getLineTop(line),

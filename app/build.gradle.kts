@@ -130,7 +130,10 @@ android {
         minSdk = 21
         targetSdk = 36
         versionCode = 4006
-        versionName = "4.0-dev1"
+        // Versione del fork MusyBoard, non quella dell'HeliBoard da cui deriva.
+        // Il versionCode resta monotono per consentire l'aggiornamento degli
+        // APK gia' installati che dichiaravano 4.0-dev1.
+        versionName = "0.17.2-dev1"
         ndk {
             abiFilters.clear()
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
@@ -396,14 +399,17 @@ val buildCipherCore by tasks.registering(Exec::class) {
         }
     )
 
-    // Se il core non e' affiancato il task e' disattivato e il build prosegue:
-    // a fallire sara' il caricamento della libreria, dove il messaggio e'
-    // comprensibile. Un build rotto per un percorso sbagliato sarebbe molto
-    // piu' difficile da diagnosticare.
-    //
-    // `enabled` e non `onlyIf`: il secondo vuole una lambda, che verrebbe
-    // catturata dalla configuration cache.
-    enabled = cipherCoreAvailable
+    // Non proseguire senza il sorgente del core. `src/main/jniLibs` puo'
+    // contenere artefatti lasciati da una build precedente: saltare il task
+    // produrrebbe allora un APK apparentemente valido ma con codice
+    // crittografico vecchio. Il guasto deve essere esplicito e avvenire prima
+    // del packaging.
+    if (!cipherCoreAvailable) {
+        commandLine(
+            "sh", "-c",
+            "echo 'Core crittografico non trovato: ${cipherCoreDir.absolutePath}' >&2; exit 1",
+        )
+    }
 }
 
 tasks.named("preBuild") {
