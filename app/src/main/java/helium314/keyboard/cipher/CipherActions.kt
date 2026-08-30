@@ -988,6 +988,25 @@ object CipherActions {
             .onFailure { toast(ime, R.string.cipher_unavailable) }
     }
 
+    /**
+     * Il microfono e' vietato mentre la riga cifrata e' a schermo.
+     *
+     * Ritorna `true` se il chiamante deve **non** aprire la tastiera vocale.
+     *
+     * Vedi il commento in `LatinIME.onEvent`: la tastiera vocale e' un'altra
+     * tastiera, parla direttamente con l'app, e il dettato finirebbe in chiaro
+     * nel campo — con la riga cifrata davanti agli occhi a far credere il
+     * contrario. Non c'e' modo di deviarlo: non passa da noi.
+     *
+     * Si dice perche', invece di non fare niente: un tasto che non risponde
+     * sembra rotto, e chi non capisce il motivo lo riprova.
+     */
+    fun microfonoVietato(ime: InputMethodService): Boolean {
+        if (!CipherCompose.rigaASchermo()) return false
+        toast(ime, R.string.cipher_voice_blocked)
+        return true
+    }
+
     private fun chiediDestinatario(ime: InputMethodService) {
         val pacchetto = ime.currentInputEditorInfo?.packageName.orEmpty()
         if (pacchetto.isEmpty()) {

@@ -1474,6 +1474,24 @@ public class LatinIME extends InputMethodService implements
     // completely replace #onCodeInput.
     public void onEvent(@NonNull final Event event) {
         if (KeyCode.VOICE_INPUT == event.getKeyCode()) {
+            // keyboard-cipher: con la riga cifrata a schermo il microfono non
+            // si apre, e non e' una limitazione arbitraria.
+            //
+            // `switchToShortcutIme` passa a UN'ALTRA tastiera, quella vocale.
+            // Da quel momento noi siamo fuori dal giro: il dettato non
+            // attraversa la nostra connessione deviata, va **dritto nel campo
+            // dell'app, in chiaro**. Cioe' esattamente il posto da cui questo
+            // progetto esiste per tenerlo lontano.
+            //
+            // E l'utente non ha modo di aspettarselo: ha davanti la riga
+            // cifrata, detta dentro quella, e il testo compare da un'altra
+            // parte — o peggio non lo nota e preme invia nell'app.
+            //
+            // Non si puo' fare di meglio deviando: la tastiera vocale parla
+            // con l'app, non con noi, e non c'e' nessun punto in cui
+            // intercettarla. L'unica scelta onesta e' non aprirla e dire
+            // perche'.
+            if (CipherActions.INSTANCE.microfonoVietato(this)) return;
             mRichImm.switchToShortcutIme(this);
         }
         final InputTransaction completeInputTransaction =

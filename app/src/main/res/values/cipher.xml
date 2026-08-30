@@ -476,6 +476,9 @@
     <!-- Letto un messaggio di gruppo che non corrisponde a nessun gruppo
          salvato, o a piu' d'uno. Non si sceglie e non si indovina: si dice. -->
     <string name="cipher_group_unknown" tools:ignore="MissingTranslation">Gruppo non riconosciuto fra quelli salvati: il destinatario non è cambiato</string>
+    <!-- Il microfono apre un'ALTRA tastiera, che scrive dritto nel campo
+         dell'app: il dettato uscirebbe in chiaro. Non si puo' deviare. -->
+    <string name="cipher_voice_blocked" tools:ignore="MissingTranslation">Il dettato vocale scriverebbe in chiaro nell\'app: spegni la riga cifrata se vuoi usarlo</string>
     <!--
         Il destinatario quando e\' un gruppo. Il numero c\'e\' apposta: «Famiglia»
         da solo non dice a quante persone stai per mandare, e un gruppo che ha

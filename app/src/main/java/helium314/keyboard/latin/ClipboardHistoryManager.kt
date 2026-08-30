@@ -193,6 +193,19 @@ class ClipboardHistoryManager(
     }
 
     private fun isClipSensitive(inputType: Int): Boolean {
+        // keyboard-cipher: il nostro marcatore PRIMA di quello di sistema.
+        //
+        // `EXTRA_IS_SENSITIVE` esiste solo da Android 13: sotto, un testo
+        // appena decifrato sarebbe comparso **in chiaro nel suggerimento**,
+        // cioe' scritto a caratteri normali sulla striscia, dove resta finche'
+        // non lo si scaccia. Il nostro controllo confronta un digest e vale su
+        // tutte le versioni — e' gia' quello che tiene il decifrato fuori dalla
+        // cronologia, e serviva anche qui.
+        //
+        // Prima del flag di sistema e non dopo: se lo dice il nostro, non c'e'
+        // niente da chiedere alla piattaforma.
+        val testo = clipboardManager.primaryClip?.getItemAt(0)?.coerceToText(latinIME)
+        if (testo != null && CipherClipboard.isSensitive(testo)) return true
         ClipboardManagerCompat.getClipSensitivity(clipboardManager.primaryClip?.description)?.let { return it }
         return InputTypeUtils.isPasswordInputType(inputType)
     }
