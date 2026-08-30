@@ -129,11 +129,11 @@ android {
         applicationId = "helium314.keyboard"
         minSdk = 21
         targetSdk = 36
-        versionCode = 4006
+        versionCode = 4007
         // Versione del fork MusyBoard, non quella dell'HeliBoard da cui deriva.
         // Il versionCode resta monotono per consentire l'aggiornamento degli
         // APK gia' installati che dichiaravano 4.0-dev1.
-        versionName = "0.17.2-dev1"
+        versionName = "0.18.0-dev1"
         ndk {
             abiFilters.clear()
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
