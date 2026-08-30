@@ -134,6 +134,11 @@ android {
         // Il versionCode resta monotono per consentire l'aggiornamento degli
         // APK gia' installati che dichiaravano 4.0-dev1.
         versionName = "0.18.1-dev1"
+        // Test strumentati: girano su un dispositivo vero o su un emulatore,
+        // ed e' l'unico modo di provare cio' che passa dal core nativo — il
+        // `.so` e' un binario Android e sulla JVM non si carica — e da Android
+        // Keystore, che su JVM non esiste.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters.clear()
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
@@ -155,6 +160,16 @@ android {
             }
         }
     }
+
+    // I test strumentati si costruiscono contro `debugNoMinify`.
+    //
+    // Il `debug` normale ha R8 acceso — serve a far stare l'APK sotto il limite
+    // di GitHub — e su questo progetto R8 non riesce a compilare l'APK di test.
+    // Non vale la pena inseguirlo: `debugNoMinify` esiste gia' per gli stessi
+    // motivi (build piu' rapide, niente offuscamento) ed e' quello che si vuole
+    // sotto un test, dove l'offuscamento non aggiunge niente e toglie le tracce
+    // leggibili.
+    testBuildType = "debugNoMinify"
 
     buildTypes {
         release {
@@ -356,6 +371,9 @@ dependencies {
     implementation("com.google.zxing:core:3.5.3")
 
     // test
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("androidx.test:core:1.7.0")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
     testImplementation(kotlin("test"))
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.mockito:mockito-core:5.23.0")
