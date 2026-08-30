@@ -23,6 +23,7 @@ import helium314.keyboard.latin.common.StringUtils
 import helium314.keyboard.latin.common.getTouchedWordRange
 import helium314.keyboard.latin.dictionary.Dictionary
 import helium314.keyboard.latin.dictionary.ReadOnlyBinaryDictionary
+import helium314.keyboard.cipher.CipherCompose
 import helium314.keyboard.cipher.CipherFields
 import helium314.keyboard.latin.settings.Settings
 import kotlinx.coroutines.CoroutineScope
@@ -188,6 +189,20 @@ private fun isBackgroundGatheringUsed(context: Context, editorInfo: EditorInfo):
     // funzione gira quando il campo prende il fuoco, e la riga potrebbe non
     // essersi ancora aggiornata.
     if (CipherFields.rigaPrevistaSu(context, editorInfo)) return false
+    // E anche la riga **effettiva**, che non e' la stessa cosa.
+    //
+    // `rigaPrevistaSu` e' una previsione sul campo, e la previsione si puo'
+    // scavalcare: il tasto della cifratura forza la riga anche dove la
+    // classificazione diceva di no — una barra di ricerca, per dirne una. In
+    // quel caso la previsione resta `false`, la decisione era gia' stata presa
+    // all'arrivo del fuoco, e si sarebbe donato cio' che si scrive dentro la
+    // riga cifrata.
+    //
+    // Le due condizioni si sommano e non si sostituiscono: la previsione serve
+    // perche' al momento del fuoco la riga potrebbe non essersi ancora
+    // aggiornata, questa perche' la riga puo' comparire dopo. Basta che una
+    // delle due dica di no.
+    if (CipherCompose.rigaASchermo()) return false
     val inputAttributes = InputAttributes(editorInfo, false, "")
     if (inputAttributes.mInputType and InputType.TYPE_CLASS_TEXT == 0)
         return false // undefined (e.g. terminal apps) type should work, but will likely not allow to track corrections

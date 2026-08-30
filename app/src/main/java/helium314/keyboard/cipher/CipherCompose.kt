@@ -798,6 +798,12 @@ object CipherCompose {
         owner = app
         forzataSu = Triple(app, editorInfo.fieldId, editorInfo.inputType)
         suppressed = false
+        // La raccolta dei gesti si ricalcola **adesso**. La sua decisione viene
+        // presa all'arrivo del fuoco, quando la riga qui non c'era ancora e la
+        // classificazione del campo diceva di no: senza questa riga si
+        // continuerebbe a raccogliere cio' che si scrive dentro la riga
+        // cifrata, per donarlo. Vedi `isBackgroundGatheringUsed`.
+        (ime as? LatinIME)?.setGestureDataGatheringMode(editorInfo, false)
         updateRow()
         updateRecipient(app)
         return true
