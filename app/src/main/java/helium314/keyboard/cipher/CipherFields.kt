@@ -28,24 +28,43 @@ import helium314.keyboard.latin.utils.InputTypeUtils
  * la ricerca rompendo la cifratura. Il posto giusto per decidere e' prima: non
  * accendere la riga dove non si compone un messaggio.
  *
- * ## Il criterio
+ * ## Il criterio, e perche' e' stato rovesciato
  *
- * Si parte dal presupposto che un campo sia un compositore di messaggi, e si
- * spegne su prove contrarie. E' l'ordine giusto per due motivi: le app di chat
- * dichiarano il minimo indispensabile — spesso solo "testo" — quindi una lista
- * di campi AMMESSI le lascerebbe fuori; e un falso negativo (riga spenta in una
- * chat) toglie una funzione, mentre un falso positivo (riga accesa su una
- * ricerca) rompe il campo.
+ * Prima si partiva dal presupposto che un campo fosse un compositore di
+ * messaggi e si spegneva su prove contrarie: variante "filtro", azione "cerca",
+ * "vai", "avanti", "fatto", completamento automatico. Quell'elenco e' cresciuto
+ * ogni volta che qualcuno trovava la riga dove non doveva stare, ed e' finito
+ * per non bastare comunque: la barra di ricerca di WhatsApp non dichiara
+ * NIENTE — testo, riga singola, nessuna azione — quindi passava tutte le prove
+ * contrarie e si prendeva la riga cifrata.
  *
- * Le prove contrarie sono state allargate quando l'uso ha mostrato che la riga
- * restava accesa nei moduli — biglietti, registrazioni, ricerche interne alle
- * app — che dichiarano "avanti", "indietro" o "fatto" invece di "cerca".
- * Allargare e' diventato piu' sicuro da quando il tasto in toolbar puo'
- * **forzare** la riga: un falso negativo si ripara con un tocco, un falso
- * positivo no.
+ * Il difetto non era nell'elenco, era nella direzione: un elenco di prove
+ * contrarie puo' solo inseguire i campi che si comportano male, e chi non
+ * dichiara niente non lo si prende mai.
  *
- * Le prove contrarie, e cosa hanno in comune: sono tutte campi a **uso unico**,
- * dove il testo e' un parametro e non un discorso.
+ * Adesso la riga si accende **solo su prova a favore**, e le prove sono due:
+ *
+ *  - il campo accetta gli **a capo**. Un campo multiriga e' fatto per un testo
+ *    che si scrive, non per un parametro che si compila: le barre di ricerca, i
+ *    codici e le caselle dei moduli sono a riga singola per costruzione, perche'
+ *    li' l'invio serve a confermare. E' il segnale che gia' prima vinceva su
+ *    tutti gli altri, ed e' quello che tiene dentro WhatsApp, Telegram, Signal e
+ *    gli SMS: i loro compositori sono tutti multiriga;
+ *  - il campo dichiara **"invia"**. E' la sola azione che significa "questo
+ *    testo se ne va da qui", e i compositori a riga singola che esistono la
+ *    dichiarano.
+ *
+ * ## Cosa costa il rovesciamento
+ *
+ * Un compositore di chat a riga singola che non dichiara nemmeno "invia" resta
+ * fuori, e li' la riga va accesa a mano. E' un falso negativo, e si ripara con
+ * un tocco sul tasto in toolbar che **forza** la riga; un falso positivo — la
+ * riga accesa su una ricerca — non si ripara affatto, perche' li' il testo
+ * finisce nel nostro buffer, il campo dell'app resta vuoto e il tasto "cerca"
+ * viene ingoiato. La bilancia pende da questa parte, ed e' lo stesso argomento
+ * che aveva gia' fatto allargare le prove contrarie: da quando la forzatura
+ * esiste, sbagliare per difetto costa un tocco e sbagliare per eccesso rompe il
+ * campo.
  */
 internal object CipherFields {
 
@@ -91,88 +110,40 @@ internal object CipherFields {
      * possibile senza che si veda.
      */
     fun nonComponeMessaggi(editorInfo: EditorInfo): Boolean {
-        val inputType = editorInfo.inputType
-
         // Le password vengono prima, e sono l'unico caso non scavalcabile.
         if (vietata(editorInfo)) return true
 
-        // ## Multiriga vuol dire prosa, e la prosa e' un messaggio
+        val inputType = editorInfo.inputType
+
+        // Fuori da TYPE_CLASS_TEXT non si compone niente: numeri, telefono,
+        // date sono campi che l'app legge per farci qualcosa, non per spedirli.
+        // La classe si estrae con TYPE_MASK_CLASS, non confrontando l'intero,
+        // che porta i flag e le varianti.
         //
-        // Questa prova viene PRIMA di tutte le altre e le annulla, ed e' una
-        // correzione: allargando le esclusioni ai moduli — "avanti", "fatto",
-        // completamento automatico — si e' preso dentro anche Telegram, dove la
-        // riga ha smesso di comparire. Cioe' proprio il posto per cui esiste.
-        //
-        // Un campo che accetta gli a capo e' fatto per un testo che si scrive,
-        // non per un parametro che si compila: le barre di ricerca, i codici e
-        // le caselle dei moduli sono a riga singola per costruzione, perche' li'
-        // l'invio serve a confermare. Percio' e' un segnale piu' forte di
-        // qualunque azione dichiarata sul tasto invio, e la vince.
-        //
-        // Il prezzo: una casella "note" multiriga dentro un modulo avra' la
-        // riga cifrata senza che serva. E' un fastidio, mentre una chat senza
-        // riga e' la funzione che non c'e' — e la bilancia, qui, pende da
-        // quella parte.
-        // Il bit va letto solo dentro TYPE_CLASS_TEXT: fuori di li' non
-        // significa "piu' righe", significa un bit qualunque di un'altra
-        // classe. Senza questo vincolo un `inputType` malformato di una classe
-        // numerica potrebbe accendere la riga cifrata su un campo che non e'
+        // Il vincolo serve anche a proteggere la prova qui sotto: fuori da
+        // questa classe il bit "multiriga" non significa "piu' righe",
+        // significa un bit qualunque di un'altra classe, e un `inputType`
+        // malformato accenderebbe la riga cifrata su un campo che non e'
         // nemmeno testo.
-        val testo = inputType and InputType.TYPE_MASK_CLASS == InputType.TYPE_CLASS_TEXT
-        if (testo && inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE != 0) return false
+        if (inputType and InputType.TYPE_MASK_CLASS != InputType.TYPE_CLASS_TEXT) return true
 
-        // Numeri, telefono, date. Non sono discorsi, e cifrarli non ha senso —
-        // ma soprattutto sono campi che l'app legge per farci qualcosa, non per
-        // spedirli. Nota: la classe si estrae con TYPE_MASK_CLASS, non
-        // confrontando l'intero, che porta i flag e le varianti.
-        when (inputType and InputType.TYPE_MASK_CLASS) {
-            InputType.TYPE_CLASS_NUMBER,
-            InputType.TYPE_CLASS_PHONE,
-            InputType.TYPE_CLASS_DATETIME,
-            -> return true
-        }
+        // Prima prova a favore: accetta gli a capo, quindi e' fatto per un
+        // testo che si scrive.
+        if (inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE != 0) return false
 
-        // Varianti del testo che dicono a cosa serve il campo. `FILTER` e' la
-        // variante delle barre di ricerca e dei filtri di lista, ed e' il caso
-        // che ha fatto scoprire il difetto.
-        when (inputType and InputType.TYPE_MASK_VARIATION) {
-            InputType.TYPE_TEXT_VARIATION_URI,
-            InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
-            InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS,
-            InputType.TYPE_TEXT_VARIATION_FILTER,
-            InputType.TYPE_TEXT_VARIATION_POSTAL_ADDRESS,
-            InputType.TYPE_TEXT_VARIATION_PERSON_NAME,
-            -> return true
-        }
-
-        // L'azione dichiarata sul tasto invio. "Cerca" e "vai" sono di campi a
-        // uso unico; "invia" NON e' fra queste, ed e' proprio quella delle
-        // chat.
+        // Seconda prova a favore: dichiara "invia". Si guarda l'azione grezza e
+        // non `getImeOptionsActionIdFromEditorInfo`, che traduce l'etichetta
+        // personalizzata in un valore sentinella: qui serve sapere cosa ha
+        // dichiarato l'app, non cosa la tastiera ne fa.
         //
-        // Si guarda l'azione grezza e non `getImeOptionsActionIdFromEditorInfo`,
-        // che traduce l'etichetta personalizzata in un valore sentinella: qui
-        // serve sapere cosa ha dichiarato l'app, non cosa la tastiera ne fa.
-        when (editorInfo.imeOptions and EditorInfo.IME_MASK_ACTION) {
-            EditorInfo.IME_ACTION_SEARCH,
-            EditorInfo.IME_ACTION_GO,
-            // "Avanti" e "indietro" sono navigazione fra i campi di un modulo:
-            // un compositore di messaggi non ce li ha mai, perche' non c'e' un
-            // campo dopo. Sono il segnale piu' pulito che esista qui —
-            // biglietti, registrazioni, indirizzi di spedizione.
-            EditorInfo.IME_ACTION_NEXT,
-            EditorInfo.IME_ACTION_PREVIOUS,
-            // "Fatto" chiude la scrittura, non la spedisce. Le chat usano
-            // "invia" oppure nessuna azione (sono multiriga): "fatto" e' dei
-            // campi che si compilano.
-            EditorInfo.IME_ACTION_DONE,
-            -> return true
+        // "Cerca", "vai", "avanti", "indietro" e "fatto" non compaiono piu' in
+        // un elenco di esclusioni: non essendo "invia", cadono da sole.
+        if (editorInfo.imeOptions and EditorInfo.IME_MASK_ACTION == EditorInfo.IME_ACTION_SEND) {
+            return false
         }
 
-        // Completamento automatico: e' il campo che propone voci mentre scrivi
-        // — ricerche, stazioni, indirizzi. Chi compone un messaggio non ha
-        // niente da completare.
-        if (inputType and InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE != 0) return true
-
-        return false
+        // Nessuna prova a favore: riga spenta, e il tasto in toolbar resta la
+        // via per accenderla dove serve.
+        return true
     }
 }

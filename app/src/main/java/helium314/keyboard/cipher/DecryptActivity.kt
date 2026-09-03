@@ -190,7 +190,16 @@ class DecryptActivity : ComponentActivity() {
             // L'abbiamo scritto noi ma non si trova piu' a chi: e' un esito
             // normale, non un guasto, e dirlo com'e' evita di far cercare un
             // problema che non c'e'.
+            //
+            // Due codici e non uno, perche' le cause sono due e la differenza
+            // conta per chi legge. Il primo dice che il destinatario non e'
+            // piu' in rubrica; il secondo che c'e' ancora, ma la chiave verso
+            // cui il messaggio era cifrato e' stata sostituita o bruciata.
+            // Mandare tutto sul primo avviso — com'era — spediva l'utente a
+            // cercare un contatto sparito che non era sparito affatto.
             CipherCore.OWN_MESSAGE -> return showNotice(R.string.cipher_own_message_no_peer)
+            CipherCore.OWN_MESSAGE_KEY_GONE ->
+                return showNotice(R.string.cipher_own_message_key_gone)
             CipherCore.OK -> Unit
             else -> return showNotice(R.string.cipher_unavailable)
         }
@@ -345,6 +354,8 @@ class DecryptActivity : ComponentActivity() {
             CipherCore.TIER_UNSUPPORTED -> return showNotice(R.string.cipher_tier_unsupported)
             CipherCore.CRYPTO -> return showNotice(R.string.cipher_cannot_decrypt)
             CipherCore.OWN_MESSAGE -> return showNotice(R.string.cipher_own_message_no_peer)
+            CipherCore.OWN_MESSAGE_KEY_GONE ->
+                return showNotice(R.string.cipher_own_message_key_gone)
             // Un file qualunque che non e' nostro finisce qui, ed e' l'esito
             // piu' comune: il filtro dell'intent prende tutti gli
             // `application/octet-stream`, perche' e' l'unica cosa su cui puo'

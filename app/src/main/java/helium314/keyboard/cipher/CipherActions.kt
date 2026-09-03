@@ -113,6 +113,17 @@ object CipherActions {
     private const val ATTESA_FINESTRA_MS = 400L
 
     /**
+     * Quanto si aspetta, dopo un invio, prima di guardare se il campo si e'
+     * svuotato — cioe' se il messaggio e' partito davvero.
+     *
+     * Sbagliare per eccesso costa la parte successiva che compare con un
+     * ritardo visibile; sbagliare per difetto costa la parte successiva che
+     * non compare affatto, perche' il campo era ancora pieno e la coda e'
+     * rimasta ferma. Mezzo secondo sta largo su entrambe le app che contano.
+     */
+    private const val ATTESA_INVIO_MS = 500L
+
+    /**
      * Sostituisce il contenuto del campo con il blob cifrato.
      *
      * Il destinatario NON si indovina: lo decide il core in base all'app
@@ -122,6 +133,14 @@ object CipherActions {
      */
     fun encrypt(ime: InputMethodService) {
         if (!ready(ime)) return
+        // C'e' una parte in attesa su questo campo: il tasto la consegna invece
+        // di cominciare un messaggio nuovo. E' la via di riserva — normalmente
+        // la parte successiva arriva da sola dopo l'invio — e serve quando
+        // l'invio non e' passato di qui: un tocco sul pulsante dell'app,
+        // l'invio automatico spento, una chat riaperta dopo un giro altrove.
+        // [consegnaProssimaParte] pretende comunque il campo vuoto, quindi
+        // premere il lucchetto su un testo appena scritto cifra quello.
+        if (consegnaProssimaParte(ime)) return
         val pacchetto = ime.currentInputEditorInfo?.packageName.orEmpty()
         // Un gruppo scelto conta come destinatario: senza questo controllo il
         // ramo qui sotto chiederebbe di sceglierne uno singolo, cioe' la
@@ -160,18 +179,76 @@ object CipherActions {
         // loro. Se l'utente si fosse messo fra i membri, il core toglie il
         // doppione e gli slot saranno uno meno: sbagliare di uno per eccesso e'
         // la direzione giusta.
-        val stimato = stimaBlob(field.text, if (gruppo != null) gruppo.membri.size + 1 else 0)
+        val slot = if (gruppo != null) gruppo.membri.size + 1 else 0
+        val stimato = stimaBlob(field.text, slot)
         if (stimato > MAX_BLOB_CHARS) {
-            val daTogliere = ((stimato - MAX_BLOB_CHARS) * 5 / 8).coerceAtLeast(1)
-            toast(ime, R.string.cipher_message_too_long)
-            KeyboardSwitcher.getInstance().showToast(
-                ime.getString(R.string.cipher_message_too_long_detail, daTogliere),
-                false,
-            )
+            // Non ci sta in un messaggio solo: si spezza invece di rifiutare.
+            // Rifiutare era corretto e inutile — chi scrive non riscrive piu'
+            // corto un messaggio lungo, e con la riga di composizione accesa
+            // quel testo vive solo nel nostro buffer, dietro un avviso che
+            // passa. La stessa stima che decideva il rifiuto adesso guida il
+            // taglio: [CipherParti] non la rifa', la interroga.
+            val parti = CipherParti.dividi(field.text) { stimaBlob(it, slot) <= MAX_BLOB_CHARS }
+            if (parti == null) {
+                // Nemmeno spezzando: qui il rifiuto resta quello di prima, con
+                // quanto tagliare, perche' e' l'unica cosa utile che si possa
+                // dire a chi ha incollato un documento intero in una chat.
+                val daTogliere = ((stimato - MAX_BLOB_CHARS) * 5 / 8).coerceAtLeast(1)
+                toast(ime, R.string.cipher_message_too_long)
+                KeyboardSwitcher.getInstance().showToast(
+                    ime.getString(R.string.cipher_message_too_long_detail, daTogliere),
+                    false,
+                )
+                return
+            }
+            spezzaECifra(ime, ic, field, composed != null, gruppo, parti)
             return
         }
 
-        val plaintext = field.text.toByteArray()
+        // Da qui e' un messaggio nuovo che ci sta in un pezzo solo: se una coda
+        // era rimasta in piedi — parti mai spedite, e l'utente ha ricominciato
+        // — muore adesso. Tenerla vorrebbe dire che il prossimo invio fa
+        // comparire nel campo il pezzo di un messaggio abbandonato.
+        CipherParti.scarta()
+        val blob = cifraUno(ime, gruppo, field.text) ?: return
+        if (gruppo != null) {
+            consegna(ime, ic, field, composed != null, blob)
+            return
+        }
+        // Su disco SUBITO, prima che il blob esca. Con la forward secrecy
+        // accesa cifrare non e' piu' un'operazione di sola lettura: genera una
+        // chiave temporanea nuova, e se il processo muore prima che sia
+        // salvata la risposta dell'altro arriva cifrata verso una chiave che
+        // non esiste piu'. Il costo e' una scrittura per messaggio inviato.
+        // L'esito si guarda. Con la forward secrecy accesa cifrare ha appena
+        // generato una chiave usa-e-getta, e se non arriva su disco il
+        // messaggio parte lo stesso ma la risposta non si aprira' mai: un
+        // fallimento che si manifesta ore dopo, a carico dell'altra persona.
+        // Qui si e' ancora in tempo — il campo non e' stato toccato — quindi si
+        // annulla invece di spedire.
+        if (!CipherIdentity.persistKeyring(ime)) {
+            toast(ime, R.string.cipher_keyring_not_saved_send)
+            return
+        }
+        consegna(ime, ic, field, composed != null, blob)
+    }
+
+    /**
+     * Cifra un testo solo, per un gruppo o per il destinatario dell'app.
+     *
+     * `null` quando non si e' potuto, **con l'avviso gia' dato**: il chiamante
+     * deve solo smettere. Estratta quando e' arrivata la spezzatura, che cifra
+     * N volte di seguito e non poteva ricopiarsi dentro questa scelta.
+     *
+     * Il chiaro esce da qui azzerato in ogni caso: e' l'unica copia che questo
+     * strato controlla, e un `return` in mezzo non deve poterla saltare.
+     */
+    private fun cifraUno(
+        ime: InputMethodService,
+        gruppo: CipherGroup?,
+        testo: String,
+    ): String? {
+        val plaintext = testo.toByteArray()
         // Un gruppo si cifra con la sua via: una chiave di contenuto sola e uno
         // slot per persona. **Non ha forward secrecy** — l'interruttore qui non
         // si guarda nemmeno, perche' non c'e' niente da decidere: vedi la
@@ -204,10 +281,8 @@ object CipherActions {
                     if (motivo[0] == CipherCore.UNKNOWN_PEER) R.string.cipher_group_member_gone
                     else R.string.cipher_group_failed,
                 )
-                return
             }
-            consegna(ime, ic, field, composed != null, blobGruppo)
-            return
+            return blobGruppo
         }
         val blob = try {
             CipherCore.nativeEncryptForApp(
@@ -219,30 +294,121 @@ object CipherActions {
         } finally {
             plaintext.fill(0)
         }
-
         if (blob == null) {
             // Un vicolo cieco diventa il punto d'ingresso: chiedere "a chi?" e
             // non offrire il modo di rispondere e' il motivo per cui il tasto
             // sembrava rotto.
             chiediDestinatario(ime)
-            return
         }
-        // Su disco SUBITO, prima che il blob esca. Con la forward secrecy
-        // accesa cifrare non e' piu' un'operazione di sola lettura: genera una
-        // chiave temporanea nuova, e se il processo muore prima che sia
-        // salvata la risposta dell'altro arriva cifrata verso una chiave che
-        // non esiste piu'. Il costo e' una scrittura per messaggio inviato.
-        // L'esito si guarda. Con la forward secrecy accesa cifrare ha appena
-        // generato una chiave usa-e-getta, e se non arriva su disco il
-        // messaggio parte lo stesso ma la risposta non si aprira' mai: un
-        // fallimento che si manifesta ore dopo, a carico dell'altra persona.
-        // Qui si e' ancora in tempo — il campo non e' stato toccato — quindi si
-        // annulla invece di spedire.
+        return blob
+    }
+
+    /**
+     * Il messaggio non ci sta in un blob solo: si spezza, si cifra ogni parte
+     * per conto suo, si consegna la prima e le altre restano in coda.
+     *
+     * ## L'ordine, che e' tutto
+     *
+     * Prima si cifra **tutto**, poi si tocca il campo. E' la stessa regola per
+     * cui la stima esiste: scoprire alla terza parte che qualcosa non va,
+     * quando le prime due sono gia' partite, vorrebbe dire aver spedito mezzo
+     * messaggio senza modo di ritirarlo. Se una qualunque delle parti non si
+     * cifra, qui non e' successo niente e il testo e' ancora dov'era.
+     *
+     * Il keyring si salva una volta sola, dopo tutte: con la forward secrecy
+     * accesa ogni parte ha generato una chiave temporanea, e sono tutte nella
+     * stessa struttura in memoria.
+     */
+    private fun spezzaECifra(
+        ime: InputMethodService,
+        ic: InputConnection,
+        field: Field,
+        dallaRiga: Boolean,
+        gruppo: CipherGroup?,
+        parti: List<String>,
+    ) {
+        val blob = ArrayList<String>(parti.size)
+        for (parte in parti) {
+            blob.add(cifraUno(ime, gruppo, parte) ?: return)
+        }
+        // I gruppi non hanno chiavi nuove da salvare (niente forward secrecy),
+        // ma il controllo non costa e vale per entrambe le vie.
         if (!CipherIdentity.persistKeyring(ime)) {
             toast(ime, R.string.cipher_keyring_not_saved_send)
             return
         }
-        consegna(ime, ic, field, composed != null, blob)
+        // La coda si prende **dopo** che la prima parte e' arrivata nel campo.
+        // Prima significherebbe che una consegna fallita lascia in attesa le
+        // parti dalla seconda in poi: il gesto successivo consegnerebbe la
+        // seconda al posto della prima, e il messaggio arriverebbe all'altro
+        // scombinato invece che a meta'.
+        if (!consegna(ime, ic, field, dallaRiga, blob.first())) return
+        CipherParti.accoda(ime.currentInputEditorInfo, blob.drop(1), blob.size)
+        annunciaParte(ime, 1, blob.size)
+        // La prima parte puo' essere gia' partita da sola, se l'invio
+        // automatico e' acceso: allora la seconda la segue senza aspettare un
+        // gesto. La coda non esisteva ancora quando [consegna] ci ha provato.
+        dopoInvio(ime)
+    }
+
+    /**
+     * Consegna la parte successiva, se ce n'e' una per questo campo e il campo
+     * e' vuoto.
+     *
+     * **Il campo vuoto e' la condizione, non un dettaglio.** E' l'unico segnale
+     * che una tastiera ha per sapere che il messaggio precedente e' partito: se
+     * c'e' ancora del testo, o l'invio non e' avvenuto o l'utente ha
+     * ricominciato a scrivere, e in tutti e due i casi scriverci sopra
+     * distruggerebbe qualcosa. La parte resta in coda e ci si riprova al giro
+     * dopo.
+     */
+    private fun consegnaProssimaParte(ime: InputMethodService): Boolean {
+        val campo = ime.currentInputEditorInfo
+        if (!CipherParti.inAttesaSu(campo)) return false
+        if (!CipherCompose.isEmptyBuffer()) return false
+        val ic = appConnection(ime) ?: return false
+        if (!fieldIs(ic, "")) return false
+        val (quale, quante) = CipherParti.prossimaEtichetta()
+        val blob = CipherParti.stacca(campo) ?: return false
+        ic.beginBatchEdit()
+        ic.finishComposingText()
+        val consegnato = ic.commitText(blob, 1)
+        ic.endBatchEdit()
+        if (!consegnato || !fieldIs(ic, blob)) {
+            // La parte e' persa: era gia' stata staccata dalla coda e il campo
+            // non l'ha presa. Dirlo e' il minimo, perche' il messaggio che
+            // arrivera' all'altro avra' un buco in mezzo.
+            toast(ime, R.string.cipher_part_failed)
+            CipherParti.scarta()
+            return false
+        }
+        annunciaParte(ime, quale, quante)
+        deliver(ime, ic)
+        return true
+    }
+
+    /** Quale parte e' appena finita nel campo, e quante sono in tutto. */
+    private fun annunciaParte(ime: InputMethodService, quale: Int, quante: Int) {
+        KeyboardSwitcher.getInstance().showToast(
+            ime.getString(R.string.cipher_part_ready, quale, quante),
+            false,
+        )
+    }
+
+    /**
+     * Dopo un invio, prova a consegnare la parte successiva.
+     *
+     * Il ritardo non e' una scaramanzia: l'invio lo esegue l'app, e fra il
+     * gesto e il campo che si svuota passa il tempo che le serve. Guardare
+     * subito troverebbe il campo ancora pieno — cioe' la condizione che dice
+     * "non e' partito niente" — e la coda resterebbe ferma fino al gesto
+     * successivo.
+     */
+    private fun dopoInvio(ime: InputMethodService) {
+        if (!CipherParti.inAttesaSu(ime.currentInputEditorInfo)) return
+        Handler(Looper.getMainLooper()).postDelayed({
+            consegnaProssimaParte(ime)
+        }, ATTESA_INVIO_MS)
     }
 
     /**
@@ -259,7 +425,7 @@ object CipherActions {
         field: Field,
         dallaRiga: Boolean,
         blob: String,
-    ) {
+    ): Boolean {
         if (dallaRiga) {
             // Il campo dell'app e' vuoto per costruzione: qui non si sostituisce
             // niente, si consegna. E il buffer si svuota solo DOPO che il blob
@@ -285,18 +451,25 @@ object CipherActions {
                 // nella riga, dove l'utente lo vede. Meglio un invio da
                 // ripetere che un messaggio da riscrivere.
                 toast(ime, R.string.cipher_send_failed_kept)
-                return
+                return false
             }
             CipherCompose.clear()
             deliver(ime, ic)
-            return
+            // Se l'invio automatico ha spedito e c'e' una coda, la parte
+            // successiva parte da sola. Se non ha spedito, il campo e' ancora
+            // pieno e questa chiamata non fa niente: la coda aspetta l'invio a
+            // mano, che passa dal tasto invio.
+            dopoInvio(ime)
+            return true
         }
         if (!replaceField(ic, field, blob)) {
             // Il campo non e' stato sostituito: nel dubbio l'utente deve
             // saperlo, perche' il fallimento silenzioso qui e' il peggiore
             // possibile — si crede di aver cifrato e si preme invio sul chiaro.
             toast(ime, R.string.cipher_replace_failed)
+            return false
         }
+        return true
     }
 
     /**
@@ -466,6 +639,11 @@ object CipherActions {
             primaryCode == KeyCode.ACTION_NEXT ||
             primaryCode == KeyCode.ACTION_PREVIOUS
         ) {
+            // L'invio a mano e' il momento in cui una parte se ne va: e' qui
+            // che si guarda se ce n'e' un'altra da mettere al suo posto. Il
+            // controllo vero lo fa [consegnaProssimaParte] mezzo secondo dopo,
+            // sul campo vuoto — premere invio non significa aver spedito.
+            if (primaryCode == Constants.CODE_ENTER) dopoInvio(ime)
             return
         }
         if (!CipherSettings.isEnabled(ime)) return

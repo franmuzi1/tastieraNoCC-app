@@ -205,9 +205,10 @@ scrivendo.
 Lì vivono i tasti della cifratura, compreso l'aeroplanino che consegna il testo
 **in chiaro**, per quando il destinatario non ha questa tastiera.
 
-**La riga compare dove si compongono messaggi.** Su una barra di ricerca, un
-campo numerico o un indirizzo non compare da sola: lì il testo appartiene
-all'app e cifrarlo non ha senso. Se in un campo del genere la vuoi lo stesso,
+**La riga compare dove si compongono messaggi.** In pratica: dove il campo
+accetta gli a capo — i compositori di chat lo fanno tutti — oppure dove dichiara
+«invia». Su una barra di ricerca, un campo numerico o un indirizzo non compare
+da sola: lì il testo appartiene all'app e cifrarlo non ha senso. Se in un campo del genere la vuoi lo stesso,
 premi il tasto della cifratura e compare — e torna automatica appena cambi
 campo. L'unica eccezione che non si scavalca sono i **campi password**: la riga
 mostrerebbe a schermo quello che il campo nasconde con i pallini.
@@ -254,6 +255,14 @@ un'alternativa non puoi più scrivere nemmeno per ripararla.
 Quando incolli la presentazione di qualcuno mai visto, i contatti si aprono da
 soli sul dialogo del nome: una chiave senza nome è un contatto che non si
 riconosce.
+
+**I messaggi lunghi vengono spezzati.** Un messaggio cifrato più lungo di quanto
+una chat accetti non parte, e se l'app lo tagliasse in due il pezzo che arriva
+non si aprirebbe affatto. Quindi sopra quella soglia il testo viene diviso in
+parti, cifrate una per una e contrassegnate «(1/3)», «(2/3)»: la prima ti finisce
+nel campo pronta da mandare, e ogni volta che ne mandi una arriva la successiva.
+Oltre la dozzina di parti non si spezza più — quello non è un messaggio, è un
+file, e la graffetta lo cifra in un pezzo solo.
 
 ### Il modo più affidabile di aprire un messaggio ricevuto
 

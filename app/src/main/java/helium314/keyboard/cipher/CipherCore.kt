@@ -70,8 +70,25 @@ object CipherCore {
      * L'abbiamo scritto noi, ma il destinatario non e' piu' fra i contatti.
      * Esito NORMALE: senza forward secrecy un proprio messaggio si riapre, e
      * questo codice arriva solo quando non si trova piu' a chi era diretto.
+     *
+     * Il core lo restituisce **solo** dove la riapertura passa dalle identita'
+     * — schema baseline, bootstrap d'epoca, allegati — cioe' dove fallire per
+     * tutti i contatti significa davvero che il destinatario non c'e' piu'.
+     * Negli altri casi arriva [OWN_MESSAGE_KEY_GONE].
      */
     const val OWN_MESSAGE = 10
+
+    /**
+     * L'abbiamo scritto noi, il destinatario c'e' ancora, ma la chiave effimera
+     * verso cui era cifrato non esiste piu'.
+     *
+     * Esito NORMALE quanto [OWN_MESSAGE], e la differenza sta tutta nell'avviso:
+     * qui incolpare la rubrica sarebbe falso. Capita quando il destinatario ha
+     * la forward secrecy accesa — il messaggio era sigillato verso la sua
+     * prechiave di allora, che e' avanzata — oppure quando la conversazione e'
+     * stata bruciata.
+     */
+    const val OWN_MESSAGE_KEY_GONE = 11
 
     // Valori del campo `kind` di [IncomingResult] dopo nativeHandleIncomingText.
     const val KIND_MESSAGE = 0

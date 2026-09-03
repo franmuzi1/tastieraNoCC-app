@@ -97,9 +97,34 @@ class CipherFieldsTest {
         assertTrue(CipherFields.nonComponeMessaggi(campo(testo, EditorInfo.IME_ACTION_SEARCH)))
     }
 
-    /** Un campo di testo semplice, senza azioni: la riga ci va. */
+    /**
+     * **Il caso WhatsApp**, ed e' il motivo per cui il criterio e' stato
+     * rovesciato. La sua barra di ricerca non dichiara niente: testo, riga
+     * singola, nessuna azione. Con un elenco di prove contrarie passava tutti i
+     * controlli e si prendeva la riga cifrata; ora, non avendo nessuna prova a
+     * favore, resta fuori.
+     */
     @Test
-    fun unCampoDiTestoQualunqueComponeMessaggi() {
-        assertFalse(CipherFields.nonComponeMessaggi(campo(testo)))
+    fun unCampoARigaSingolaSenzaAzioneNonComponeMessaggi() {
+        assertTrue(CipherFields.nonComponeMessaggi(campo(testo)))
+    }
+
+    /**
+     * La seconda prova a favore: un compositore a riga singola esiste, e si
+     * riconosce perche' dichiara «invia».
+     */
+    @Test
+    fun unCampoARigaSingolaCheDichiaraInviaComponeMessaggi() {
+        assertFalse(CipherFields.nonComponeMessaggi(campo(testo, EditorInfo.IME_ACTION_SEND)))
+    }
+
+    /**
+     * «Invia» non basta fuori dal testo: la classe si guarda per prima, e un
+     * campo numerico che dichiarasse «invia» resta un campo numerico.
+     */
+    @Test
+    fun inviaNonAccendeLaRigaFuoriDalTesto() {
+        val campo = campo(InputType.TYPE_CLASS_NUMBER, EditorInfo.IME_ACTION_SEND)
+        assertTrue(CipherFields.nonComponeMessaggi(campo))
     }
 }

@@ -40,6 +40,8 @@
         possibile, quindi qui si chiede.
     -->
     <string name="cipher_no_recipient" tools:ignore="MissingTranslation">Scegli prima un destinatario per questa app</string>
+    <string name="cipher_part_ready" tools:ignore="MissingTranslation">Parte %1$d di %2$d nel campo: mandala, la prossima arriva da sola</string>
+    <string name="cipher_part_failed" tools:ignore="MissingTranslation">Questa parte non e\' entrata nel campo e le successive sono state annullate: manda quello che e\' partito, poi riscrivi il resto</string>
     <string name="cipher_message_too_long" tools:ignore="MissingTranslation">Messaggio troppo lungo per questa chat</string>
     <string name="cipher_message_too_long_detail" tools:ignore="MissingTranslation">Il testo cifrato supera il limite di 4096 caratteri di Telegram: togli circa %1$d caratteri, oppure mandalo in due messaggi.</string>
     <string name="cipher_text_too_long" tools:ignore="MissingTranslation">Testo troppo lungo per essere cifrato</string>
@@ -295,6 +297,7 @@
     <string name="cipher_own_message_to" tools:ignore="MissingTranslation">A %1$s</string>
     <string name="cipher_own_message_note" tools:ignore="MissingTranslation">L\'hai scritto tu. Si riapre perche\' la forward secrecy era spenta: con quella accesa non sarebbe possibile, nemmeno per te.</string>
     <string name="cipher_own_message_no_peer" tools:ignore="MissingTranslation">L\'hai scritto tu, ma non si trova piu\' a chi era diretto: quel contatto non e\' piu\' nella tua lista.</string>
+    <string name="cipher_own_message_key_gone" tools:ignore="MissingTranslation">L\'hai scritto tu, e non si riapre piu\': la chiave verso cui era cifrato non c\'e\' piu\'. Succede quando chi lo riceve ha la forward secrecy accesa — le sue chiavi vanno avanti a ogni messaggio — o quando la conversazione e\' stata bruciata. Il contatto e\' sempre al suo posto e i messaggi nuovi funzionano: e\' solo questo che resta chiuso.</string>
     <string name="cipher_unknown_sender" tools:ignore="MissingTranslation">Mittente sconosciuto</string>
     <string name="cipher_sender_verified" tools:ignore="MissingTranslation">%1$s ✓</string>
     <string name="cipher_composed_at" tools:ignore="MissingTranslation">Scritto il %1$s (secondo il mittente)</string>
