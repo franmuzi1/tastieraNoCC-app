@@ -129,11 +129,11 @@ android {
         applicationId = "helium314.keyboard"
         minSdk = 21
         targetSdk = 36
-        versionCode = 4009
+        versionCode = 4010
         // Versione del fork MusyBoard, non quella dell'HeliBoard da cui deriva.
         // Il versionCode resta monotono per consentire l'aggiornamento degli
         // APK gia' installati che dichiaravano 4.0-dev1.
-        versionName = "0.18.2-dev1"
+        versionName = "0.18.3-dev1"
         // Test strumentati: girano su un dispositivo vero o su un emulatore,
         // ed e' l'unico modo di provare cio' che passa dal core nativo — il
         // `.so` e' un binario Android e sulla JVM non si carica — e da Android
