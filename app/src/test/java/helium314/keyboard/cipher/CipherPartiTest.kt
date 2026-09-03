@@ -219,4 +219,44 @@ class CipherPartiTest {
         CipherParti.scarta()
         assertFalse(CipherParti.daRiga(), "buttata la coda, non resta nemmeno quello")
     }
+
+    /**
+     * Il giro completo del salvataggio, senza Keystore: quello che si scrive
+     * su disco deve tornare indietro identico. E' il punto dove una coda si
+     * corromperebbe in silenzio, e il silenzio qui vuol dire mezzo messaggio
+     * che non parte piu'.
+     */
+    @Test
+    fun laCodaScrittaSuDiscoTornaIndietroUguale() {
+        val c = campo(pacchetto = "com.whatsapp", id = 42)
+        CipherParti.accoda(c, listOf("kc/secondo", "kc/terzo"), 3, dallaRiga = true)
+        CipherParti.consegnata("kc/primo")
+        val bytes = CipherParti.codifica(Triple("com.whatsapp", 42, 180225))
+        CipherParti.scarta()
+        assertFalse(CipherParti.inAttesaSu(c))
+
+        assertTrue(CipherParti.decodifica(bytes))
+        assertTrue(CipherParti.inAttesaSu(c))
+        assertEquals("kc/secondo", CipherParti.prossima(c))
+        assertEquals(Pair(2, 3), CipherParti.prossimaEtichetta())
+        assertTrue(CipherParti.daRiga())
+        assertEquals("kc/primo".length, CipherParti.ultimaLunghezza())
+        CipherParti.consuma()
+        assertEquals("kc/terzo", CipherParti.prossima(c))
+    }
+
+    /** Un file corrotto non diventa una coda a caso: si rifiuta e basta. */
+    @Test
+    fun unFileCorrottoNonProduceUnaCoda() {
+        val c = campo()
+        CipherParti.accoda(c, listOf("kc/due"), 2, dallaRiga = false)
+        val bytes = CipherParti.codifica(Triple("com.whatsapp", 7, 180225))
+        CipherParti.scarta()
+        // Versione sbagliata.
+        val versione = bytes.copyOf().also { it[0] = 9 }
+        assertFalse(CipherParti.decodifica(versione))
+        // Troncato a meta'.
+        assertFalse(runCatching { CipherParti.decodifica(bytes.copyOf(bytes.size / 2)) }.getOrDefault(false))
+        assertFalse(CipherParti.inAttesaSu(c))
+    }
 }

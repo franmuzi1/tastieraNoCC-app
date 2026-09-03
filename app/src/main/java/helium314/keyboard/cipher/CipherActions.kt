@@ -218,6 +218,7 @@ object CipherActions {
         // — muore adesso. Tenerla vorrebbe dire che il prossimo invio fa
         // comparire nel campo il pezzo di un messaggio abbandonato.
         CipherParti.scarta()
+        CipherParti.salva(ime)
         val blob = cifraUno(ime, gruppo, field.text) ?: return
         if (gruppo != null) {
             consegna(ime, ic, field, composed != null, blob)
@@ -353,6 +354,10 @@ object CipherActions {
         if (!consegna(ime, ic, field, dallaRiga, blob.first())) return
         CipherParti.accoda(ime.currentInputEditorInfo, blob.drop(1), blob.size, dallaRiga)
         CipherParti.consegnata(blob.first())
+        // Su disco subito: da qui in poi il chiaro non esiste piu' da nessuna
+        // parte — la riga e' stata svuotata dalla consegna — e queste parti
+        // sono l'unica copia di cio' che resta da mandare.
+        CipherParti.salva(ime)
         annunciaParte(ime, 1, blob.size)
         // La prima parte puo' essere gia' partita da sola, se l'invio
         // automatico e' acceso: allora la seconda la segue senza aspettare un
@@ -395,6 +400,7 @@ object CipherActions {
         }
         CipherParti.consuma()
         CipherParti.consegnata(blob)
+        CipherParti.salva(ime)
         annunciaParte(ime, quale, quante)
         // L'invio automatico vale solo se la prima parte era uscita dalla
         // riga: in modalita' campo il fork non spedisce mai da solo, e

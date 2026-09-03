@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard.cipher
 
+import android.content.Context
 import android.view.inputmethod.EditorInfo
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 /**
  * Un messaggio troppo lungo per una chat, spezzato in piu' messaggi cifrati
@@ -292,6 +295,139 @@ internal object CipherParti {
     fun consuma() {
         if (coda.isNotEmpty()) coda.removeFirst()
         if (coda.isEmpty()) scarta()
+    }
+
+    // --- La coda su disco -------------------------------------------------
+
+    private const val VERSIONE = 1
+    private val AAD = "keyboard-cipher/v1/storage/parts".toByteArray()
+
+    /**
+     * Scrive la coda, o cancella il file quando non ne resta niente.
+     *
+     * ## Perche' la coda deve sopravvivere al processo
+     *
+     * Perche' il processo muore, e su questo progetto non e' un'ipotesi: esiste
+     * un'intera funzione keep-alive perche' Android chiude l'IME quando gli
+     * pare. Consegnata la prima parte, il chiaro e' gia' stato cancellato dalla
+     * riga — e' cio' che si vuole — e le altre parti esistevano solo in RAM.
+     * Morto il processo, all'altro era arrivata meta' del messaggio, il resto
+     * non esisteva piu' da nessuna parte, e chi scriveva non sapeva nemmeno
+     * quale meta' fosse partita. E' esattamente il difetto che spezzare doveva
+     * far sparire, ricomparso un livello piu' in la'.
+     *
+     * ## Cosa si scrive, e perche' si puo'
+     *
+     * Blob **gia' cifrati** per il destinatario: la stessa cosa che sta per
+     * comparire nel campo di una chat. Il chiaro non passa di qui e non ci
+     * arriva mai. Ci va comunque un giro di Keystore, come per ogni altro file
+     * di questo sistema, perche' un file in chiaro racconterebbe a chi guarda
+     * il disco che stavi scrivendo a qualcuno e quando.
+     *
+     * Non c'e' scadenza, e non serve: dopo un riavvio il campo della chat e'
+     * vuoto, quindi il passaggio «pieno -> vuoto» che fa proseguire la coda da
+     * solo non avviene. Una coda vecchia puo' muoversi solo se qualcuno preme
+     * il lucchetto su un campo vuoto, e allora l'avviso dice «parte 2 di 3».
+     */
+    fun salva(context: Context) {
+        val campo = campoDellaCoda
+        if (campo == null || coda.isEmpty()) {
+            CipherStorage.delete(context, CipherStorage.PARTS)
+            return
+        }
+        val chiaro = codifica(campo)
+        val blob = try {
+            CipherKeystore.wrap(AAD, chiaro) ?: return
+        } finally {
+            chiaro.fill(0)
+        }
+        CipherStorage.write(context, CipherStorage.PARTS, blob)
+    }
+
+    /**
+     * Rilegge la coda lasciata da un processo precedente.
+     *
+     * Chiamata una volta sola, quando il core e' pronto: prima il Keystore non
+     * e' utilizzabile. Un file che non si decodifica non e' un guasto da
+     * segnalare — si resta senza coda, che e' lo stato di sempre — ma si
+     * cancella, perche' un file che nessuno sa leggere resterebbe li' a
+     * occupare spazio e a raccontare che qualcosa e' stato scritto.
+     */
+    fun ripristina(context: Context) {
+        val blob = CipherStorage.read(context, CipherStorage.PARTS) ?: return
+        val chiaro = CipherKeystore.unwrap(AAD, blob) ?: run {
+            CipherStorage.delete(context, CipherStorage.PARTS)
+            return
+        }
+        val riuscito = try {
+            runCatching { decodifica(chiaro) }.getOrDefault(false)
+        } finally {
+            chiaro.fill(0)
+        }
+        if (!riuscito) {
+            scarta()
+            CipherStorage.delete(context, CipherStorage.PARTS)
+        }
+    }
+
+    /**
+     * `internal` e non privata perche' il codice e il suo inverso sono il
+     * punto in cui una coda si corrompe in silenzio, ed e' l'unica parte della
+     * persistenza che si possa provare senza un Keystore vero.
+     */
+    internal fun codifica(campo: Triple<String, Int, Int>): ByteArray {
+        val app = campo.first.toByteArray(Charsets.UTF_8)
+        val blob = coda.map { it.toByteArray(Charsets.UTF_8) }
+        var size = 1 + 1 + 4 + 4 + 2 + app.size + 4 + 4 + 4
+        for (b in blob) size += 4 + b.size
+        val buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN)
+        buffer.put(VERSIONE.toByte())
+        buffer.put(if (dallaRiga) 1 else 0)
+        buffer.putInt(totale)
+        buffer.putInt(ultimaLunghezza)
+        buffer.putShort(app.size.toShort())
+        buffer.put(app)
+        buffer.putInt(campo.second)
+        buffer.putInt(campo.third)
+        buffer.putInt(blob.size)
+        for (b in blob) {
+            buffer.putInt(b.size)
+            buffer.put(b)
+        }
+        return buffer.array()
+    }
+
+    /** `false` se il file non si legge: chi chiama lo cancella. */
+    internal fun decodifica(bytes: ByteArray): Boolean {
+        val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+        if (buffer.get() != VERSIONE.toByte()) return false
+        val riga = buffer.get() == 1.toByte()
+        val quante = buffer.int
+        val lunghezza = buffer.int
+        val nome = ByteArray(buffer.short.toInt().coerceAtLeast(0))
+        buffer.get(nome)
+        val app = String(nome, Charsets.UTF_8)
+        val id = buffer.int
+        val tipo = buffer.int
+        val quanti = buffer.int
+        // Un conteggio assurdo e' un file corrotto, non una coda enorme: il
+        // tetto delle parti e' [MAX_PARTI] e non si sposta da solo.
+        if (app.isEmpty() || quanti <= 0 || quanti > MAX_PARTI) return false
+        val letti = ArrayList<String>(quanti)
+        repeat(quanti) {
+            val len = buffer.int
+            if (len <= 0 || len > buffer.remaining()) return false
+            val b = ByteArray(len)
+            buffer.get(b)
+            letti.add(String(b, Charsets.UTF_8))
+        }
+        scarta()
+        campoDellaCoda = Triple(app, id, tipo)
+        totale = quante
+        dallaRiga = riga
+        ultimaLunghezza = lunghezza
+        coda.addAll(letti)
+        return true
     }
 
     /** Butta la coda. Chiamata quando si ricomincia da un messaggio nuovo. */

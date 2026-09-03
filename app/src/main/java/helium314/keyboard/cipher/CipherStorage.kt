@@ -77,6 +77,18 @@ internal object CipherStorage {
     const val GROUPS = "groups.bin"
 
     /**
+     * Le parti ancora da consegnare di un messaggio spezzato. Vedi
+     * [CipherParti].
+     *
+     * E' l'unico file qui dentro che non contiene chiavi ne' metadati
+     * permanenti: sono blob **gia' cifrati** per il destinatario, cioe' cio'
+     * che sta per finire in chat comunque. Ci passa lo stesso dal Keystore —
+     * scriverli in chiaro direbbe a chi guarda il disco che stavi scrivendo a
+     * qualcuno, e a che ora — e sparisce appena l'ultima parte e' consegnata.
+     */
+    const val PARTS = "parts.bin"
+
+    /**
      * Distingue "non c'e' ancora" da "c'e' ma non si legge". Il primo caso e'
      * il primo avvio, il secondo e' un guasto: confonderli significherebbe
      * rigenerare l'identita' al primo errore di lettura.

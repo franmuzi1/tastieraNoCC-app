@@ -317,6 +317,11 @@ object CipherIdentity {
             // la azzerava — lucchetto che smette di funzionare da solo, ore
             // dopo, chiedendo di scegliere un destinatario gia' scelto.
             CipherRecipients.restore(context)
+            // Qui e non prima, per lo stesso motivo: sono blob cifrati con la
+            // chiave del Keystore, che prima di questo punto non e'
+            // utilizzabile. Una coda lasciata da un processo morto a meta'
+            // messaggio torna in piedi da sola.
+            CipherParti.ripristina(context)
             return CipherState.Ready
         } finally {
             // Il core ha gia' copiato quello che gli serve; qui resta una copia
