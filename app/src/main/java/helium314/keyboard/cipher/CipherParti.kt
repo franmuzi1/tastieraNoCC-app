@@ -188,11 +188,35 @@ internal object CipherParti {
     /** Quante parti erano in tutto, per poterlo dire mentre si consegna. */
     private var totale = 0
 
+    /**
+     * Se la prima parte e' uscita dalla riga di composizione.
+     *
+     * Serve a non cambiare comportamento a meta' messaggio. In modalita' campo
+     * il fork non chiede mai all'app di spedire — l'invio automatico vale solo
+     * per la riga — e senza questa memoria le parti dalla seconda in poi
+     * sarebbero partite da sole mentre la prima aspettava un tocco: lo stesso
+     * messaggio, spedito in due modi diversi, e' il genere di sorpresa che fa
+     * credere che la tastiera abbia mandato qualcosa di sua iniziativa.
+     */
+    private var dallaRiga = false
+
     private fun identita(campo: EditorInfo?): Triple<String, Int, Int>? {
         val app = campo?.packageName.orEmpty()
         if (campo == null || app.isEmpty()) return null
         return Triple(app, campo.fieldId, campo.inputType)
     }
+
+    /**
+     * Su questo campo una coda si puo' tenere.
+     *
+     * Si chiede **prima** di spezzare, non dopo aver consegnato la prima
+     * parte. Un campo senza identita' utilizzabile — nessun `EditorInfo`,
+     * pacchetto vuoto — non puo' ospitare una coda, e accorgersene dopo
+     * significherebbe aver gia' detto all'utente «parte 1 di 3» per poi non
+     * consegnargli mai le altre due. Meglio non spezzare affatto e rifiutare
+     * come si faceva prima: il testo resta dov'e'.
+     */
+    fun campoUtilizzabile(campo: EditorInfo?): Boolean = identita(campo) != null
 
     /**
      * Prende in carico le parti successive alla prima.
@@ -203,12 +227,13 @@ internal object CipherParti {
      * restare qui dentro per tutto il tempo, e un fallimento a meta'
      * lascerebbe il messaggio consegnato per meta'.
      */
-    fun accoda(campo: EditorInfo?, blob: List<String>, quanteInTutto: Int) {
+    fun accoda(campo: EditorInfo?, blob: List<String>, quanteInTutto: Int, dallaRiga: Boolean) {
         scarta()
         val identita = identita(campo) ?: return
         if (blob.isEmpty()) return
         campoDellaCoda = identita
         totale = quanteInTutto
+        this.dallaRiga = dallaRiga
         coda.addAll(blob)
     }
 
@@ -218,23 +243,55 @@ internal object CipherParti {
         return coda.isNotEmpty() && identita == campoDellaCoda
     }
 
+    /** La prima parte e' uscita dalla riga, quindi l'invio automatico vale. */
+    fun daRiga(): Boolean = dallaRiga
+
+    /**
+     * Quanto era lungo il blob consegnato per ultimo, in caratteri.
+     *
+     * Serve a distinguere **un campo che si e' svuotato perche' il messaggio e'
+     * partito** da uno svuotato in qualunque altro modo. Sono due cose diverse
+     * e vogliono due reazioni opposte: nel primo caso tocca alla parte
+     * successiva, nel secondo l'utente ha appena cancellato quel pezzo e
+     * rimetterglielo davanti significherebbe non lasciarglielo buttare.
+     *
+     * Il segno si legge nelle posizioni che `onUpdateSelection` porta con se':
+     * dopo un invio il cursore stava in fondo al blob — [ultimaLunghezza] —
+     * e il campo passa a vuoto in un colpo; cancellando a mano ci si arriva
+     * da una posizione qualunque, e selezionando tutto da zero.
+     */
+    fun ultimaLunghezza(): Int = ultimaLunghezza
+
+    private var ultimaLunghezza = 0
+
+    /** Registra la parte appena finita nel campo. */
+    fun consegnata(blob: String) {
+        ultimaLunghezza = blob.length
+    }
+
     /** Il numero della prossima parte e il totale, per l'avviso. */
     fun prossimaEtichetta(): Pair<Int, Int> = Pair(totale - coda.size + 1, totale)
 
     /**
-     * Stacca la prossima parte per questo campo, se e' suo.
+     * Guarda la prossima parte **senza toglierla**.
      *
-     * Il controllo si fa **qui** e non solo al momento di accodare: fra
-     * l'accodamento e la consegna l'utente puo' aver cambiato chat, e la coda
-     * sopravvive al cambio — apposta, perche' tornare indietro e trovarsi il
-     * resto del messaggio e' cio' che serve.
+     * Guardare e togliere sono due gesti separati, ed e' una correzione: prima
+     * si toglieva e poi si provava a consegnare, cosi' che un `commitText`
+     * fallito — connessione morta, campo che tronca — lasciasse la parte fuori
+     * dalla coda e senza essere arrivata da nessuna parte. Quel blob non era
+     * uscito: buttarlo, e con lui il resto del messaggio, era la reazione
+     * sbagliata al fallimento piu' recuperabile che ci sia.
+     *
+     * Adesso si toglie solo dopo che il campo l'ha presa, con [consuma], e un
+     * fallimento lascia la coda intatta: si riprova col lucchetto.
      */
-    fun stacca(campo: EditorInfo?): String? {
-        if (!inAttesaSu(campo)) return null
-        val blob = coda.removeFirst()
-        val rimasto = coda.size
-        if (rimasto == 0) scarta()
-        return blob
+    fun prossima(campo: EditorInfo?): String? =
+        if (inAttesaSu(campo)) coda.first() else null
+
+    /** Toglie la parte appena consegnata. Da chiamare **dopo** il successo. */
+    fun consuma() {
+        if (coda.isNotEmpty()) coda.removeFirst()
+        if (coda.isEmpty()) scarta()
     }
 
     /** Butta la coda. Chiamata quando si ricomincia da un messaggio nuovo. */
@@ -242,5 +299,7 @@ internal object CipherParti {
         coda.clear()
         campoDellaCoda = null
         totale = 0
+        dallaRiga = false
+        ultimaLunghezza = 0
     }
 }

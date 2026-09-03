@@ -188,7 +188,15 @@ object CipherActions {
             // quel testo vive solo nel nostro buffer, dietro un avviso che
             // passa. La stessa stima che decideva il rifiuto adesso guida il
             // taglio: [CipherParti] non la rifa', la interroga.
-            val parti = CipherParti.dividi(field.text) { stimaBlob(it, slot) <= MAX_BLOB_CHARS }
+            // Si chiede PRIMA di spezzare se questo campo puo' ospitare una
+            // coda: senza identita' del campo le parti dalla seconda in poi
+            // non avrebbero dove tornare, e l'utente si sentirebbe dire
+            // «parte 1 di 3» per non vedere mai le altre due.
+            val parti = if (CipherParti.campoUtilizzabile(ime.currentInputEditorInfo)) {
+                CipherParti.dividi(field.text) { stimaBlob(it, slot) <= MAX_BLOB_CHARS }
+            } else {
+                null
+            }
             if (parti == null) {
                 // Nemmeno spezzando: qui il rifiuto resta quello di prima, con
                 // quanto tagliare, perche' e' l'unica cosa utile che si possa
@@ -343,7 +351,8 @@ object CipherActions {
         // seconda al posto della prima, e il messaggio arriverebbe all'altro
         // scombinato invece che a meta'.
         if (!consegna(ime, ic, field, dallaRiga, blob.first())) return
-        CipherParti.accoda(ime.currentInputEditorInfo, blob.drop(1), blob.size)
+        CipherParti.accoda(ime.currentInputEditorInfo, blob.drop(1), blob.size, dallaRiga)
+        CipherParti.consegnata(blob.first())
         annunciaParte(ime, 1, blob.size)
         // La prima parte puo' essere gia' partita da sola, se l'invio
         // automatico e' acceso: allora la seconda la segue senza aspettare un
@@ -369,22 +378,70 @@ object CipherActions {
         val ic = appConnection(ime) ?: return false
         if (!fieldIs(ic, "")) return false
         val (quale, quante) = CipherParti.prossimaEtichetta()
-        val blob = CipherParti.stacca(campo) ?: return false
+        val blob = CipherParti.prossima(campo) ?: return false
         ic.beginBatchEdit()
         ic.finishComposingText()
         val consegnato = ic.commitText(blob, 1)
         ic.endBatchEdit()
         if (!consegnato || !fieldIs(ic, blob)) {
-            // La parte e' persa: era gia' stata staccata dalla coda e il campo
-            // non l'ha presa. Dirlo e' il minimo, perche' il messaggio che
-            // arrivera' all'altro avra' un buco in mezzo.
+            // Il campo non l'ha presa, quindi quel blob non e' uscito da
+            // nessuna parte: **la coda resta intera**. Si dice cos'e'
+            // successo e si lascia la via per riprovare — il lucchetto, che
+            // consegna la parte in attesa. Toglierla dalla coda qui sarebbe
+            // buttare un pezzo di messaggio per un fallimento che si ripara
+            // premendo un tasto.
             toast(ime, R.string.cipher_part_failed)
-            CipherParti.scarta()
             return false
         }
+        CipherParti.consuma()
+        CipherParti.consegnata(blob)
         annunciaParte(ime, quale, quante)
-        deliver(ime, ic)
+        // L'invio automatico vale solo se la prima parte era uscita dalla
+        // riga: in modalita' campo il fork non spedisce mai da solo, e
+        // cominciare a farlo dalla seconda parte cambierebbe il modo di
+        // spedire a meta' dello stesso messaggio.
+        if (CipherParti.daRiga()) {
+            deliver(ime, ic)
+            // E se ha spedito, la parte dopo la segue: senza questa riga la
+            // catena si fermava alla seconda, perche' nessuno programmava la
+            // terza.
+            dopoInvio(ime)
+        }
         return true
+    }
+
+    /**
+     * Il campo dell'app e' cambiato: se si e' svuotato, il messaggio e'
+     * partito e tocca alla parte successiva.
+     *
+     * **E' questa la via principale, non il tasto invio.** In WhatsApp si
+     * manda toccando l'aeroplanino dell'app, che la tastiera non vede passare:
+     * agganciarsi al solo INVIO significava che la parte 2 non arrivava mai da
+     * sola proprio nel modo in cui la gente manda i messaggi, mentre l'avviso
+     * prometteva il contrario. `onUpdateSelection` invece arriva comunque,
+     * qualunque strada abbia preso l'invio.
+     *
+     * Costa un confronto fra due interi quando non c'e' nessuna coda, che e'
+     * sempre tranne che durante un messaggio spezzato.
+     */
+    fun campoAggiornato(
+        ime: InputMethodService,
+        vecchioInizio: Int,
+        vecchiaFine: Int,
+        nuovoInizio: Int,
+        nuovaFine: Int,
+    ) {
+        if (nuovoInizio != 0 || nuovaFine != 0) return
+        if (!CipherParti.inAttesaSu(ime.currentInputEditorInfo)) return
+        // Svuotato **da un invio**, non a mano: il cursore stava in fondo al
+        // blob e il campo e' passato a vuoto in un colpo. Chi cancella la
+        // parte invece di mandarla ci arriva da un'altra posizione — a mano si
+        // scende un carattere per volta, selezionando tutto si parte da zero —
+        // e li' rimettergli davanti la parte successiva vorrebbe dire non
+        // lasciargliela buttare. Chi vuole comunque proseguire ha il lucchetto.
+        val lunghezza = CipherParti.ultimaLunghezza()
+        if (lunghezza == 0 || vecchioInizio != lunghezza || vecchiaFine != lunghezza) return
+        consegnaProssimaParte(ime)
     }
 
     /** Quale parte e' appena finita nel campo, e quante sono in tutto. */

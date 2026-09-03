@@ -1116,6 +1116,14 @@ public class LatinIME extends InputMethodService implements
                                   final int composingSpanStart, final int composingSpanEnd) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd,
                 composingSpanStart, composingSpanEnd);
+
+        // keyboard-cipher: un messaggio spezzato in piu' parti va avanti da
+        // qui. Il campo che si svuota e' l'unico segnale che una tastiera ha
+        // per sapere che il messaggio e' partito, e arriva qualunque strada
+        // abbia preso l'invio — anche il pulsante dell'app, che e' il modo
+        // normale di mandare in WhatsApp e che nessun tasto della tastiera
+        // vede passare.
+        CipherActions.INSTANCE.campoAggiornato(this, oldSelStart, oldSelEnd, newSelStart, newSelEnd);
         if (DebugFlags.DEBUG_ENABLED) {
             Log.i(TAG, "onUpdateSelection: oss=" + oldSelStart + ", ose=" + oldSelEnd
                     + ", nss=" + newSelStart + ", nse=" + newSelEnd

@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard.cipher
 
+import android.view.inputmethod.EditorInfo
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -108,5 +111,112 @@ class CipherPartiTest {
     @Test
     fun unTestoVuotoNonSiSpezza() {
         assertNull(CipherParti.dividi("", tetto(100)))
+    }
+
+    // --- La coda ---------------------------------------------------------
+
+    /**
+     * [CipherParti] e' un oggetto solo per tutto il processo: la coda di un
+     * test arriverebbe nel successivo. Si butta prima di ognuno.
+     */
+    @BeforeTest
+    fun codaPulita() {
+        CipherParti.scarta()
+    }
+
+    private fun campo(pacchetto: String = "com.whatsapp", id: Int = 7) =
+        EditorInfo().apply {
+            packageName = pacchetto
+            fieldId = id
+            inputType = 180225
+        }
+
+    /**
+     * **Il difetto che questo test blocca.** Prima si toglieva la parte dalla
+     * coda e poi si provava a consegnarla: un `commitText` fallito la lasciava
+     * fuori dalla coda e mai arrivata, e il codice reagiva buttando anche il
+     * resto del messaggio. Guardare non deve consumare.
+     */
+    @Test
+    fun guardareLaProssimaParteNonLaToglieDallaCoda() {
+        val c = campo()
+        CipherParti.accoda(c, listOf("due", "tre"), 3, dallaRiga = true)
+        assertEquals("due", CipherParti.prossima(c))
+        assertEquals("due", CipherParti.prossima(c), "guardare due volte da' la stessa parte")
+        assertEquals(Pair(2, 3), CipherParti.prossimaEtichetta())
+        assertTrue(CipherParti.inAttesaSu(c))
+    }
+
+    /** Si avanza solo dopo che il campo ha preso la parte. */
+    @Test
+    fun laCodaAvanzaSoloConConsuma() {
+        val c = campo()
+        CipherParti.accoda(c, listOf("due", "tre"), 3, dallaRiga = true)
+        CipherParti.consuma()
+        assertEquals("tre", CipherParti.prossima(c))
+        assertEquals(Pair(3, 3), CipherParti.prossimaEtichetta())
+        CipherParti.consuma()
+        assertFalse(CipherParti.inAttesaSu(c), "finita la coda, non resta niente")
+        assertNull(CipherParti.prossima(c))
+    }
+
+    /**
+     * Dentro WhatsApp ci sono tutte le conversazioni: una parte consegnata
+     * dopo aver cambiato chat andrebbe a un'altra persona.
+     */
+    @Test
+    fun laCodaNonSiConsegnaSuUnAltroCampo() {
+        CipherParti.accoda(campo(id = 7), listOf("due"), 2, dallaRiga = true)
+        val altraChat = campo(id = 9)
+        assertFalse(CipherParti.inAttesaSu(altraChat))
+        assertNull(CipherParti.prossima(altraChat))
+        // E nemmeno in un'altra app.
+        assertFalse(CipherParti.inAttesaSu(campo(pacchetto = "org.telegram.messenger")))
+    }
+
+    /**
+     * Senza identita' del campo una coda non si puo' tenere, e va saputo
+     * **prima** di spezzare: dirlo dopo significherebbe aver gia' annunciato
+     * «parte 1 di 3» per non consegnare mai le altre due.
+     */
+    @Test
+    fun senzaIdentitaDelCampoNonSiTieneUnaCoda() {
+        assertFalse(CipherParti.campoUtilizzabile(null))
+        assertFalse(CipherParti.campoUtilizzabile(EditorInfo()))
+        assertTrue(CipherParti.campoUtilizzabile(campo()))
+        CipherParti.accoda(null, listOf("due"), 2, dallaRiga = true)
+        assertFalse(CipherParti.inAttesaSu(campo()))
+    }
+
+    /**
+     * La lunghezza dell'ultima parte consegnata e' il segno che distingue un
+     * campo svuotato **da un invio** da uno svuotato a mano. Senza, la parte
+     * successiva ricomparirebbe addosso a chi ha appena cancellato quella
+     * prima per non mandarla.
+     */
+    @Test
+    fun laCodaRicordaQuantoEraLungaLUltimaParteConsegnata() {
+        val c = campo()
+        CipherParti.accoda(c, listOf("due"), 2, dallaRiga = true)
+        assertEquals(0, CipherParti.ultimaLunghezza(), "prima di consegnare non c'e' niente da confrontare")
+        CipherParti.consegnata("kc/unblobqualunque")
+        assertEquals("kc/unblobqualunque".length, CipherParti.ultimaLunghezza())
+        CipherParti.scarta()
+        assertEquals(0, CipherParti.ultimaLunghezza())
+    }
+
+    /**
+     * Da dove e' uscita la prima parte decide come partono le altre: in
+     * modalita' campo il fork non spedisce mai da solo.
+     */
+    @Test
+    fun laCodaRicordaSeLaPrimaParteVenivaDallaRiga() {
+        val c = campo()
+        CipherParti.accoda(c, listOf("due"), 2, dallaRiga = false)
+        assertFalse(CipherParti.daRiga())
+        CipherParti.accoda(c, listOf("due"), 2, dallaRiga = true)
+        assertTrue(CipherParti.daRiga())
+        CipherParti.scarta()
+        assertFalse(CipherParti.daRiga(), "buttata la coda, non resta nemmeno quello")
     }
 }
