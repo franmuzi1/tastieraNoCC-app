@@ -12,6 +12,7 @@ import android.provider.ContactsContract.Contacts;
 /**
  * Constants related to Contacts Content Provider.
  */
+@SuppressWarnings("deprecation")
 public class ContactsDictionaryConstants {
     public static final String[] PROJECTION = { BaseColumns._ID, Contacts.DISPLAY_NAME,
             Contacts.TIMES_CONTACTED, Contacts.LAST_TIME_CONTACTED, Contacts.IN_VISIBLE_GROUP };

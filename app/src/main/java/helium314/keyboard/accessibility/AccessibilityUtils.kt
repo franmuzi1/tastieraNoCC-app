@@ -64,13 +64,12 @@ class AccessibilityUtils private constructor() {
      *
      * @return `true` if the device should obscure password characters.
      */
+    @Suppress("DEPRECATION")
     fun shouldObscureInput(inputType: Int): Boolean {
         // The user can optionally force speaking passwords.
-        if (Settings.Secure.ACCESSIBILITY_SPEAK_PASSWORD != null) {
-            val speakPassword = Settings.Secure.getInt(mContext.contentResolver,
-                    Settings.Secure.ACCESSIBILITY_SPEAK_PASSWORD, 0) != 0
-            if (speakPassword) return false
-        }
+        val speakPassword = Settings.Secure.getInt(mContext.contentResolver,
+                Settings.Secure.ACCESSIBILITY_SPEAK_PASSWORD, 0) != 0
+        if (speakPassword) return false
         // Always speak if the user is listening through headphones.
         val listeningThroughHeadphones = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             @Suppress("deprecation") // no replacement available
@@ -138,6 +137,7 @@ class AccessibilityUtils private constructor() {
      * @param view The source view.
      * @param text The text to speak.
      */
+    @Suppress("DEPRECATION")
     fun announceForAccessibility(view: View, text: CharSequence?) {
         if (!mAccessibilityManager.isEnabled) {
             Log.e(TAG, "Attempted to speak when accessibility was disabled!")

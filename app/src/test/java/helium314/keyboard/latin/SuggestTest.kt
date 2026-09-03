@@ -17,6 +17,7 @@ import helium314.keyboard.latin.SuggestedWords.SuggestedWordInfo.KIND_WHITELIST
 import helium314.keyboard.latin.common.ComposedData
 import helium314.keyboard.latin.common.Constants
 import helium314.keyboard.latin.common.InputPointers
+import helium314.keyboard.latin.common.LocaleUtils.constructLocale
 import helium314.keyboard.latin.common.StringUtils
 import helium314.keyboard.latin.dictionary.Dictionary
 import helium314.keyboard.latin.settings.Settings
@@ -135,10 +136,10 @@ class SuggestTest {
     @Test fun `no English 'I' for Polish 'i' when typing in Polish`() {
         val result = shouldBeAutoCorrected(
             "i",
-            listOf(suggestion("I", Int.MAX_VALUE, Locale.ENGLISH), suggestion("i", 1500000, Locale("pl"))),
+            listOf(suggestion("I", Int.MAX_VALUE, Locale.ENGLISH), suggestion("i", 1500000, "pl".constructLocale())),
             null,
             null,
-            Locale("pl"),
+            "pl".constructLocale(),
             confidenceVeryAggressive
         )
         assert(!result.last()) // should not be corrected
@@ -149,7 +150,7 @@ class SuggestTest {
     @Test fun `English 'I' instead of Polish 'i' when typing in English`() {
         val result = shouldBeAutoCorrected(
             "i",
-            listOf(suggestion("I", Int.MAX_VALUE, Locale.ENGLISH), suggestion("i", 1500000, Locale("pl"))),
+            listOf(suggestion("I", Int.MAX_VALUE, Locale.ENGLISH), suggestion("i", 1500000, "pl".constructLocale())),
             null,
             null,
             Locale.ENGLISH,

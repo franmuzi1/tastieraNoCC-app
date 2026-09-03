@@ -49,6 +49,7 @@ import java.util.WeakHashMap;
  * This is an extended {@link KeyboardView} class that hosts an emoji page keyboard.
  * Multi-touch unsupported. No gesture support.
  */
+@SuppressWarnings("deprecation")
 public final class EmojiPageKeyboardView extends KeyboardView implements
         PopupKeysPanel.Controller {
     private static final String TAG = "EmojiPageKeyboardView";

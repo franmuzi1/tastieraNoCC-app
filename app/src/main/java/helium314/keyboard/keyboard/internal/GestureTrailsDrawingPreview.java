@@ -24,6 +24,7 @@ import helium314.keyboard.keyboard.PointerTracker;
 /**
  * Draw preview graphics of multiple gesture trails during gesture input.
  */
+@SuppressWarnings("deprecation")
 public final class GestureTrailsDrawingPreview extends AbstractDrawingPreview implements Runnable {
     private final SparseArray<GestureTrailDrawingPoints> mGestureTrails = new SparseArray<>();
     private final GestureTrailDrawingParams mDrawingParams;

@@ -111,6 +111,7 @@ import androidx.core.content.ContextCompat;
 /**
  * Input method implementation for Qwerty'ish keyboard.
  */
+@SuppressWarnings("deprecation")
 public class LatinIME extends InputMethodService implements
         SuggestionStripView.Listener, SuggestionStripViewAccessor,
         DictionaryFacilitator.DictionaryInitializationListener {

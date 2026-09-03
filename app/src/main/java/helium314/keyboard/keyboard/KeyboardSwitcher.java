@@ -62,6 +62,7 @@ import helium314.keyboard.latin.utils.ScriptUtils;
 import helium314.keyboard.latin.utils.SubtypeUtilsAdditional;
 import helium314.keyboard.latin.utils.ToolbarMode;
 
+@SuppressWarnings("deprecation")
 public final class KeyboardSwitcher implements KeyboardState.SwitchActions {
     private static final String TAG = KeyboardSwitcher.class.getSimpleName();
 

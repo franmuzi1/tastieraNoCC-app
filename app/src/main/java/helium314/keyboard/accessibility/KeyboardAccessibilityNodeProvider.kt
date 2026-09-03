@@ -149,6 +149,7 @@ class KeyboardAccessibilityNodeProvider<KV : KeyboardView>(
      * View.
      * @see AccessibilityNodeInfoCompat
      */
+    @Suppress("DEPRECATION")
     override fun createAccessibilityNodeInfo(virtualViewId: Int): AccessibilityNodeInfoCompat? {
         if (virtualViewId == UNDEFINED) {
             return null

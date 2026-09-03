@@ -68,6 +68,7 @@ abstract class AndroidWordLevelSpellCheckerSession(private val mService: Android
     }
 
     // unfortunately this can only return a string, with the obvious issues
+    @Suppress("DEPRECATION")
     override fun getLocale(): String? {
         // This function was taken from https://github.com/LineageOS/android_frameworks_base/blob/1235c24a0f092d0e41fd8e86f332f8dc03896a7b/services/core/java/com/android/server/TextServicesManagerService.java#L544 and slightly adopted.
 

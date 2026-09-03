@@ -12,6 +12,7 @@ import android.os.Build;
 
 import java.io.File;
 
+@SuppressWarnings("deprecation")
 public final class DeviceProtectedUtils {
 
     static final String TAG = DeviceProtectedUtils.class.getSimpleName();

@@ -45,6 +45,7 @@ import java.util.HashSet;
 
 /** A view that renders a virtual {@link Keyboard}. */
 // todo: this ThemeStyle-dependent stuff really should not be in here!
+@SuppressWarnings("deprecation")
 public class KeyboardView extends View {
     // XML attributes
     private final KeyVisualAttributes mKeyVisualAttributes;

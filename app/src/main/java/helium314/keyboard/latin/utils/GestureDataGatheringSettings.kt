@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
+@file:OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
+
 package helium314.keyboard.latin.utils
 
 import android.content.Context

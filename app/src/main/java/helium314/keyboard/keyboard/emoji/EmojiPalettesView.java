@@ -67,6 +67,7 @@ import static helium314.keyboard.latin.common.Constants.NOT_A_COORDINATE;
  * </ol>
  * Because of the above reasons, this class doesn't extend {@link KeyboardView}.
  */
+@SuppressWarnings("deprecation")
 public final class EmojiPalettesView extends LinearLayout
         implements View.OnClickListener, EmojiViewCallback {
     private static final class PagerViewHolder extends RecyclerView.ViewHolder {

@@ -150,7 +150,7 @@ fun createAdvancedSettings(context: Context) = listOf(
             key = it.key,
             default = Defaults.PREF_TOUCHPAD_SENSITIVITY,
             range = 0f..100f,
-            description = { value -> value.toInt().toString() }
+            description = { value -> value.toString() }
         )
     },
     Setting(context, Settings.PREF_TOUCHPAD_EDGE_SCROLL, R.string.touchpad_edge_scroll, R.string.touchpad_edge_scroll_description) {

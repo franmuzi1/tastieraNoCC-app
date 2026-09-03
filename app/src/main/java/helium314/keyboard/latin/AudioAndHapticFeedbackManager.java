@@ -23,6 +23,7 @@ import helium314.keyboard.latin.settings.SettingsValues;
  * It offers a consistent and simple interface that allows LatinIME to forget about the
  * complexity of settings and the like.
  */
+@SuppressWarnings("deprecation")
 public final class AudioAndHapticFeedbackManager {
     private AudioManager mAudioManager;
     private Vibrator mVibrator;

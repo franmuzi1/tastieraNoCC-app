@@ -99,7 +99,7 @@ object CipherPanel {
         // poggia semplicemente non si vede. Il bordo e' il colore del testo
         // molto trasparente, quindi si legge su chiaro e su scuro senza che
         // nessuno debba scegliere.
-        bolla?.setStroke(1.dp(trovato), colori.get(ColorType.KEY_TEXT) and 0x22FFFFFF.toInt())
+        bolla?.setStroke(1.dp(trovato), colori.get(ColorType.KEY_TEXT) and 0x22FFFFFF)
         trovato.findViewById<TextView>(R.id.cipher_panel_close)?.apply {
             setTextColor(colori.get(ColorType.KEY_TEXT))
             setOnClickListener { chiudi() }

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+@file:OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
+
 package helium314.keyboard.latin
 
 import android.content.ClipData

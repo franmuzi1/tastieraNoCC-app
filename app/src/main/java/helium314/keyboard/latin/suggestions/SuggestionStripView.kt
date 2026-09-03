@@ -3,6 +3,8 @@
  * modified
  * SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
  */
+@file:OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
+
 package helium314.keyboard.latin.suggestions
 
 import android.annotation.SuppressLint

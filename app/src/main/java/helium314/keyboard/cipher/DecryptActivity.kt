@@ -806,6 +806,7 @@ class DecryptActivity : ComponentActivity() {
         finish()
     }
 
+    @Suppress("DEPRECATION")
     private fun chiediDoveSalvare(name: String) {
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             type = "application/octet-stream"
@@ -822,6 +823,7 @@ class DecryptActivity : ComponentActivity() {
         }
     }
 
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION") // startActivityForResult qui sopra e' l'API di coppia
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         inAttesaDelSelettore = false

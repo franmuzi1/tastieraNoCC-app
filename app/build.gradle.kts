@@ -195,6 +195,7 @@ android {
             // "normal" debug has minify for smaller APK to fit the GitHub 25 MB limit when zipped
             // and for better performance in case users want to install a debug APK
             isMinifyEnabled = true
+            isDebuggable = false
             isJniDebuggable = false
             applicationIdSuffix = ".debug"
         }
@@ -429,6 +430,7 @@ val buildCipherCore by tasks.registering(Exec::class) {
 
     workingDir = cipherCoreDir
     environment("RUSTFLAGS", cipherRustFlags)
+    environment("CARGO_CACHE_AUTO_CLEAN_FREQUENCY", "never")
     commandLine(
         buildList {
             add("cargo")
@@ -455,4 +457,9 @@ val buildCipherCore by tasks.registering(Exec::class) {
 
 tasks.named("preBuild") {
     dependsOn(buildCipherCore)
+}
+
+
+tasks.withType<org.gradle.api.tasks.compile.JavaCompile>().configureEach {
+    options.compilerArgs.addAll(listOf("-Xlint:deprecation", "-Xlint:unchecked"))
 }

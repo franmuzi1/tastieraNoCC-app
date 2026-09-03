@@ -275,6 +275,7 @@ class ShadowInputMethodService {
             selectionEnd -= beforeLength
             return true
         }
+        @Suppress("DEPRECATION") // KeyEvent.characters: nessun sostituto per KEYCODE_UNKNOWN
         override fun sendKeyEvent(p0: KeyEvent): Boolean {
             if (p0.action != KeyEvent.ACTION_DOWN) return true // only change the text on key down, like RichInputConnection does
             if (p0.keyCode == KeyEvent.KEYCODE_DEL) {

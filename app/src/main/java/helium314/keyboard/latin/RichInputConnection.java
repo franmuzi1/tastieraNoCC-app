@@ -58,6 +58,7 @@ import java.util.concurrent.TimeUnit;
  * all the time to find out what text is in the buffer, when we need it to determine caps mode
  * for example.
  */
+@SuppressWarnings("deprecation")
 public final class RichInputConnection implements PrivateCommandPerformer {
     private static final String TAG = "RichInputConnection";
     private static final boolean DBG = false;

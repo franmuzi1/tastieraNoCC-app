@@ -355,7 +355,7 @@ object CipherActions {
         // spedito: non c'e' modo di saperlo, e prometterlo sarebbe peggio che
         // tacere.
         if (!premuto) {
-            val pacchetto = info.packageName?.toString().orEmpty()
+            val pacchetto = info.packageName.orEmpty()
             avvisoUnaVolta(ime, "invio_$pacchetto", R.string.cipher_send_unavailable)
         }
         return premuto

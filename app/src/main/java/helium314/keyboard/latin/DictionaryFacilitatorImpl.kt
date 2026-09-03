@@ -701,7 +701,7 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
 
 /** A group of dictionaries that work together for a single language. */
 private class DictionaryGroup(
-    val locale: Locale = Locale(""),
+    val locale: Locale = Locale.ROOT,
     private var mainDict: Dictionary? = null,
     subDicts: Map<String, ExpandableBinaryDictionary> = emptyMap(),
     context: Context? = null

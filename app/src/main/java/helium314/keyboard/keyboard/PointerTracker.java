@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Locale;
 import java.util.WeakHashMap;
 
+@SuppressWarnings("unchecked")
 public final class PointerTracker implements PointerTrackerQueue.Element,
         BatchInputArbiterListener {
     private static final String TAG = PointerTracker.class.getSimpleName();

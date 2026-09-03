@@ -160,6 +160,7 @@ object LocaleUtils {
             val elements = split("_", limit = 3)
             val language = elements[0].lowercase()
             val region = elements.getOrNull(1)?.uppercase()
+            @Suppress("DEPRECATION") // il costruttore normalizza i codici ISO storici (he->iw), Locale.Builder no
             val locale = if (elements.size == 1) {
                 Locale(language) // "zz" works both in constructor and forLanguageTag
             } else if (elements.size == 2) {
