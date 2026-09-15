@@ -295,6 +295,14 @@ android {
             // una scelta di sicurezza comune, e un progetto che non gira sulle
             // macchine indurite e' un progetto che non gira dove serve.
             all {
+                // `-PsenzaRete` esclude i controlli dei link su internet
+                // (XLinkTest). Interrogano siti di terzi, quindi possono
+                // diventare rossi un giorno qualunque senza che sia cambiato
+                // niente qui — e un controllo che si accende per colpe altrui
+                // insegna a ignorare il rosso. Li usa `verifica-tutto.sh` del
+                // core, che lo dichiara; a mano restano utili, senza la
+                // proprieta'.
+                if (senzaRete) it.exclude("**/XLinkTest*")
                 val nativi = layout.buildDirectory.dir("tmp/robolectric-native").get().asFile
                 it.doFirst { nativi.mkdirs() }
                 it.systemProperty("org.conscrypt.native.workdir", nativi.absolutePath)
@@ -389,6 +397,10 @@ dependencies {
 
 // Percorso del checkout di keyboard-cipher-core. Default: repo affiancato.
 // Sovrascrivibile con -PcipherCorePath=/altro/percorso o in gradle.properties.
+// Letta qui, a configurazione, e non dentro il blocco dei test: la
+// configuration cache non accetta riferimenti al progetto catturati li'.
+val senzaRete: Boolean = project.hasProperty("senzaRete")
+
 val cipherCorePath: String =
     (project.findProperty("cipherCorePath") as String?) ?: "../../tastieraNoCC"
 

@@ -38,8 +38,16 @@ class XLinkTest { // Without the X, SubtypeTests fail with ClassCastException. W
         val linkRegex = "(?:https?:\\/\\/.)?(?:www\\.)?[-a-zA-Z0-9@%._\\+~#=]{2,256}\\.[a-z]{2,6}\\b(?:[-a-zA-Z0-9@:%_\\+.~#?&\\/\\/=]*)".toRegex()
         val links = linkRegex.findAll(file.readText())
         links.forEach {
-            if (it.value.contains("heli", true))
-                checkLink(it.value.trim('.'))
+            if (!it.value.contains("heli", true)) return@forEach
+            val link = it.value.trim('.')
+            // keyboard-cipher: il README del fork rimanda a `README-HeliBoard.md`,
+            // un file del repo. La regex lo prende per un dominio e `URL()`
+            // solleva. Un link relativo si controlla come si deve: il file c'e'.
+            if ("://" !in link) {
+                assert(File("../$link").exists()) { "link relativo a un file che non esiste: $link" }
+                return@forEach
+            }
+            checkLink(link)
         }
     }
 

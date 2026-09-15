@@ -29,6 +29,8 @@ import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.ScriptUtils
 import helium314.keyboard.latin.utils.SubtypeSettings
 import helium314.keyboard.latin.utils.getTimestampFormatter
+import helium314.keyboard.cipher.CipherCompose
+import helium314.keyboard.cipher.CipherSettings
 import helium314.keyboard.latin.utils.prefs
 import org.junit.runner.RunWith
 import org.mockito.Mockito
@@ -731,6 +733,24 @@ class InputLogicTest {
 
         // reset settings
         latinIME.prefs().edit { clear() }
+        // keyboard-cipher: questi test provano la scrittura di HeliBoard, non la
+        // riga cifrata, e la riga cifrata va spenta.
+        //
+        // `clear()` qui sopra riporta la cifratura al suo default, che e'
+        // ACCESA. E il fork accende la riga su ogni campo multiriga — "multiriga
+        // vuol dire prosa, e la prosa e' un messaggio". Un test che dichiara un
+        // `inputType` con TYPE_TEXT_FLAG_MULTI_LINE (vedi
+        // `insertLetterIntoWordWithWeirdEditor`, 180225 = 0x2C001) si vedeva
+        // quindi le battute deviate nel buffer della riga, il campo finto dello
+        // shadow restava vuoto, e il test esplodeva leggendolo. Non era un
+        // difetto della tastiera: era il fork che faceva il suo mestiere dentro
+        // un test scritto prima che il fork esistesse.
+        //
+        // `reload` e non solo la preferenza: `CipherCompose` e' un oggetto, il
+        // suo stato sopravvive da un test all'altro nella stessa JVM, e rilegge
+        // le preferenze solo quando glielo si chiede.
+        latinIME.prefs().edit { putBoolean(CipherSettings.PREF_ENABLED, false) }
+        CipherCompose.reload(latinIME)
 
         setText("") // (re)sets selection and composing word
     }
