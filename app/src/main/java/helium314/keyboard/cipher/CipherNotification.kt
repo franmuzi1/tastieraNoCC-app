@@ -69,9 +69,14 @@ internal object CipherNotification {
     // Il permesso lo controlla [allowed], una riga sotto. Lint non lo segue
     // fuori dal metodo e blocca la build di release: e' l'unica ragione della
     // soppressione.
+    /**
+     * @return se l'avviso e' partito. Senza permesso, o con le notifiche
+     *   spente, non parte niente: chi chiama deve saperlo, perche' altrimenti
+     *   il messaggio copiato non si apre in nessun modo e nessuno lo dice.
+     */
     @SuppressLint("MissingPermission")
-    fun offer(context: Context, blob: String) {
-        if (!allowed(context)) return
+    fun offer(context: Context, blob: String): Boolean {
+        if (!allowed(context)) return false
         ensureChannel(context)
 
         val intent = Intent(context, DecryptActivity::class.java).apply {
@@ -107,7 +112,7 @@ internal object CipherNotification {
             .setTimeoutAfter(TIMEOUT_MS)
             .build()
 
-        runCatching { NotificationManagerCompat.from(context).notify(ID, avviso) }
+        return runCatching { NotificationManagerCompat.from(context).notify(ID, avviso) }.isSuccess
     }
 
     /**

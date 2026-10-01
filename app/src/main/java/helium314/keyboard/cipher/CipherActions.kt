@@ -113,7 +113,14 @@ object CipherActions {
     private const val ATTESA_APERTURA_MS = 1000L
 
     /** Quanto si da' alla finestra della tastiera per comparire. */
-    private const val ATTESA_FINESTRA_MS = 400L
+    private const val ATTESA_FINESTRA_MS = 1500L
+
+    /**
+     * Quanto resta valida un'apertura la cui finestra non e' arrivata in tempo.
+     * Vedi [attendiFinestra]: oltre, chi apre la tastiera non sta piu'
+     * aspettando quel messaggio, e mostrarglielo sarebbe una sorpresa.
+     */
+    private const val ATTESA_TARDIVA_MS = 10_000L
 
     /**
      * Quanto si aspetta, dopo un invio, prima di guardare se il campo si e'
@@ -1250,17 +1257,115 @@ object CipherActions {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 runCatching { ime.requestShowSelf(0) }
             }
-            Handler(Looper.getMainLooper()).postDelayed({
-                if (ime.isInputViewShown) return@postDelayed
-                // La finestra non e' arrivata: il pannello resterebbe carico e
-                // invisibile, col chiaro dentro. Si svuota e si prosegue.
-                CipherPanel.chiudi()
-                scalaDiApertura(ime, contenuto)
-            }, ATTESA_FINESTRA_MS)
+            attendiFinestra(ime, contenuto, intentDiLettura(ime, contenuto), CipherPanel.contenuto())
             return
         }
         scalaDiApertura(ime, contenuto)
     }
+
+    /** Un'apertura che aspetta la finestra della tastiera. Vedi [attendiFinestra]. */
+    private class Attesa(
+        val contenuto: String,
+        val intent: Intent,
+        /**
+         * Cio' che il pannello mostrava, se il messaggio e' passato di li'. Se
+         * il pannello e' stato svuotato prima che la finestra arrivasse, lo si
+         * ripresenta da qui: decifrare di nuovo, con la forward secrecy, non
+         * funzionerebbe — la chiave e' gia' stata usata.
+         */
+        val pannello: Triple<String, String, String>?,
+        /** `0` finche' si aspetta la prima volta; poi il limite di [ATTESA_TARDIVA_MS]. */
+        val scadenza: Long = 0L,
+    )
+
+    @Volatile
+    private var attesa: Attesa? = null
+
+    /**
+     * Aspetta che la finestra della tastiera compaia, e la serve **quando
+     * compare**, non quando scade un timer.
+     *
+     * Prima si guardava `isInputViewShown` dopo 400 ms fissi. Su un telefono
+     * occupato la finestra arriva dopo — e il controllo stesso partiva in
+     * ritardo, perche' passa dallo stesso thread. Allora si chiudeva il
+     * pannello, si chiedeva di nuovo la finestra, si aspettavano altri 400 ms,
+     * e senza permesso di notifica [CipherNotification.offer] usciva in
+     * silenzio. Le richieste di finestra restavano pero' in coda nel sistema:
+     * la tastiera compariva lo stesso, vuota. Il messaggio copiato non si
+     * apriva in nessun modo, e nessuno lo diceva.
+     *
+     * Adesso la via e' l'evento: [finestraComparsa], chiamata da
+     * `LatinIME.onWindowShown`. Il timer resta come limite: scaduto, il
+     * pannello si svuota (la vista non deve tenere il chiaro invisibile), si
+     * offre la notifica, e l'attesa resta comunque per [ATTESA_TARDIVA_MS]: la
+     * finestra in coda, quando arriva, mostra il messaggio invece di comparire
+     * vuota.
+     */
+    private fun attendiFinestra(
+        ime: InputMethodService,
+        contenuto: String,
+        intent: Intent,
+        pannello: Triple<String, String, String>?,
+    ) {
+        val questa = Attesa(contenuto, intent, pannello)
+        attesa = questa
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (attesa !== questa) return@postDelayed
+            if (ime.isInputViewShown) {
+                finestraComparsa(ime)
+                return@postDelayed
+            }
+            if (pannello != null) CipherPanel.chiudi()
+            CipherNotification.offer(ime, contenuto)
+            attesa = Attesa(
+                contenuto,
+                intent,
+                pannello,
+                scadenza = android.os.SystemClock.elapsedRealtime() + ATTESA_TARDIVA_MS,
+            )
+        }, ATTESA_FINESTRA_MS)
+    }
+
+    /**
+     * La finestra della tastiera e' comparsa: se un messaggio copiato la stava
+     * aspettando, lo si mostra adesso.
+     *
+     * Se era nel pannello e il pannello e' ancora aperto non c'e' niente da
+     * fare. Se nel frattempo e' stato svuotato — dal timer, o dalla gerarchia
+     * nuova che la tastiera aggancia comparendo — lo si riempie di nuovo con
+     * cio' che mostrava, senza decifrare una seconda volta. Se il messaggio
+     * andava a [DecryptActivity], la si apre adesso, a finestra presente.
+     */
+    fun finestraComparsa(ime: InputMethodService) {
+        val a = attesa ?: return
+        attesa = null
+        if (a.scadenza != 0L && android.os.SystemClock.elapsedRealtime() > a.scadenza) return
+        // Mostrato qui, la notifica non serve piu': toccarla aprirebbe lo
+        // stesso messaggio una seconda volta.
+        CipherNotification.dismiss(ime)
+        val pannello = a.pannello
+        if (pannello == null) {
+            runCatching { ime.startActivity(a.intent) }
+            return
+        }
+        if (CipherPanel.isAperto()) return
+        // Svuotato prima che la finestra arrivasse: dal timer, o dalla
+        // gerarchia nuova che la tastiera aggancia comparendo.
+        CipherPanel.mostra(pannello.first, pannello.second, pannello.third)
+    }
+
+    /** L'intent che porta [contenuto] a [DecryptActivity] da dentro la tastiera. */
+    private fun intentDiLettura(ime: InputMethodService, contenuto: String): Intent =
+        Intent(ime, DecryptActivity::class.java).apply {
+            action = Intent.ACTION_SEND
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, contenuto)
+            putExtra(
+                CipherHandoff.extraName(),
+                CipherHandoff.issue(ime.currentInputEditorInfo?.packageName.orEmpty()),
+            )
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
 
     /**
      * Le tre vie per far comparire [DecryptActivity], quando il pannello dentro
@@ -1295,16 +1400,7 @@ object CipherActions {
         contenuto: String,
         daAprire: Intent? = null,
     ) {
-        val intent = daAprire ?: Intent(ime, DecryptActivity::class.java).apply {
-            action = Intent.ACTION_SEND
-            type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, contenuto)
-            putExtra(
-                CipherHandoff.extraName(),
-                CipherHandoff.issue(ime.currentInputEditorInfo?.packageName.orEmpty()),
-            )
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
+        val intent = daAprire ?: intentDiLettura(ime, contenuto)
         if (ime.isInputViewShown) {
             runCatching { ime.startActivity(intent) }
             return
@@ -1312,13 +1408,7 @@ object CipherActions {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             runCatching { ime.requestShowSelf(0) }
         }
-        Handler(Looper.getMainLooper()).postDelayed({
-            if (ime.isInputViewShown) {
-                runCatching { ime.startActivity(intent) }
-            } else {
-                CipherNotification.offer(ime, contenuto)
-            }
-        }, ATTESA_FINESTRA_MS)
+        attendiFinestra(ime, contenuto, intent, null)
     }
 
     /**

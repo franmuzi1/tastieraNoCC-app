@@ -147,6 +147,16 @@ object CipherPanel {
     private fun Int.dp(view: View): Int =
         (this * view.resources.displayMetrics.density).toInt().coerceAtLeast(1)
 
+    /**
+     * Cio' che il pannello sta mostrando, o `null` se e' chiuso. Serve a
+     * ripresentarlo senza decifrare di nuovo: con la forward secrecy un
+     * messaggio si apre una volta sola. Vedi `CipherActions.attendiFinestra`.
+     */
+    fun contenuto(): Triple<String, String, String>? {
+        if (!isAperto()) return null
+        return Triple(chi?.text.toString(), quando?.text.toString(), testo?.text.toString())
+    }
+
     /** Aperto adesso? Serve a chi deve decidere se il tasto indietro lo chiude. */
     fun isAperto(): Boolean = pannello?.isVisible == true
 }

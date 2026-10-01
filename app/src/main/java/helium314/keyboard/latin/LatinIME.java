@@ -1068,6 +1068,9 @@ public class LatinIME extends InputMethodService implements
     @Override
     public void onWindowShown() {
         super.onWindowShown();
+        // keyboard-cipher: un messaggio copiato puo' stare aspettando proprio
+        // questa finestra. Vedi CipherActions.attendiFinestra.
+        CipherActions.INSTANCE.finestraComparsa(this);
         if (isInputViewShown()) {
             if (mInputView != null && Settings.getValues().mIsFloatingKeyboard)
                 FloatingKeyboardUtils.setFloating(mInputView);
