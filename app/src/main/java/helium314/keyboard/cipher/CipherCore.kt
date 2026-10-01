@@ -66,6 +66,10 @@ object CipherCore {
     const val SHAPE_GROUP = 3
     const val SHAPE_CARD = 4
     const val SHAPE_BURN = 5
+    /** Primo messaggio a forward secrecy accesa: chi l'ha scritto non lo riapre. */
+    const val SHAPE_MESSAGE_EPHEMERAL = 6
+    /** Schema a epoca (forward secrecy spenta): si rilegge finche' non si brucia. */
+    const val SHAPE_MESSAGE_EPOCH = 7
     /**
      * L'abbiamo scritto noi, ma il destinatario non e' piu' fra i contatti.
      * Esito NORMALE: senza forward secrecy un proprio messaggio si riapre, e

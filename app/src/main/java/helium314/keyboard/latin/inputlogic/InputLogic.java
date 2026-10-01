@@ -2219,6 +2219,29 @@ public final class InputLogic {
      *
      * @param alsoResetLastComposedWord whether to also reset the last composed word.
      */
+    /**
+     * keyboard-cipher: le battute hanno cambiato destinazione — dalla riga di
+     * composizione al campo dell'app o viceversa — senza un nuovo startInput.
+     *
+     * Butta la parola in composizione **senza consegnarla a nessuno**: era
+     * scritta nella destinazione vecchia, e lasciarla qui significava che la
+     * battuta successiva la riscriveva nella nuova. Spegnendo la riga, il chiaro
+     * appena scritto finiva cosi' nel campo dell'app. Poi rilegge il testo dalla
+     * destinazione nuova, come farebbe un cambio di campo.
+     */
+    public void abbandonaComposizione(final int newSelStart, final int newSelEnd) {
+        resetComposingState(true /* alsoResetLastComposedWord */);
+        mSuggestedWords = SuggestedWords.getEmptyInstance();
+        mSpaceState = SpaceState.NONE;
+        mDeleteCount = 0;
+        mRecapitalizeStatus.disable();
+        cancelDoubleSpacePeriodCountdown();
+        mInputLogicHandler.reset();
+        mSuggestionStripViewAccessor.setNeutralSuggestionStrip();
+        mConnection.resetCachesUponCursorMoveAndReturnSuccess(newSelStart, newSelEnd, false);
+        if (newSelStart < 0) mConnection.tryFixIncorrectCursorPosition();
+    }
+
     private void resetComposingState(final boolean alsoResetLastComposedWord) {
         mWordComposer.reset();
         if (alsoResetLastComposedWord) {

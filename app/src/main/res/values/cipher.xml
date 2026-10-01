@@ -42,6 +42,7 @@
     <string name="cipher_no_recipient" tools:ignore="MissingTranslation">Scegli prima un destinatario per questa app</string>
     <string name="cipher_part_ready" tools:ignore="MissingTranslation">Parte %1$d di %2$d nel campo: mandala, la prossima arriva da sola</string>
     <string name="cipher_part_failed" tools:ignore="MissingTranslation">Questa parte non e\' entrata nel campo e le successive sono state annullate: manda quello che e\' partito, poi riscrivi il resto</string>
+    <string name="cipher_field_limit_learned" tools:ignore="MissingTranslation">Questa chat accetta al massimo %1$d caratteri: il messaggio non era entrato intero, e d\'ora in poi qui si divide in parti</string>
     <string name="cipher_message_too_long" tools:ignore="MissingTranslation">Messaggio troppo lungo per questa chat</string>
     <string name="cipher_message_too_long_detail" tools:ignore="MissingTranslation">Il testo cifrato supera il limite di 4096 caratteri di Telegram: togli circa %1$d caratteri, oppure mandalo in due messaggi.</string>
     <string name="cipher_text_too_long" tools:ignore="MissingTranslation">Testo troppo lungo per essere cifrato</string>
@@ -288,7 +289,9 @@
          qui sotto la sostituiscono nei casi in cui si sa qualcosa di vero. -->
     <string name="cipher_cannot_decrypt" tools:ignore="MissingTranslation">Non si apre.</string>
     <!-- Ha usato la catena: qui «una volta sola» e' una spiegazione vera. -->
-    <string name="cipher_cannot_decrypt_fs" tools:ignore="MissingTranslation">Non si apre. Questo messaggio usava la forward secrecy: se ne hai gia\' aperto uno piu\' recente della stessa persona, la sua chiave e\' stata buttata e non torna. Altrimenti puo\' essere diretto a qualcun altro.</string>
+    <string name="cipher_cannot_decrypt_fs" tools:ignore="MissingTranslation">Non si apre. Questo messaggio usava la forward secrecy: se l\'hai scritto tu, non si riapre nemmeno per te, ed e\' voluto. Se l\'hai ricevuto e ne hai gia\' aperto uno piu\' recente della stessa persona, la sua chiave e\' stata buttata e non torna. Altrimenti puo\' essere diretto a qualcun altro.</string>
+    <string name="cipher_cannot_decrypt_ephemeral" tools:ignore="MissingTranslation">Non si apre. E\' il primo messaggio di una conversazione con la forward secrecy accesa: se l\'hai scritto tu, non si riapre nemmeno per te, ed e\' voluto. Se l\'hai ricevuto, o e\' diretto a qualcun altro, o e\' arrivato rovinato.</string>
+    <string name="cipher_cannot_decrypt_epoch" tools:ignore="MissingTranslation">Non si apre. Questo messaggio non usava la forward secrecy, quindi non e\' una chiave scaduta: o la conversazione e\' stata bruciata, o e\' diretto a qualcun altro, o e\' arrivato rovinato.</string>
     <!-- NON ha usato la catena: nominare la forward secrecy qui sarebbe falso. -->
     <string name="cipher_cannot_decrypt_plain" tools:ignore="MissingTranslation">Non si apre. Questo messaggio non usava la forward secrecy, quindi non e\' una chiave scaduta: o e\' diretto a qualcun altro, o e\' arrivato rovinato.</string>
     <!-- Gruppo: nessuna delle due cause di prima c'entra. -->

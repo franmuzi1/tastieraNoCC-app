@@ -645,6 +645,8 @@ class DecryptActivity : ComponentActivity() {
      */
     private fun perche_non_si_apre(testo: String): Int = when (CipherCore.nativeBlobShape(testo)) {
         CipherCore.SHAPE_MESSAGE_FS -> R.string.cipher_cannot_decrypt_fs
+        CipherCore.SHAPE_MESSAGE_EPHEMERAL -> R.string.cipher_cannot_decrypt_ephemeral
+        CipherCore.SHAPE_MESSAGE_EPOCH -> R.string.cipher_cannot_decrypt_epoch
         CipherCore.SHAPE_MESSAGE -> R.string.cipher_cannot_decrypt_plain
         CipherCore.SHAPE_GROUP -> R.string.cipher_cannot_decrypt_group
         CipherCore.SHAPE_BURN -> R.string.cipher_cannot_decrypt_burn

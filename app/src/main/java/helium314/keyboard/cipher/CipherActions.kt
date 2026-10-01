@@ -53,6 +53,9 @@ object CipherActions {
      */
     private const val MAX_BLOB_CHARS = 4096
 
+    /** Prefisso della preferenza col limite imparato per app. */
+    private const val PREF_LIMITE = "cipher_limite_campo_"
+
     /**
      * Involucro del blob, in byte, contato sul formato vero: 4 di prefisso, 32
      * di chiave nell'intestazione, 24 di nonce, 16 di tag, piu' 8 di marca
@@ -132,6 +135,18 @@ object CipherActions {
      * peggiore che questo sistema possa produrre.
      */
     fun encrypt(ime: InputMethodService) {
+        val limite = limiteBlob(ime)
+        cifraEConsegna(ime)
+        // Il campo ha troncato il blob: [rimediaAlTroncamento] l'ha tolto, ha
+        // imparato quanto ci sta davvero, e il testo e' ancora dov'era. Si
+        // rifa' tutto una volta sola col limite nuovo, che adesso spezza in
+        // parti cio' che prima sembrava starci intero. Una volta sola perche'
+        // il limite imparato puo' solo scendere: se nemmeno cosi' basta, il
+        // secondo giro lo dice col suo avviso.
+        if (limiteBlob(ime) < limite) cifraEConsegna(ime)
+    }
+
+    private fun cifraEConsegna(ime: InputMethodService) {
         if (!ready(ime)) return
         // C'e' una parte in attesa su questo campo: il tasto la consegna invece
         // di cominciare un messaggio nuovo. E' la via di riserva — normalmente
@@ -180,8 +195,9 @@ object CipherActions {
         // doppione e gli slot saranno uno meno: sbagliare di uno per eccesso e'
         // la direzione giusta.
         val slot = if (gruppo != null) gruppo.membri.size + 1 else 0
+        val limite = limiteBlob(ime)
         val stimato = stimaBlob(field.text, slot)
-        if (stimato > MAX_BLOB_CHARS) {
+        if (stimato > limite) {
             // Non ci sta in un messaggio solo: si spezza invece di rifiutare.
             // Rifiutare era corretto e inutile — chi scrive non riscrive piu'
             // corto un messaggio lungo, e con la riga di composizione accesa
@@ -193,7 +209,7 @@ object CipherActions {
             // non avrebbero dove tornare, e l'utente si sentirebbe dire
             // «parte 1 di 3» per non vedere mai le altre due.
             val parti = if (CipherParti.campoUtilizzabile(ime.currentInputEditorInfo)) {
-                CipherParti.dividi(field.text) { stimaBlob(it, slot) <= MAX_BLOB_CHARS }
+                CipherParti.dividi(field.text) { stimaBlob(it, slot) <= limite }
             } else {
                 null
             }
@@ -201,7 +217,7 @@ object CipherActions {
                 // Nemmeno spezzando: qui il rifiuto resta quello di prima, con
                 // quanto tagliare, perche' e' l'unica cosa utile che si possa
                 // dire a chi ha incollato un documento intero in una chat.
-                val daTogliere = ((stimato - MAX_BLOB_CHARS) * 5 / 8).coerceAtLeast(1)
+                val daTogliere = ((stimato - limite) * 5 / 8).coerceAtLeast(1)
                 toast(ime, R.string.cipher_message_too_long)
                 KeyboardSwitcher.getInstance().showToast(
                     ime.getString(R.string.cipher_message_too_long_detail, daTogliere),
@@ -389,6 +405,9 @@ object CipherActions {
         val consegnato = ic.commitText(blob, 1)
         ic.endBatchEdit()
         if (!consegnato || !fieldIs(ic, blob)) {
+            // Un pezzo troncato nel campo si spedirebbe con un tocco e non si
+            // aprirebbe mai: si toglie. La coda resta comunque com'e'.
+            rimediaAlTroncamento(ime, ic, blob, "")
             // Il campo non l'ha presa, quindi quel blob non e' uscito da
             // nessuna parte: **la coda resta intera**. Si dice cos'e'
             // successo e si lascia la via per riprovare — il lucchetto, che
@@ -407,7 +426,7 @@ object CipherActions {
         // cominciare a farlo dalla seconda parte cambierebbe il modo di
         // spedire a meta' dello stesso messaggio.
         if (CipherParti.daRiga()) {
-            deliver(ime, ic)
+            deliver(ime, ic, blob)
             // E se ha spedito, la parte dopo la segue: senza questa riga la
             // catena si fermava alla seconda, perche' nessuno programmava la
             // terza.
@@ -513,12 +532,14 @@ object CipherActions {
                 // Non si svuota niente e non si preme invio: il messaggio resta
                 // nella riga, dove l'utente lo vede. Meglio un invio da
                 // ripetere che un messaggio da riscrivere.
-                toast(ime, R.string.cipher_send_failed_kept)
+                if (!rimediaAlTroncamento(ime, ic, blob, "")) {
+                    toast(ime, R.string.cipher_send_failed_kept)
+                }
                 return false
             }
             Consegnato.segna(blob)
             CipherCompose.clear()
-            deliver(ime, ic)
+            deliver(ime, ic, blob)
             // Se l'invio automatico ha spedito e c'e' una coda, la parte
             // successiva parte da sola. Se non ha spedito, il campo e' ancora
             // pieno e questa chiamata non fa niente: la coda aspetta l'invio a
@@ -527,6 +548,9 @@ object CipherActions {
             return true
         }
         if (!replaceField(ic, field, blob)) {
+            // Troncato: il chiaro era gia' stato tolto per far posto al blob, e
+            // va rimesso — il campo era l'unico posto in cui esisteva.
+            if (rimediaAlTroncamento(ime, ic, blob, field.text)) return false
             // Il campo non e' stato sostituito: nel dubbio l'utente deve
             // saperlo, perche' il fallimento silenzioso qui e' il peggiore
             // possibile — si crede di aver cifrato e si preme invio sul chiaro.
@@ -534,6 +558,60 @@ object CipherActions {
             return false
         }
         return true
+    }
+
+    /**
+     * Il campo ha troncato il blob: lo si toglie e si impara il limite.
+     *
+     * Messaggi di Android si ferma a 2000 caratteri, ben sotto
+     * [MAX_BLOB_CHARS], e non lo dichiara da nessuna parte: `EditorInfo` non
+     * porta la lunghezza massima. Il troncamento si vedeva gia' — la consegna
+     * fallisce — ma il blob mozzato restava nel campo, pronto a partire con un
+     * tocco e a non aprirsi mai dall'altra parte, e il messaggio non partiva
+     * nemmeno riprovando, perche' si ricifrava della stessa lunghezza.
+     *
+     * Adesso il campo torna a [ripristino] (vuoto dalla riga, il chiaro di
+     * prima nel campo) e la lunghezza che ha accettato diventa il limite per
+     * quell'app, ricordato: [encrypt] rifa' il giro e spezza in parti.
+     *
+     * @return `false` se non era un troncamento, e allora il campo non e' stato
+     *   toccato.
+     */
+    private fun rimediaAlTroncamento(
+        ime: InputMethodService,
+        ic: InputConnection,
+        blob: String,
+        ripristino: String,
+    ): Boolean {
+        val rimasto = testoDelCampo(ic) ?: return false
+        if (rimasto.isEmpty() || rimasto.length >= blob.length || !blob.startsWith(rimasto)) {
+            return false
+        }
+        ic.beginBatchEdit()
+        ic.finishComposingText()
+        ic.performContextMenuAction(android.R.id.selectAll)
+        ic.commitText(ripristino, 1)
+        ic.endBatchEdit()
+        val pacchetto = ime.currentInputEditorInfo?.packageName.orEmpty()
+        if (pacchetto.isNotEmpty()) {
+            ime.prefs().edit().putInt(PREF_LIMITE + pacchetto, rimasto.length).apply()
+        }
+        KeyboardSwitcher.getInstance().showToast(
+            ime.getString(R.string.cipher_field_limit_learned, rimasto.length),
+            false,
+        )
+        return true
+    }
+
+    /**
+     * Quanto puo' essere lungo un blob in questo campo: [MAX_BLOB_CHARS], o
+     * meno se quest'app ha gia' troncato una volta. Vedi [rimediaAlTroncamento].
+     */
+    private fun limiteBlob(ime: InputMethodService): Int {
+        val pacchetto = ime.currentInputEditorInfo?.packageName.orEmpty()
+        if (pacchetto.isEmpty()) return MAX_BLOB_CHARS
+        return ime.prefs().getInt(PREF_LIMITE + pacchetto, MAX_BLOB_CHARS)
+            .coerceAtMost(MAX_BLOB_CHARS)
     }
 
     /**
@@ -555,11 +633,14 @@ object CipherActions {
      * invio, comprese le eccezioni per app note, e due letture diverse dello
      * stesso campo sarebbero due comportamenti diversi per lo stesso gesto.
      *
-     * *Non si ricade sul tasto invio simulato.* In un campo multiriga
-     * inserirebbe un a capo dentro il messaggio appena consegnato invece di
-     * spedirlo: rovinerebbe il blob, e in silenzio.
+     * Se l'azione non c'e' si ricade sul tasto invio simulato: vedi il ripiego
+     * qui sotto, e [togliACapo] per cosa succede quando l'app lo prende per un
+     * a capo invece che per un invio.
+     *
+     * @param consegnato cio' che e' appena stato messo nel campo, per
+     *   riconoscerlo dopo il tasto invio.
      */
-    private fun deliver(ime: InputMethodService, ic: InputConnection): Boolean {
+    private fun deliver(ime: InputMethodService, ic: InputConnection, consegnato: String): Boolean {
         if (!CipherSettings.isAutoSend(ime)) return false
         val info = ime.currentInputEditorInfo ?: return false
         val action = InputTypeUtils.getImeOptionsActionIdFromEditorInfo(info)
@@ -594,8 +675,37 @@ object CipherActions {
         if (!premuto) {
             val pacchetto = info.packageName.orEmpty()
             avvisoUnaVolta(ime, "invio_$pacchetto", R.string.cipher_send_unavailable)
+        } else {
+            Handler(Looper.getMainLooper()).postDelayed({
+                togliACapo(ime, consegnato)
+            }, ATTESA_INVIO_MS)
         }
         return premuto
+    }
+
+    /**
+     * L'app ha preso il tasto invio per un a capo: lo si toglie.
+     *
+     * Succede dove l'invio con invio e' spento — Messaggi, per dirne una. Il
+     * campo restava con il testo consegnato **piu'** un a capo: ogni SMS
+     * partiva con una riga vuota in fondo, e il confronto con [Consegnato]
+     * falliva, quindi alla riapertura la riga si riprendeva il messaggio gia'
+     * pronto — un blob che il lucchetto avrebbe poi cifrato una seconda volta.
+     *
+     * Si tocca il campo solo se contiene **esattamente** quello: se l'utente ha
+     * gia' scritto altro, o l'app ha spedito e il campo e' vuoto, non c'e'
+     * niente da rimettere a posto.
+     */
+    private fun togliACapo(ime: InputMethodService, consegnato: String) {
+        val ic = appConnection(ime) ?: return
+        if (testoDelCampo(ic) != consegnato + "\n") return
+        ic.beginBatchEdit()
+        ic.finishComposingText()
+        ic.performContextMenuAction(android.R.id.selectAll)
+        ic.commitText(consegnato, 1)
+        ic.endBatchEdit()
+        val pacchetto = ime.currentInputEditorInfo?.packageName.orEmpty()
+        avvisoUnaVolta(ime, "invio_$pacchetto", R.string.cipher_send_unavailable)
     }
 
     /**
@@ -759,6 +869,22 @@ object CipherActions {
      * come per qualunque vista che compare o sparisce.
      */
     fun toggleCompose(ime: InputMethodService) {
+        // Il tasto sposta le battute fra la riga e il campo dell'app senza che
+        // l'input riparta, quindi HeliBoard non azzera niente da solo: la parola
+        // che stava componendo nella riga veniva riscritta nel campo dell'app
+        // alla battuta successiva, insieme ai suggerimenti calcolati sul chiaro.
+        // Spegnere la riga mandava all'app proprio cio' che la riga protegge.
+        val prima = CipherCompose.connection()
+        try {
+            accendiOSpegniRiga(ime)
+        } finally {
+            if (CipherCompose.connection() !== prima) {
+                (ime as? LatinIME)?.onCipherTargetChanged(prima == null)
+            }
+        }
+    }
+
+    private fun accendiOSpegniRiga(ime: InputMethodService) {
         val prefs = ime.prefs()
 
         // Se la riga c'e', il tasto la spegne — e spegne la cifratura, che e'
@@ -855,18 +981,24 @@ object CipherActions {
      *
      * Un'impronta e non il testo, come per [Ripetuto]: tenere il chiaro in un
      * campo statico lo terrebbe in memoria oltre il momento in cui serviva.
+     *
+     * Gli spazi in coda non contano. Il tasto invio simulato di [deliver], dove
+     * l'app non spedisce con invio, lascia un a capo dopo il testo consegnato:
+     * col confronto esatto quel testo non era piu' "il nostro", e la riga se lo
+     * riprendeva al primo cambio di app. [togliACapo] di solito lo toglie, ma
+     * l'utente puo' cambiare app prima.
      */
     private object Consegnato {
         @Volatile
         private var impronta: String? = null
 
         fun segna(testo: String) {
-            impronta = improntaDi(testo)
+            impronta = improntaDi(testo.trimEnd())
         }
 
         fun e(testo: CharSequence): Boolean {
             val attesa = impronta ?: return false
-            return attesa == improntaDi(testo.toString())
+            return attesa == improntaDi(testo.toString().trimEnd())
         }
     }
 
@@ -1336,7 +1468,7 @@ object CipherActions {
         }
         Consegnato.segna(text)
         CipherCompose.clear()
-        if (!deliver(ime, ic)) avvisoUnaVolta(ime, "chiaro", R.string.cipher_sent_plain)
+        if (!deliver(ime, ic, text)) avvisoUnaVolta(ime, "chiaro", R.string.cipher_sent_plain)
     }
 
     /**
@@ -1630,16 +1762,20 @@ object CipherActions {
      * c'e' niente su cui basare una correzione, e un secondo tentativo alla
      * cieca raddoppierebbe il blob invece di rimediare.
      */
-    private fun fieldIs(ic: InputConnection, expected: String): Boolean {
+    private fun fieldIs(ic: InputConnection, expected: String): Boolean =
+        (testoDelCampo(ic) ?: return true) == expected
+
+    /** Tutto il testo del campo, o `null` se non si riesce a rileggerlo. */
+    private fun testoDelCampo(ic: InputConnection): String? {
         val extracted = runCatching { ic.getExtractedText(extractRequest(), 0) }.getOrNull()
         val whole = extracted?.text
         if (whole != null && extracted.partialStartOffset < 0) {
-            return whole.toString() == expected
+            return whole.toString()
         }
         val before = runCatching { ic.getTextBeforeCursor(MAX_FIELD_CHARS, 0) }.getOrNull()
-            ?: return true
+            ?: return null
         val after = runCatching { ic.getTextAfterCursor(MAX_FIELD_CHARS, 0) }.getOrNull() ?: ""
-        return before.toString() + after.toString() == expected
+        return before.toString() + after.toString()
     }
 
     /**

@@ -1170,6 +1170,36 @@ public class LatinIME extends InputMethodService implements
         aggiornaSelezione(oldSelStart, oldSelEnd, newSelStart, newSelEnd, -1, -1);
     }
 
+    /**
+     * keyboard-cipher: le battute sono passate dalla riga di composizione al
+     * campo dell'app, o viceversa, col tasto della riga — senza che l'input
+     * ripartisse. Vedi {@link InputLogic#abbandonaComposizione}.
+     *
+     * @param dallApp se prima le battute andavano all'app. Allora la parola
+     *   sottolineata e' rimasta li', e va chiusa dove sta: e' testo dell'app,
+     *   scritto in chiaro di proposito.
+     */
+    public void onCipherTargetChanged(final boolean dallApp) {
+        final InputConnection app = getAppInputConnection();
+        if (dallApp && app != null) app.finishComposingText();
+        int start = -1;
+        int end = -1;
+        final int[] riga = CipherCompose.INSTANCE.selezione();
+        if (riga != null) {
+            start = riga[0];
+            end = riga[1];
+        } else if (app != null) {
+            final android.view.inputmethod.ExtractedText et =
+                    app.getExtractedText(new android.view.inputmethod.ExtractedTextRequest(), 0);
+            if (et != null && et.selectionStart >= 0) {
+                start = et.startOffset + Math.min(et.selectionStart, et.selectionEnd);
+                end = et.startOffset + Math.max(et.selectionStart, et.selectionEnd);
+            }
+        }
+        mInputLogic.abbandonaComposizione(start, end);
+        mKeyboardSwitcher.requestUpdatingShiftState(getCurrentAutoCapsState(), getCurrentRecapitalizeState());
+    }
+
     private void aggiornaSelezione(final int oldSelStart, final int oldSelEnd,
                                    final int newSelStart, final int newSelEnd,
                                    final int composingSpanStart, final int composingSpanEnd) {
