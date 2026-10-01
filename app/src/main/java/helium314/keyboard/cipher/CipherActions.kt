@@ -516,6 +516,7 @@ object CipherActions {
                 toast(ime, R.string.cipher_send_failed_kept)
                 return false
             }
+            Consegnato.segna(blob)
             CipherCompose.clear()
             deliver(ime, ic)
             // Se l'invio automatico ha spedito e c'e' una coda, la parte
@@ -730,6 +731,11 @@ object CipherActions {
         val ic = appConnection(ime) ?: return
         val field = readField(ime, ic) ?: return
         if (field.text.isEmpty()) return
+        // Alla riapertura (nessun tasto: `primaryCode` zero) non si riprende
+        // cio' che la riga stessa ha appena consegnato. Vedi [Consegnato].
+        // Con un tasto si', invece: correggere cio' che si e' appena
+        // consegnato e' il motivo per cui l'adozione esiste.
+        if (primaryCode == 0 && Consegnato.e(field.text)) return
         if (!replaceField(ic, field, "")) return
         CipherCompose.adopt(field.text)
     }
@@ -744,10 +750,13 @@ object CipherActions {
      * cambiarla bisogna uscire dalla chat e attraversare le impostazioni, non
      * la cambia nessuno.
      *
-     * `setThemeNeedsReload` e non `reloadKeyboard`: i tasti della striscia si
-     * costruiscono una volta sola, e questo tocco fa comparire o sparire tutta
-     * la cifratura — lucchetti compresi — oltre a cambiare l'altezza della
-     * tastiera.
+     * **Niente ricostruzione della tastiera.** Prima qui c'era
+     * `setThemeNeedsReload`, che e' `hideWindow` piu' `showWindow`: a ogni
+     * tocco la tastiera si chiudeva e si riapriva sotto il dito. Non serve piu':
+     * la toolbar nasce sempre con i tasti della cifratura e
+     * `CipherCompose.reload` li mostra o li nasconde sul posto, insieme alla
+     * riga. L'altezza nuova la prende `onComputeInsets` al layout successivo,
+     * come per qualunque vista che compare o sparisce.
      */
     fun toggleCompose(ime: InputMethodService) {
         val prefs = ime.prefs()
@@ -757,7 +766,6 @@ object CipherActions {
         if (CipherCompose.rigaASchermo()) {
             prefs.edit().putBoolean(CipherSettings.PREF_ENABLED, false).apply()
             CipherCompose.reload(ime)
-            KeyboardSwitcher.getInstance().setThemeNeedsReload()
             avvisoUnaVolta(ime, "riga_spenta", R.string.cipher_compose_off)
             return
         }
@@ -773,7 +781,6 @@ object CipherActions {
             // in cui era accesa, e senza questa riga l'etichetta mostrerebbe il
             // destinatario di quella mentre si cifra per questa.
             CipherCompose.risincronizza(ime)
-            KeyboardSwitcher.getInstance().setThemeNeedsReload()
         }
         if (CipherCompose.rigaASchermo()) {
             avvisoUnaVolta(ime, "riga_accesa", R.string.cipher_compose_on)
@@ -819,16 +826,47 @@ object CipherActions {
         private var quando = 0L
 
         fun gia(testo: String): Boolean {
-            val impronta = runCatching {
-                java.security.MessageDigest.getInstance("SHA-256")
-                    .digest(testo.toByteArray())
-                    .joinToString("") { "%02x".format(it) }
-            }.getOrNull() ?: return false
+            val impronta = improntaDi(testo) ?: return false
             val adesso = android.os.SystemClock.elapsedRealtime()
             val ripetuto = impronta == ultimo && adesso - quando < FINESTRA_MS
             ultimo = impronta
             quando = adesso
             return ripetuto
+        }
+    }
+
+    private fun improntaDi(testo: String): String? = runCatching {
+        java.security.MessageDigest.getInstance("SHA-256")
+            .digest(testo.toByteArray())
+            .joinToString("") { "%02x".format(it) }
+    }.getOrNull()
+
+    /**
+     * Cio' che la riga ha appena consegnato al campo dell'app — il blob o il
+     * chiaro — per non riprenderselo.
+     *
+     * [adoptFieldText] porta nella riga il testo che trova nel campo quando la
+     * tastiera si riapre. Ma anche il testo appena consegnato e' "testo nel
+     * campo", e un'app che fa ripartire l'input subito dopo — le barre di
+     * ricerca lo fanno di continuo, e la ricerca di WhatsApp e' una di quelle —
+     * se lo vedeva sfilare via: "invia in chiaro" metteva la ricerca nel
+     * campo, la riga se la riprendeva un istante dopo, e la barra di ricerca
+     * restava vuota.
+     *
+     * Un'impronta e non il testo, come per [Ripetuto]: tenere il chiaro in un
+     * campo statico lo terrebbe in memoria oltre il momento in cui serviva.
+     */
+    private object Consegnato {
+        @Volatile
+        private var impronta: String? = null
+
+        fun segna(testo: String) {
+            impronta = improntaDi(testo)
+        }
+
+        fun e(testo: CharSequence): Boolean {
+            val attesa = impronta ?: return false
+            return attesa == improntaDi(testo.toString())
         }
     }
 
@@ -1296,6 +1334,7 @@ object CipherActions {
             toast(ime, R.string.cipher_send_failed_kept)
             return
         }
+        Consegnato.segna(text)
         CipherCompose.clear()
         if (!deliver(ime, ic)) avvisoUnaVolta(ime, "chiaro", R.string.cipher_sent_plain)
     }

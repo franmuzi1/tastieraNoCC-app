@@ -993,9 +993,15 @@ public class LatinIME extends InputMethodService implements
 
             resetDictionaryFacilitatorIfNecessary();
 
+            // keyboard-cipher: con la riga attiva il cursore e' quello del nostro
+            // buffer, non quello del campo dell'app — che di solito e' vuoto e
+            // direbbe 0 anche con mezzo messaggio gia' scritto nella riga.
+            final int[] selezioneRiga = CipherCompose.INSTANCE.selezione();
+            final int initialSelStart = selezioneRiga != null ? selezioneRiga[0] : editorInfo.initialSelStart;
+            final int initialSelEnd = selezioneRiga != null ? selezioneRiga[1] : editorInfo.initialSelEnd;
             // TODO[IL]: Can the following be moved to InputLogic#startInput?
             if (!mInputLogic.mConnection.resetCachesUponCursorMoveAndReturnSuccess(
-                    editorInfo.initialSelStart, editorInfo.initialSelEnd,
+                    initialSelStart, initialSelEnd,
                     false /* shouldFinishComposition */)) {
                 // Sometimes, while rotating, for some reason the framework tells the app we are not
                 // connected to it and that means we can't refresh the cache. In this case, schedule
@@ -1130,6 +1136,43 @@ public class LatinIME extends InputMethodService implements
                     + ", cs=" + composingSpanStart + ", ce=" + composingSpanEnd);
         }
 
+        // keyboard-cipher: con la riga di composizione attiva queste posizioni
+        // sono del campo DELL'APP, mentre la tastiera scrive nel nostro buffer.
+        // Passarle a InputLogic gli faceva credere che il cursore fosse li' —
+        // tipicamente 0, o la lunghezza del blob appena consegnato — e da quel
+        // momento le sue posizioni attese non corrispondevano piu' al buffer.
+        // Toccando la riga lo spostamento vero veniva scambiato per un
+        // aggiornamento in ritardo e ignorato, e la battuta dopo finiva in un
+        // punto a caso del testo. Le posizioni della riga arrivano da
+        // onCipherSelectionChanged.
+        if (CipherCompose.INSTANCE.connection() != null) return;
+        aggiornaSelezione(oldSelStart, oldSelEnd, newSelStart, newSelEnd,
+                composingSpanStart, composingSpanEnd);
+    }
+
+    /**
+     * keyboard-cipher: il cursore o il testo della riga di composizione sono
+     * cambiati senza passare da HeliBoard — un tocco sulla riga, un incolla, il
+     * buffer svuotato dopo un invio o riempito con il testo preso dal campo.
+     *
+     * Il vecchio valore e' quello che HeliBoard SI ASPETTA, non quello che il
+     * buffer aveva prima. Solo cosi' isBelatedExpectedUpdate riconosce sempre
+     * lo spostamento come nuovo: con un vecchio valore diverso dall'atteso il
+     * suo terzo caso puo' scambiarlo per un aggiornamento in ritardo, e
+     * scartarlo.
+     */
+    public void onCipherSelectionChanged(final int newSelStart, final int newSelEnd) {
+        if (CipherCompose.INSTANCE.connection() == null) return;
+        final RichInputConnection connection = mInputLogic.mConnection;
+        final int oldSelStart = connection.getExpectedSelectionStart();
+        final int oldSelEnd = connection.getExpectedSelectionEnd();
+        if (oldSelStart == newSelStart && oldSelEnd == newSelEnd) return;
+        aggiornaSelezione(oldSelStart, oldSelEnd, newSelStart, newSelEnd, -1, -1);
+    }
+
+    private void aggiornaSelezione(final int oldSelStart, final int oldSelEnd,
+                                   final int newSelStart, final int newSelEnd,
+                                   final int composingSpanStart, final int composingSpanEnd) {
         // This call happens whether our view is displayed or not, but if it's not then we should
         // not attempt recorrection. This is true even with a hardware keyboard connected: if the
         // view is not displayed we have no means of showing suggestions anyway, and if it is then

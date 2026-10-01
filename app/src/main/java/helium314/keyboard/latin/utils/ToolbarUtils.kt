@@ -296,65 +296,42 @@ fun getPinnedToolbarKeys(prefs: SharedPreferences) =
  * sono scelte dell'utente: chi disattiva la cifratura e poi la riattiva deve
  * ritrovare la barra com'era, non ricostruirla.
  *
- * **Senza la riga di composizione resta il solo `COMPOSE`**, e la tastiera e'
- * HeliBoard con in piu' quell'interruttore. I lucchetti spariscono, e non per
- * ordine: senza la riga, "cifra" prende cio' che c'e' nel campo dell'app e lo
- * manda al destinatario **ricordato per quell'app**, scelto da solo. Un tasto
- * che cifra per una persona che non hai indicato in quel momento e' il
- * fallimento peggiore che questo sistema possa produrre, e nasconderlo dietro
- * un tocco solo lo rendeva facile. Con la riga accesa il destinatario e'
- * scritto accanto a cio' che stai scrivendo, e la stessa scorciatoia diventa
- * leggibile.
+ * **La barra si costruisce sempre come a cifratura accesa**, anche quando e'
+ * spenta. Quali tasti si VEDONO lo decide a runtime
+ * `CipherCompose.aggiornaTastiCifratura`, che a riga assente lascia solo
+ * `COMPOSE` e `DECRYPT` — lo stesso risultato che prima dava un filtro qui.
  *
- * *Conseguenza da conoscere:* sparisce anche **"decifra"**. Con la riga spenta
- * un messaggio in arrivo si apre dall'apertura automatica alla copia, dal menu
- * di selezione del testo o dallo share sheet — non dalla toolbar.
+ * Il filtro qui costava una cosa che si vedeva a ogni uso: l'elenco dei tasti
+ * si legge una volta sola, quando nasce la striscia, quindi accendere o
+ * spegnere la riga dal suo tasto obbligava a ricostruire l'intera tastiera —
+ * `setThemeNeedsReload`, cioe' `hideWindow` piu' `showWindow`. Da fuori la
+ * tastiera si chiudeva e si riapriva a ogni tocco dell'interruttore.
  *
- * E quando la modalita' e' accesa i tasti vengono **aggiunti** se la preferenza
- * salvata non li nomina affatto. Non e' una forzatura: le preferenze esistenti
- * non vengono sovrascritte dai default, quindi senza questo chi aggiorna
- * accenderebbe la modalita' e non troverebbe piu' i lucchetti — cioe' avrebbe
- * una riga di composizione senza il tasto per cifrare. Un tasto messo a `false`
- * dall'utente resta a `false`: quella e' una scelta, e il nome nella preferenza
- * la registra.
+ * Restano valide le ragioni per cui senza la riga i lucchetti spariscono:
+ * "cifra" prenderebbe cio' che c'e' nel campo dell'app e lo manderebbe al
+ * destinatario **ricordato per quell'app**, scelto da solo. Cambia solo chi li
+ * nasconde.
+ *
+ * I tasti vengono **aggiunti** se la preferenza salvata non li nomina affatto.
+ * Non e' una forzatura: le preferenze esistenti non vengono sovrascritte dai
+ * default, quindi senza questo chi aggiorna accenderebbe la modalita' e non
+ * troverebbe piu' i lucchetti — cioe' avrebbe una riga di composizione senza il
+ * tasto per cifrare. Un tasto messo a `false` dall'utente resta a `false`:
+ * quella e' una scelta, e il nome nella preferenza la registra.
  */
 private fun withCipherKeys(prefs: SharedPreferences, pref: String, default: String): List<ToolbarKey> {
-    val keys = getEnabledToolbarKeys(prefs, pref, default)
-    // COMPOSE sopravvive anche a cifratura spenta: e' l'interruttore, e un
-    // interruttore che sparisce spegnendosi si puo' solo riaccendere dalle
-    // impostazioni. Tutto il resto se ne va.
-    if (!CipherSettings.isEnabled(prefs)) {
-        // **DECRYPT resta anche a cifratura spenta**, ed e' una correzione.
-        //
-        // Leggere e scrivere non sono la stessa facolta'. Spegnere la cifratura
-        // vuol dire "non voglio la riga di composizione": non vuol dire "non
-        // voglio piu' poter aprire i messaggi che mi arrivano". Un blob resta
-        // leggibile finche' si ha l'identita' con cui e' stato cifrato, e
-        // nascondere il tasto toglieva l'unica via che parte dalla tastiera —
-        // restavano il menu di condivisione e gli appunti, che sono piu' lunghi
-        // e che chi ha appena spento un interruttore non pensa a cercare.
-        //
-        // Il resto della cifratura se ne va davvero: cifrare, allegare,
-        // contatti. Quelle sono le facolta' che l'interruttore governa.
-        return keys.filterNot { it in cipherKeys && it != COMPOSE && it != DECRYPT }
-    }
-    val composizione = CipherSettings.isComposeMode(prefs)
-    // COMPOSE resta anche a modalita' spenta: e' l'interruttore, cioe' l'unico
-    // modo per riaccenderla. Tutto il resto della cifratura vive dentro la riga.
+    val result = getEnabledToolbarKeys(prefs, pref, default).toMutableList()
     // Elenchi diversi per le due barre, e la differenza non e' cosmetica: senza,
     // l'aggiunta automatica qui sotto rimetterebbe DECRYPT fra i tasti sempre in
     // vista subito dopo averlo tolto dai predefiniti, e la modifica sembrerebbe
     // non aver funzionato.
     val fissati = pref == Settings.PREF_PINNED_TOOLBAR_KEYS
     val wanted = when {
-        !composizione -> listOf(COMPOSE)
         // Fra i sempre-in-vista non si aggiungono cifra e invia-in-chiaro:
         // stanno nella riga di composizione, piu' grandi e sempre raggiungibili.
         fissati -> listOf(COMPOSE, ATTACH, GALLERY, CONTACTS, DECRYPT)
         else -> listOf(COMPOSE, ATTACH, GALLERY, CONTACTS, DECRYPT, ENCRYPT, SEND_PLAIN)
     }
-    val result = keys.filterNot { !composizione && it in cipherKeys && it != COMPOSE }
-        .toMutableList()
     // Aggiunti se la preferenza salvata non li nomina affatto: le preferenze
     // esistenti non vengono sovrascritte dai default, quindi senza questo chi
     // aggiorna non troverebbe mai i tasti nuovi. Un tasto messo a `false`
@@ -368,8 +345,6 @@ private fun withCipherKeys(prefs: SharedPreferences, pref: String, default: Stri
     }
     return result
 }
-
-private val cipherKeys = setOf(ENCRYPT, DECRYPT, SEND_PLAIN, COMPOSE, ATTACH, CONTACTS, GALLERY)
 
 fun getEnabledClipboardToolbarKeys(prefs: SharedPreferences) = getEnabledToolbarKeys(prefs, Settings.PREF_CLIPBOARD_TOOLBAR_KEYS, defaultClipboardToolbarPref)
 

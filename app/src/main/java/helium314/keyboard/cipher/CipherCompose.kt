@@ -174,6 +174,18 @@ object CipherCompose {
         return if (view.isVisible) view.height else 0
     }
 
+    /**
+     * Inizio e fine della selezione nel buffer, o `null` se le battute vanno
+     * all'app. Serve a `LatinIME` quando l'input riparte: senza, prendeva il
+     * cursore dal campo dell'app, che con la riga attiva e' vuoto.
+     */
+    fun selezione(): IntArray? {
+        val buffer = (connection() as? CipherConnection)?.buffer ?: return null
+        val a = Selection.getSelectionStart(buffer).coerceAtLeast(0)
+        val b = Selection.getSelectionEnd(buffer).coerceAtLeast(a)
+        return intArrayOf(a, b)
+    }
+
     /** Il chiaro composto finora. */
     fun text(): String = connection?.buffer?.toString().orEmpty()
 
@@ -185,6 +197,9 @@ object CipherCompose {
      */
     fun clear() {
         svuotaSovrascrivendo(connection?.buffer)
+        // HeliBoard crede ancora di avere il cursore in fondo al messaggio
+        // appena spedito: senza avviso la prossima battuta partirebbe da li'.
+        avvisaDelloSpostamento()
         // `owner` NON si azzera qui, ed e' il difetto che questa riga aveva.
         //
         // Il proprietario dice a quale app appartiene il testo nel buffer.
@@ -427,6 +442,7 @@ object CipherCompose {
         connection.buffer.append(text)
         Selection.setSelection(connection.buffer, connection.buffer.length)
         updateRow()
+        avvisaDelloSpostamento()
     }
 
     fun isEmptyBuffer(): Boolean = connection?.buffer?.isEmpty() != false
@@ -508,8 +524,6 @@ object CipherCompose {
     private fun spostaSelezione(inizio: Int, fine: Int) {
         val connection = connection ?: return
         val buffer = connection.buffer
-        val vecchioInizio = Selection.getSelectionStart(buffer)
-        val vecchiaFine = Selection.getSelectionEnd(buffer)
         val a = inizio.coerceIn(0, buffer.length)
         val b = fine.coerceIn(a, buffer.length)
         // La parola in composizione finisce qui: il cursore se n'e' andato
@@ -518,7 +532,7 @@ object CipherCompose {
         connection.finishComposingText()
         Selection.setSelection(buffer, a, b)
         updateRow()
-        avvisaDelloSpostamento(vecchioInizio, vecchiaFine)
+        avvisaDelloSpostamento()
     }
 
     /**
@@ -554,14 +568,11 @@ object CipherCompose {
         // proseguire manderebbe il CTRL+V all'app, che incollerebbe nel proprio
         // campo cio' che l'utente voleva qui.
         if (testo.isNullOrEmpty()) return true
-        val buffer = connection.buffer
-        val vecchioInizio = Selection.getSelectionStart(buffer)
-        val vecchiaFine = Selection.getSelectionEnd(buffer)
         // `commitText` sostituisce la selezione, come ci si aspetta da un
         // incolla, e passa dalla connessione perche' e' li' che vive
         // l'aggiornamento della riga.
         connection.commitText(testo, 1)
-        avvisaDelloSpostamento(vecchioInizio, vecchiaFine)
+        avvisaDelloSpostamento()
         return true
     }
 
@@ -573,12 +584,21 @@ object CipherCompose {
      * cursore, ma dopo: "seleziona tutto" e "incolla" arrivano qui **da dentro**
      * HeliBoard, e richiamarlo subito lo farebbe rientrare in se' stesso mentre
      * sta ancora leggendo il testo.
+     *
+     * La posizione si legge **quando l'avviso parte**, non quando lo si
+     * programma: nel frattempo puo' esserci stata un'altra battuta, e
+     * consegnare una posizione gia' superata riaprirebbe proprio lo
+     * scollamento che l'avviso serve a chiudere.
+     *
+     * Non passa da `onUpdateSelection`: quella, con la riga attiva, ignora le
+     * posizioni che riceve, perche' le manda il sistema e sono del campo
+     * dell'app. Vedi `LatinIME.onCipherSelectionChanged`.
      */
-    private fun avvisaDelloSpostamento(vecchioInizio: Int, vecchiaFine: Int) {
-        val buffer = connection?.buffer ?: return
-        val a = Selection.getSelectionStart(buffer).coerceAtLeast(0)
-        val b = Selection.getSelectionEnd(buffer).coerceAtLeast(a)
-        val avvisa = Runnable { servizio?.onUpdateSelection(vecchioInizio, vecchiaFine, a, b, -1, -1) }
+    private fun avvisaDelloSpostamento() {
+        val avvisa = Runnable {
+            val (a, b) = selezione() ?: return@Runnable
+            (servizio as? LatinIME)?.onCipherSelectionChanged(a, b)
+        }
         if (row?.post(avvisa) != true) avvisa.run()
     }
 
@@ -743,6 +763,11 @@ object CipherCompose {
      *
      * I tasti si riconoscono dal `tag`, che e' la `ToolbarKey` con cui sono
      * stati creati.
+     *
+     * Vale anche per la cifratura spenta del tutto: la toolbar nasce sempre con
+     * i tasti della cifratura (vedi `withCipherKeys`) ed e' questa funzione a
+     * toglierli di vista. Cosi' l'interruttore puo' accendere e spegnere senza
+     * ricostruire la tastiera.
      */
     private fun aggiornaTastiCifratura() {
         val mostra = enabled && !suppressed
@@ -750,7 +775,13 @@ object CipherCompose {
             for (i in 0 until barra.childCount) {
                 val figlio = barra.getChildAt(i) ?: continue
                 val chiave = figlio.tag as? ToolbarKey ?: continue
-                if (chiave == ToolbarKey.COMPOSE) continue
+                // L'interruttore resta, ma il suo stato acceso va rimesso qui:
+                // prima lo ridipingeva la ricostruzione della tastiera, che il
+                // tasto non fa piu' (vedi `CipherActions.toggleCompose`).
+                if (chiave == ToolbarKey.COMPOSE) {
+                    figlio.isActivated = enabled
+                    continue
+                }
                 // Come COMPOSE, anche DECIFRA sopravvive alla riga assente.
                 // Leggere non dipende dalla riga di composizione: un messaggio
                 // in arrivo si apre anche quando non si ha nessuna intenzione
