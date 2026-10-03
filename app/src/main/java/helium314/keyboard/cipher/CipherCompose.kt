@@ -144,6 +144,10 @@ object CipherCompose {
         // chiamata a ogni parola composta.
         apprendi = CipherSettings.isLearn(context)
         val wanted = CipherSettings.isComposeMode(context)
+        // Il log di debug riceve le parole scritte: con la riga accesa deve
+        // tacere. Qui perche' la cifratura si puo' accendere a processo avviato,
+        // dopo che DebugFlags.init ha gia' deciso. Vedi Defaults.PREF_DEBUG_MODE.
+        if (wanted) helium314.keyboard.latin.define.DebugFlags.DEBUG_ENABLED = false
         if (wanted == enabled) return
         enabled = wanted
         // Spegnendo la modalita' il buffer non ha piu' un posto dove mostrarsi:

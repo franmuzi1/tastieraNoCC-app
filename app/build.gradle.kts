@@ -133,11 +133,11 @@ android {
         applicationId = "io.github.franmuzi1.musyboard"
         minSdk = 21
         targetSdk = 36
-        versionCode = 4014
+        versionCode = 4015
         // Versione del fork MusyBoard, non quella dell'HeliBoard da cui deriva.
         // Il versionCode resta monotono per consentire l'aggiornamento degli
         // APK gia' installati che dichiaravano 4.0-dev1.
-        versionName = "0.18.7-dev1"
+        versionName = "0.18.8-dev1"
         // Test strumentati: girano su un dispositivo vero o su un emulatore,
         // ed e' l'unico modo di provare cio' che passa dal core nativo — il
         // `.so` e' un binario Android e sulla JVM non si carica — e da Android

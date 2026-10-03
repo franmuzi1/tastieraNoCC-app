@@ -188,7 +188,12 @@ object Defaults {
     const val PREF_RECENT_EMOJIS = ""
     const val PREF_LAST_SHOWN_EMOJI_CATEGORY_PAGE_ID = 0
     const val PREF_SHOW_DEBUG_SETTINGS = false
-    val PREF_DEBUG_MODE = BuildConfig.DEBUG
+    // keyboard-cipher: spenta anche nelle build debug, che sono quelle che si
+    // pubblicano. Con la modalita' debug accesa HeliBoard scrive nel log —
+    // quello di sistema e quello interno, che si esporta da "About" e finisce nei
+    // rapporti di crash — le parole confermate, i suggerimenti e il contesto
+    // delle parole precedenti: cioe' il chiaro scritto nella riga cifrata.
+    const val PREF_DEBUG_MODE = false
     const val PREF_SHOW_SUGGESTION_INFOS = false
     const val PREF_FORCE_NON_DISTINCT_MULTITOUCH = false
     const val PREF_SLIDING_KEY_INPUT_PREVIEW = true

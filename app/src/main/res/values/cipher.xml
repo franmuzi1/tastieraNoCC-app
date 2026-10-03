@@ -42,6 +42,7 @@
     <string name="cipher_no_recipient" tools:ignore="MissingTranslation">Scegli prima un destinatario per questa app</string>
     <string name="cipher_part_ready" tools:ignore="MissingTranslation">Parte %1$d di %2$d nel campo: mandala, la prossima arriva da sola</string>
     <string name="cipher_part_failed" tools:ignore="MissingTranslation">Questa parte non e\' entrata nel campo e le successive sono state annullate: manda quello che e\' partito, poi riscrivi il resto</string>
+    <string name="cipher_plain_too_long" tools:ignore="MissingTranslation">Questa chat accetta al massimo %1$d caratteri: il testo e\' ancora nella riga, accorcialo e riprova</string>
     <string name="cipher_field_limit_learned" tools:ignore="MissingTranslation">Questa chat accetta al massimo %1$d caratteri: il messaggio non era entrato intero, e d\'ora in poi qui si divide in parti</string>
     <string name="cipher_message_too_long" tools:ignore="MissingTranslation">Messaggio troppo lungo per questa chat</string>
     <string name="cipher_message_too_long_detail" tools:ignore="MissingTranslation">Il testo cifrato supera il limite di 4096 caratteri di Telegram: togli circa %1$d caratteri, oppure mandalo in due messaggi.</string>

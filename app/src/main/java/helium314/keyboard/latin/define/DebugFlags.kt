@@ -8,6 +8,7 @@ package helium314.keyboard.latin.define
 
 import android.content.Context
 import android.os.Build
+import helium314.keyboard.cipher.CipherSettings
 import helium314.keyboard.latin.BuildConfig
 import helium314.keyboard.latin.settings.DebugSettings
 import helium314.keyboard.latin.settings.Defaults
@@ -26,7 +27,13 @@ object DebugFlags {
     var DEBUG_ENABLED = false
 
     fun init(context: Context) {
-        DEBUG_ENABLED = context.prefs().getBoolean(DebugSettings.PREF_DEBUG_MODE, Defaults.PREF_DEBUG_MODE)
+        val prefs = context.prefs()
+        // keyboard-cipher: mai con la cifratura accesa, anche se l'utente l'ha
+        // attivata a mano. Vedi Defaults.PREF_DEBUG_MODE: il log riceverebbe il
+        // testo in chiaro della riga. CipherCompose la spegne anche quando la
+        // cifratura si accende a processo gia' avviato.
+        DEBUG_ENABLED = prefs.getBoolean(DebugSettings.PREF_DEBUG_MODE, Defaults.PREF_DEBUG_MODE) &&
+            !CipherSettings.isEnabled(prefs)
         CrashReportExceptionHandler(context.applicationContext).install()
     }
 }

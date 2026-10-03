@@ -56,6 +56,9 @@ object CipherActions {
     /** Prefisso della preferenza col limite imparato per app. */
     private const val PREF_LIMITE = "cipher_limite_campo_"
 
+    /** Vedi [imparaLimite]. */
+    private const val LIMITE_MINIMO = 256
+
     /**
      * Involucro del blob, in byte, contato sul formato vero: 4 di prefisso, 32
      * di chiave nell'intestazione, 24 di nonce, 16 di tag, piu' 8 di marca
@@ -531,22 +534,29 @@ object CipherActions {
             // ritorno, si RILEGGE il campo. Un `commitText` puo' rispondere di
             // si' e lasciare nel campo qualcosa di diverso da quello che gli si
             // e' dato.
-            ic.beginBatchEdit()
-            ic.finishComposingText()
-            val consegnato = ic.commitText(blob, 1)
-            ic.endBatchEdit()
-            if (!consegnato || !fieldIs(ic, blob)) {
-                // Non si svuota niente e non si preme invio: il messaggio resta
-                // nella riga, dove l'utente lo vede. Meglio un invio da
-                // ripetere che un messaggio da riscrivere.
-                if (!rimediaAlTroncamento(ime, ic, blob, "")) {
-                    toast(ime, R.string.cipher_send_failed_kept)
+            when (inserisciNelCampo(ime, ic, blob)) {
+                Inserimento.RIUSCITO -> Unit
+                // Il campo e' gia' tornato com'era e il limite e' imparato:
+                // [encrypt] rifa' il giro dividendo in parti.
+                Inserimento.TRONCATO -> {
+                    avvisaLimiteBlob(ime)
+                    return false
                 }
-                return false
+                Inserimento.FALLITO -> {
+                    // Non si svuota niente e non si preme invio: il messaggio
+                    // resta nella riga, dove l'utente lo vede. Meglio un invio
+                    // da ripetere che un messaggio da riscrivere.
+                    toast(ime, R.string.cipher_send_failed_kept)
+                    return false
+                }
             }
-            Consegnato.segna(blob)
+            // Il campo INTERO, non il solo blob: se c'era gia' qualcosa, e' il
+            // campo cosi' com'e' adesso che non va ripreso e su cui va tolto
+            // l'a capo dell'invio simulato.
+            val campo = testoDelCampo(ic) ?: blob
+            Consegnato.segna(campo)
             CipherCompose.clear()
-            deliver(ime, ic, blob)
+            deliver(ime, ic, campo)
             // Se l'invio automatico ha spedito e c'e' una coda, la parte
             // successiva parte da sola. Se non ha spedito, il campo e' ancora
             // pieno e questa chiamata non fa niente: la coda aspetta l'invio a
@@ -565,6 +575,117 @@ object CipherActions {
             return false
         }
         return true
+    }
+
+    private enum class Inserimento { RIUSCITO, TRONCATO, FALLITO }
+
+    /** Testo del campo e selezione, per poterlo rimettere com'era. */
+    private class StatoCampo(val testo: String, val inizio: Int, val fine: Int)
+
+    private fun statoDelCampo(ic: InputConnection): StatoCampo? {
+        val extracted = runCatching { ic.getExtractedText(extractRequest(), 0) }.getOrNull()
+        val whole = extracted?.text
+        if (whole != null && extracted.partialStartOffset < 0) {
+            val a = minOf(extracted.selectionStart, extracted.selectionEnd).coerceIn(0, whole.length)
+            val b = maxOf(extracted.selectionStart, extracted.selectionEnd).coerceIn(a, whole.length)
+            return StatoCampo(whole.toString(), a, b)
+        }
+        val prima = runCatching { ic.getTextBeforeCursor(MAX_FIELD_CHARS, 0) }.getOrNull() ?: return null
+        val sel = runCatching { ic.getSelectedText(0) }.getOrNull() ?: ""
+        val dopo = runCatching { ic.getTextAfterCursor(MAX_FIELD_CHARS, 0) }.getOrNull() ?: ""
+        return StatoCampo(
+            prima.toString() + sel + dopo,
+            prima.length,
+            prima.length + sel.length,
+        )
+    }
+
+    /**
+     * Mette [testo] nel campo dell'app al posto della selezione, e controlla
+     * che il campo sia diventato **esattamente** cio' che doveva.
+     *
+     * Prima si confrontava il campo con il solo testo consegnato, come se fosse
+     * sempre vuoto. Non lo e' per forza: una bozza dell'app, un a capo rimasto,
+     * un invio precedente non partito. Allora il controllo falliva **anche se
+     * il testo era arrivato**: l'invio risultava non riuscito, il testo restava
+     * nella riga e intanto stava anche nel campo — e riprovando il campo ne
+     * riceveva una seconda copia. Era il messaggio "raddoppiato".
+     *
+     * Adesso l'atteso si calcola dallo stato di prima, e se il campo non torna
+     * lo si rimette **com'era**: un fallimento non lascia mai una copia in giro.
+     * Se il campo ha tagliato il testo, si impara anche il suo limite (vedi
+     * [rimediaAlTroncamento]).
+     */
+    private fun inserisciNelCampo(
+        ime: InputMethodService,
+        ic: InputConnection,
+        testo: String,
+    ): Inserimento {
+        val prima = statoDelCampo(ic)
+        ic.beginBatchEdit()
+        ic.finishComposingText()
+        val consegnato = ic.commitText(testo, 1)
+        ic.endBatchEdit()
+        // Campo che non si lascia rileggere: non c'e' niente su cui basare un
+        // controllo, e ci si fida della risposta come faceva [fieldIs].
+        val dopo = (if (prima != null) testoDelCampo(ic) else null)
+            ?: return if (consegnato) Inserimento.RIUSCITO else Inserimento.FALLITO
+        prima ?: return Inserimento.FALLITO
+        val testa = prima.testo.substring(0, prima.inizio)
+        val coda = prima.testo.substring(prima.fine)
+        if (consegnato && dopo == testa + testo + coda) return Inserimento.RIUSCITO
+
+        val inMezzo = if (
+            dopo.length >= testa.length + coda.length &&
+            dopo.startsWith(testa) && dopo.endsWith(coda)
+        ) dopo.substring(testa.length, dopo.length - coda.length) else null
+        val troncato = inMezzo != null && inMezzo.isNotEmpty() &&
+            inMezzo.length < testo.length && testo.startsWith(inMezzo)
+
+        // Si toglie SOLO cio' che si e' inserito, selezionandolo per posizione.
+        // "Seleziona tutto" e riscrivere era la via ovvia ed e' sbagliata: in un
+        // campo che ignora quel comando la riscrittura si AGGIUNGE a cio' che
+        // c'e', e il ripristino produrrebbe proprio il doppione che deve
+        // evitare. Resta come ultima via solo se testa e coda non sono intatte,
+        // e allora si controlla il risultato.
+        ic.beginBatchEdit()
+        ic.finishComposingText()
+        if (inMezzo != null) {
+            ic.setSelection(testa.length, dopo.length - coda.length)
+            ic.commitText("", 1)
+        } else {
+            ic.performContextMenuAction(android.R.id.selectAll)
+            ic.commitText(prima.testo, 1)
+        }
+        ic.setSelection(prima.inizio, prima.fine)
+        ic.endBatchEdit()
+
+        if (!troncato) return Inserimento.FALLITO
+        imparaLimite(ime, dopo.length)
+        return Inserimento.TRONCATO
+    }
+
+    /**
+     * Ricorda per quest'app quanto e' lungo, al massimo, cio' che il campo
+     * accetta. L'avviso lo da' chi chiama: cosa succede dopo e' diverso per un
+     * blob, che si divide in parti, e per il chiaro, che no.
+     */
+    private fun imparaLimite(ime: InputMethodService, caratteri: Int) {
+        // Sotto questa soglia non ci sta nemmeno il blob piu' corto diviso in
+        // parti: ricordarlo non servirebbe a niente, e lascerebbe a un campo che
+        // finge di troncare il modo di rendere impossibile cifrare in quell'app.
+        if (caratteri < LIMITE_MINIMO) return
+        val pacchetto = ime.currentInputEditorInfo?.packageName.orEmpty()
+        if (pacchetto.isNotEmpty()) {
+            ime.prefs().edit().putInt(PREF_LIMITE + pacchetto, caratteri).apply()
+        }
+    }
+
+    private fun avvisaLimiteBlob(ime: InputMethodService) {
+        KeyboardSwitcher.getInstance().showToast(
+            ime.getString(R.string.cipher_field_limit_learned, limiteBlob(ime)),
+            false,
+        )
     }
 
     /**
@@ -594,19 +715,16 @@ object CipherActions {
         if (rimasto.isEmpty() || rimasto.length >= blob.length || !blob.startsWith(rimasto)) {
             return false
         }
+        // Il campo contiene esattamente `rimasto`: lo si seleziona per
+        // posizione invece di "seleziona tutto", che un campo puo' ignorare —
+        // e allora il chiaro si aggiungerebbe in coda al blob mozzato.
         ic.beginBatchEdit()
         ic.finishComposingText()
-        ic.performContextMenuAction(android.R.id.selectAll)
+        ic.setSelection(0, rimasto.length)
         ic.commitText(ripristino, 1)
         ic.endBatchEdit()
-        val pacchetto = ime.currentInputEditorInfo?.packageName.orEmpty()
-        if (pacchetto.isNotEmpty()) {
-            ime.prefs().edit().putInt(PREF_LIMITE + pacchetto, rimasto.length).apply()
-        }
-        KeyboardSwitcher.getInstance().showToast(
-            ime.getString(R.string.cipher_field_limit_learned, rimasto.length),
-            false,
-        )
+        imparaLimite(ime, rimasto.length)
+        avvisaLimiteBlob(ime)
         return true
     }
 
@@ -706,10 +824,15 @@ object CipherActions {
     private fun togliACapo(ime: InputMethodService, consegnato: String) {
         val ic = appConnection(ime) ?: return
         if (testoDelCampo(ic) != consegnato + "\n") return
+        // Un carattere, dietro al cursore, e solo se e' proprio l'a capo in
+        // fondo: niente "seleziona tutto" e riscrittura, che in un campo che
+        // ignora la selezione aggiungerebbe una seconda copia del messaggio.
+        val primaDelCursore = runCatching { ic.getTextBeforeCursor(1, 0) }.getOrNull()
+        val dopoIlCursore = runCatching { ic.getTextAfterCursor(1, 0) }.getOrNull()
+        if (primaDelCursore?.toString() != "\n" || !dopoIlCursore.isNullOrEmpty()) return
         ic.beginBatchEdit()
         ic.finishComposingText()
-        ic.performContextMenuAction(android.R.id.selectAll)
-        ic.commitText(consegnato, 1)
+        ic.deleteSurroundingText(1, 0)
         ic.endBatchEdit()
         val pacchetto = ime.currentInputEditorInfo?.packageName.orEmpty()
         avvisoUnaVolta(ime, "invio_$pacchetto", R.string.cipher_send_unavailable)
@@ -1257,7 +1380,11 @@ object CipherActions {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 runCatching { ime.requestShowSelf(0) }
             }
-            attendiFinestra(ime, contenuto, intentDiLettura(ime, contenuto), CipherPanel.contenuto())
+            // Niente intent qui: col messaggio nel pannello non serve, e
+            // costruirlo emetterebbe un gettone di [CipherHandoff] — che ne
+            // tiene uno solo, e sovrascriverebbe quello di una schermata della
+            // tastiera appena aperta.
+            attendiFinestra(ime, contenuto, null, CipherPanel.contenuto())
             return
         }
         scalaDiApertura(ime, contenuto)
@@ -1266,7 +1393,8 @@ object CipherActions {
     /** Un'apertura che aspetta la finestra della tastiera. Vedi [attendiFinestra]. */
     private class Attesa(
         val contenuto: String,
-        val intent: Intent,
+        /** `null` quando il messaggio e' nel pannello: li' non serve. */
+        val intent: Intent?,
         /**
          * Cio' che il pannello mostrava, se il messaggio e' passato di li'. Se
          * il pannello e' stato svuotato prima che la finestra arrivasse, lo si
@@ -1304,7 +1432,7 @@ object CipherActions {
     private fun attendiFinestra(
         ime: InputMethodService,
         contenuto: String,
-        intent: Intent,
+        intent: Intent?,
         pannello: Triple<String, String, String>?,
     ) {
         val questa = Attesa(contenuto, intent, pannello)
@@ -1345,7 +1473,7 @@ object CipherActions {
         CipherNotification.dismiss(ime)
         val pannello = a.pannello
         if (pannello == null) {
-            runCatching { ime.startActivity(a.intent) }
+            a.intent?.let { intent -> runCatching { ime.startActivity(intent) } }
             return
         }
         if (CipherPanel.isAperto()) return
@@ -1544,21 +1672,30 @@ object CipherActions {
             toast(ime, R.string.cipher_nothing_to_send)
             return
         }
-        ic.beginBatchEdit()
-        ic.finishComposingText()
-        val consegnato = ic.commitText(text, 1)
-        ic.endBatchEdit()
         // Dopo la consegna, e solo se e' RIUSCITA: svuotare prima, o svuotare
         // comunque, significa perdere il testo quando la consegna fallisce.
         // Vale qui quanto per il blob — anzi di piu', perche' questo e' il
         // testo dell'utente e non una sua ricifratura.
-        if (!consegnato || !fieldIs(ic, text)) {
-            toast(ime, R.string.cipher_send_failed_kept)
-            return
+        when (inserisciNelCampo(ime, ic, text)) {
+            Inserimento.RIUSCITO -> Unit
+            // Il chiaro non si divide in parti: si dice quanto ci sta.
+            Inserimento.TRONCATO -> {
+                KeyboardSwitcher.getInstance().showToast(
+                    ime.getString(R.string.cipher_plain_too_long, limiteBlob(ime)),
+                    false,
+                )
+                return
+            }
+            Inserimento.FALLITO -> {
+                toast(ime, R.string.cipher_send_failed_kept)
+                return
+            }
         }
-        Consegnato.segna(text)
+        // Vedi [consegna]: si ricorda il campo intero.
+        val campo = testoDelCampo(ic) ?: text
+        Consegnato.segna(campo)
         CipherCompose.clear()
-        if (!deliver(ime, ic, text)) avvisoUnaVolta(ime, "chiaro", R.string.cipher_sent_plain)
+        if (!deliver(ime, ic, campo)) avvisoUnaVolta(ime, "chiaro", R.string.cipher_sent_plain)
     }
 
     /**
